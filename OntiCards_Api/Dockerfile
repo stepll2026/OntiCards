@@ -171,7 +171,7 @@ COPY . /current_prod_vigor_api
 RUN rm -rf /current_prod_vigor_api/docker/dm8/client
 
 # 复制环境变量文件
-COPY .env.example /current_prod_vigor_api/.env
+COPY .env.prod /current_prod_vigor_api/.env
 RUN sed -i 's/\r//' /current_prod_vigor_api/.env
 
 # 复制入口脚本

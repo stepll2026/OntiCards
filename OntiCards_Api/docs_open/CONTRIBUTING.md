@@ -56,7 +56,7 @@ git checkout -b feature/your-feature-name
 pip install -r requirements.txt
 
 # 5. 配置本地开发环境
-cp .env.example .env
+cp .env.prod .env
 # 编辑 .env 填入必要配置
 ```
 
