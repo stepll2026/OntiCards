@@ -388,8 +388,8 @@ SSO_SECRET_KEY=客户提供的共享密钥
 
 OntiCards提供了本地测试页面：
 
-- **SSO测试中心**：`http://localhost:9000/static/sso_test.html`
-- **回调测试页面**：`http://localhost:9000/static/sso_callback.html`
+- **SSO测试中心**：`http://localhost:9103/static/sso_test.html`
+- **回调测试页面**：`http://localhost:9103/static/sso_callback.html`
 
 ### 10.2 对接检查清单
 

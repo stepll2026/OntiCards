@@ -3710,12 +3710,12 @@ if (token) {
 
 **SSO测试中心：**
 ```
-http://localhost:9000/static/sso_test.html
+http://localhost:9103/static/sso_test.html
 ```
 
 **回调测试页面：**
 ```
-http://localhost:9000/static/sso_callback.html
+http://localhost:9103/static/sso_callback.html
 ```
 
 **测试页面功能：**
