@@ -13,9 +13,9 @@ set -e
 # ============================================================
 
 # 加载 .env 文件
-if [ -f /current_prod_vigor_api/.env ]; then
+if [ -f /onticards_api/.env ]; then
   set -a
-  . /current_prod_vigor_api/.env
+  . /onticards_api/.env
   set +a
 fi
 

@@ -44,7 +44,7 @@ ENV FLASK_APP=app.py \
 
 EXPOSE 9103
 
-WORKDIR /current_prod_vigor_api
+WORKDIR /onticards_api
 
 # ----- 阶段四：系统依赖（运行时） -----
 RUN apt-get update \
@@ -165,14 +165,14 @@ RUN DMPYTHON_SSL_DIR="$(find /usr/local/lib/python3.10/site-packages -type d -na
 
 # ----- 阶段九：应用文件 -----
 # 复制项目文件（排除 docker/dm8/client/ 重复部分）
-COPY . /current_prod_vigor_api
+COPY . /onticards_api
 
 # 达梦动态库已复制到 /opt/dmdbms，删除应用目录中的重复副本
-RUN rm -rf /current_prod_vigor_api/docker/dm8/client
+RUN rm -rf /onticards_api/docker/dm8/client
 
 # 复制环境变量文件
-COPY .env.prod /current_prod_vigor_api/.env
-RUN sed -i 's/\r//' /current_prod_vigor_api/.env
+COPY .env.prod /onticards_api/.env
+RUN sed -i 's/\r//' /onticards_api/.env
 
 # 复制入口脚本
 COPY docker/entrypoint.sh /entrypoint.sh
