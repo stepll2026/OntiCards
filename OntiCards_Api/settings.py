@@ -15,7 +15,7 @@ DEFAULTS = {
     'DB_PASSWORD': '',
     'DB_HOST': 'localhost',
     'DB_PORT': '5432',
-    'DB_DATABASE': 'pz',
+    'DB_DATABASE': '',
     'DB_CHARSET': '',
     'REDIS_HOST': 'localhost',
     'REDIS_PORT': '6379',
@@ -67,7 +67,7 @@ DEFAULTS = {
     'INVITE_EXPIRY_HOURS': 72,
     'BILLING_ENABLED': 'False',
     'CAN_REPLACE_LOGO': 'False',
-    'ETL_TYPE': 'pz',
+    'ETL_TYPE': '',
 }
 
 
