@@ -31,7 +31,6 @@ fi
 
 gunicorn \
   --config gunicorn.py \
-  --bind "${DIFY_BIND_ADDRESS:-0.0.0.0}:${DIFY_PORT:-9103}" \
   --workers ${GUNICORN_WORKERS:-2} \
   --worker-class ${GUNICORN_WORKER_CLASS:-gthread} \
   --threads ${GUNICORN_THREADS:-6} \
