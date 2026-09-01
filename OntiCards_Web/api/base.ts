@@ -107,8 +107,8 @@ type ResponseError = {
 }
 
 export const urlPrefix = 'http://localhost:9103/console/api'             // 本地环境（后端本地启动）
-// export const urlPrefix = 'http://8.134.10.74:9106/console/api'           //线上环境:IP
-// export const urlPrefix = 'https://dataconnector.step2.com.cn/console/api'   //线上环境:域名
+// export const urlPrefix = 'http://项目线上ip地址:端口/console/api'           //线上环境:IP+端口
+// export const urlPrefix = 'https://xxxx.xxxx.com.cn/console/api'   //线上环境:域名
 
 const baseFetch = <T>(
   url: string,
