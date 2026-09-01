@@ -1,0 +1,42 @@
+{
+    "prompt": "The information displayed by large models (including information related to people) may not be completely accurate, please check carefully.",
+    "sending": "Sending...",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "submitSuccessfully": "Submitted successfully",
+    "confirm": "Confirm",
+    "modifiedSuccessfully": "Modified successfully",
+    "uploadSuccessful": "Upload successful",
+    "uploadFailed": "Upload failed",
+    "operationSuccessful": "Operation Successful",
+    "requestFailure": "Request failed, please contact the administrator",
+    "tip": "Tip",
+    "inquiryDel": "Are you sure you want to delete it?",
+    "deleteSuccessful": "Delete successful",
+    "delete": "Delete",
+    "batchActivation": "Batch enable",
+    "batchDisabling": "Batch disable",
+    "batchDeletion": "Batch deletion",
+    "batchTransfer": "Batch Transfer",
+    "importUsers": "Import Users",
+
+    "uploadFormatError": "Format error, does not support uploading {{type}}",
+    "uploadSizeError": "{{name}} exceeding {{size}}MB",
+    "uploadLengthError": "Upload up to {{length}} questionnaires at a time",
+    "uploadRequired": "The upload list cannot be empty",
+    "password": "Password",
+    "passwordPlaceholder": "Please enter your password",
+    "passwordPrompt": "Password cannot be empty",
+
+    "usenNameExtra": "User names that can use pure English, pure numbers, or combinations of English numbers (with a horizontal line, bottom line, or @ symbol)",
+    "usenNameNMessage": "The format is incorrect. You can use a username in pure English, pure numbers, or a combination of English numbers (with a horizontal line, bottom line, or @ symbol)",
+    "passwordExtra": "Can use pure English, pure numbers, or combinations of English numbers (must include both English letters and numbers)",
+
+    "unknown": "System error, please contact the administrator",
+
+    "copy": "Copy",
+    "save": "Save",
+    "setUp": "Set up",
+    "edit": "Edit",
+    "source": "Source"
+}

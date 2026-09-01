@@ -1,0 +1,92 @@
+-- DM (Dameng) Data Audit DDL
+-- Compatible with Oracle PL/SQL syntax (subset)
+-- Uses "procedure + temp table + SELECT" pattern (no PIPELINED support)
+--
+-- Usage:
+--   Execute DDL once to create the data_audit procedure.
+--   Then call: CALL data_audit('OWNER', 'TABLE_NAME')
+--   Results are output as result set.
+--   NOTE: TMP_DATA_AUDIT is GLOBAL TEMPORARY TABLE, cleaned on session end.
+DROP PROCEDURE IF EXISTS data_audit;
+--@@split
+CREATE OR REPLACE PROCEDURE data_audit(
+    p_owner VARCHAR(128),
+    p_table VARCHAR(128)
+)
+AS
+    v_col_name    VARCHAR(128);
+    v_data_type   VARCHAR(128);
+    v_is_char     INT;
+    v_nulls       BIGINT;
+    v_empty       BIGINT;
+    v_total       BIGINT;
+    v_sql         VARCHAR(4000);
+
+    -- Column metadata cursor: Oracle-compatible using ALL_TAB_COLUMNS
+    CURSOR c_cols IS
+        SELECT COLUMN_NAME, DATA_TYPE,
+               CASE WHEN LOWER(DATA_TYPE) IN ('char','varchar','varchar2','nvarchar','nvarchar2','nchar','clob','nclob','text','long')
+                    THEN 1 ELSE 0 END AS is_char
+          FROM ALL_TAB_COLUMNS
+         WHERE OWNER = UPPER(p_owner) AND TABLE_NAME = UPPER(p_table)
+         ORDER BY COLUMN_ID;
+BEGIN
+    -- Drop temp table if exists (达梦的 GLOBAL TEMPORARY TABLE 不会自动清理表结构)
+    BEGIN
+        EXECUTE IMMEDIATE 'DROP TABLE IF EXISTS TMP_DATA_AUDIT';
+    EXCEPTION
+        WHEN OTHERS THEN NULL;
+    END;
+
+    -- Create global temporary table (ON COMMIT DELETE ROWS)
+    EXECUTE IMMEDIATE 'CREATE GLOBAL TEMPORARY TABLE TMP_DATA_AUDIT (
+        column_name      VARCHAR(128),
+        data_type        VARCHAR(128),
+        total_rows       BIGINT,
+        null_count       BIGINT,
+        empty_str_count  BIGINT,
+        missing_count    BIGINT,
+        missing_pct      DECIMAL(10,2)
+    ) ON COMMIT DELETE ROWS';
+
+    -- Get total row count
+    v_sql := 'SELECT COUNT(*) FROM "' || UPPER(p_owner) || '"."' || UPPER(p_table) || '"';
+    EXECUTE IMMEDIATE v_sql INTO v_total;
+
+    -- Iterate through each column
+    OPEN c_cols;
+    LOOP
+        FETCH c_cols INTO v_col_name, v_data_type, v_is_char;
+        EXIT WHEN c_cols%NOTFOUND;
+
+        -- 1) NULL count
+        v_sql := 'SELECT COUNT(*) FROM "' || UPPER(p_owner) || '"."' || UPPER(p_table) || '"' ||
+                 ' WHERE "' || UPPER(v_col_name) || '" IS NULL';
+        EXECUTE IMMEDIATE v_sql INTO v_nulls;
+        v_nulls := NVL(v_nulls, 0);
+
+        -- 2) Empty string count (char types only)
+        IF v_is_char = 1 THEN
+            v_sql := 'SELECT COUNT(*) FROM "' || UPPER(p_owner) || '"."' || UPPER(p_table) || '"' ||
+                     ' WHERE "' || UPPER(v_col_name) || '" IS NOT NULL' ||
+                     ' AND TRIM("' || UPPER(v_col_name) || '") = '''' ';
+            EXECUTE IMMEDIATE v_sql INTO v_empty;
+            v_empty := NVL(v_empty, 0);
+        ELSE
+            v_empty := 0;
+        END IF;
+
+        -- 3) Insert into temp table
+        EXECUTE IMMEDIATE 'INSERT INTO TMP_DATA_AUDIT ' ||
+            'SELECT ''' || v_col_name || ''', ''' || v_data_type || ''', ' ||
+                  v_total || ', ' || v_nulls || ', ' || v_empty || ', ' ||
+                  (v_nulls + v_empty) || ', ' ||
+                  'CASE WHEN ' || v_total || ' = 0 THEN 0 ' ||
+                       'ELSE ROUND(100.0 * ' || (v_nulls + v_empty) || ' / ' || v_total || ', 2) END';
+    END LOOP;
+    CLOSE c_cols;
+
+    -- Output results (sorted by missing percentage descending)
+    v_sql := 'SELECT * FROM TMP_DATA_AUDIT ORDER BY missing_pct DESC, column_name';
+    EXECUTE IMMEDIATE v_sql;
+END;

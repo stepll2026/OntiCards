@@ -1,0 +1,70 @@
+-- 创建或替换 data_audit(schema, table) 函数（PL/pgSQL）
+CREATE OR REPLACE FUNCTION data_audit(schema_name text, table_name text)
+RETURNS TABLE (
+    column_name    text,
+    data_type      text,
+    total_rows     bigint,
+    null_count     bigint,
+    empty_str_count bigint,
+    missing_count  bigint,
+    missing_pct    numeric
+)
+LANGUAGE plpgsql AS
+$$
+DECLARE
+    col RECORD;
+    q TEXT;
+    total BIGINT;
+    nulls BIGINT;
+    empty_strs BIGINT;
+BEGIN
+    EXECUTE format('SELECT count(*) FROM %I.%I', schema_name, table_name) INTO total;
+
+    FOR col IN
+        SELECT
+            a.attname AS column_name,
+            pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type,
+            t.typcategory AS category
+        FROM pg_catalog.pg_attribute a
+        JOIN pg_catalog.pg_class c ON c.oid = a.attrelid
+        JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+        JOIN pg_catalog.pg_type t ON t.oid = a.atttypid
+        WHERE n.nspname = schema_name
+          AND c.relname = table_name
+          AND a.attnum > 0
+          AND NOT a.attisdropped
+        ORDER BY a.attnum
+    LOOP
+        IF col.category = 'S' THEN
+            q := format($f$
+                SELECT
+                    count(*) FILTER (WHERE %1$I IS NULL) AS nulls,
+                    count(*) FILTER (WHERE %1$I IS NOT NULL AND btrim(%1$I) = '') AS empty_strs
+                FROM %2$I.%3$I
+            $f$, col.column_name, schema_name, table_name);
+        ELSE
+            q := format($f$
+                SELECT
+                    count(*) FILTER (WHERE %1$I IS NULL) AS nulls,
+                    0::bigint AS empty_strs
+                FROM %2$I.%3$I
+            $f$, col.column_name, schema_name, table_name);
+        END IF;
+
+        EXECUTE q INTO nulls, empty_strs;
+
+        column_name := col.column_name;
+        data_type := col.data_type;
+        total_rows := total;
+        null_count := nulls;
+        empty_str_count := empty_strs;
+        missing_count := nulls + empty_strs;
+        missing_pct := CASE WHEN total = 0 THEN 0
+                            ELSE round(100.0 * (nulls + empty_strs) / total, 2)
+                       END;
+
+        RETURN NEXT;
+    END LOOP;
+END;
+$$;
+--@@split

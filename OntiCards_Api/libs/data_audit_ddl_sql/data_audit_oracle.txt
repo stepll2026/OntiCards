@@ -1,0 +1,50 @@
+BEGIN EXECUTE IMMEDIATE 'DROP TYPE T_AUDIT_TAB'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN EXECUTE IMMEDIATE 'DROP TYPE T_AUDIT_ROW'; EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+--@@split
+CREATE OR REPLACE TYPE T_AUDIT_ROW AS OBJECT (
+  column_name      VARCHAR2(128),
+  data_type        VARCHAR2(128),
+  total_rows       NUMBER,
+  null_count       NUMBER,
+  empty_str_count  NUMBER,
+  missing_count    NUMBER,
+  missing_pct      NUMBER
+);
+/
+--@@split
+CREATE OR REPLACE TYPE T_AUDIT_TAB AS TABLE OF T_AUDIT_ROW;
+/
+--@@split
+CREATE OR REPLACE FUNCTION data_audit(p_owner VARCHAR2, p_table VARCHAR2)
+RETURN T_AUDIT_TAB PIPELINED
+AS
+  v_total NUMBER;
+  v_nulls NUMBER;
+  v_sql   VARCHAR2(4000);
+BEGIN
+  EXECUTE IMMEDIATE 'SELECT COUNT(*) FROM '||DBMS_ASSERT.ENQUOTE_NAME(p_owner)||'.'||DBMS_ASSERT.ENQUOTE_NAME(p_table)
+    INTO v_total;
+
+  FOR c IN (
+    SELECT column_name, data_type
+      FROM all_tab_columns
+     WHERE owner = UPPER(p_owner) AND table_name = UPPER(p_table)
+     ORDER BY column_id
+  ) LOOP
+    v_sql := 'SELECT COUNT(*) FROM '||DBMS_ASSERT.ENQUOTE_NAME(p_owner)||'.'||DBMS_ASSERT.ENQUOTE_NAME(p_table)||
+             ' WHERE '||DBMS_ASSERT.ENQUOTE_NAME(c.column_name)||' IS NULL';
+    EXECUTE IMMEDIATE v_sql INTO v_nulls;
+
+    PIPE ROW ( T_AUDIT_ROW(
+      c.column_name, c.data_type, v_total,
+      NVL(v_nulls,0), 0,
+      NVL(v_nulls,0),
+      CASE WHEN v_total=0 THEN 0 ELSE ROUND(100*(NVL(v_nulls,0))/v_total,2) END
+    ));
+  END LOOP;
+  RETURN;
+END;
+/
+--@@split

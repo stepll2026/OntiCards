@@ -1,0 +1,2703 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --foreground-rgb: 0, 0, 0;
+    --background-start-rgb: 214, 219, 220;
+    --background-end-rgb: 255, 255, 255;
+
+    /* 主题色变量 - 浅色模式 */
+    --theme-primary: 28, 100, 242;
+    --theme-primary-hover: 26, 86, 219;
+    --theme-bg: 255, 255, 255;
+    --theme-bg-secondary: 248, 250, 252;
+    --theme-bg-tertiary: 241, 245, 249;
+    --theme-text: 15, 23, 42;
+    --theme-text-secondary: 71, 85, 105;
+    --theme-text-muted: 100, 116, 139;
+    --theme-border: 226, 232, 240;
+    --theme-border-hover: 203, 213, 225;
+}
+
+/* 深色模式 */
+[data-theme="dark"] {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 15, 23, 42;
+    --background-end-rgb: 15, 23, 42;
+
+    --theme-primary: 96, 165, 250;
+    --theme-primary-hover: 59, 130, 246;
+    --theme-bg: 15, 23, 42;
+    --theme-bg-secondary: 30, 41, 59;
+    --theme-bg-tertiary: 51, 65, 85;
+    --theme-text: 248, 250, 252;
+    --theme-text-secondary: 203, 213, 225;
+    --theme-text-muted: 148, 163, 184;
+    --theme-border: 51, 65, 85;
+    --theme-border-hover: 71, 85, 105;
+}
+
+/* 跟随系统设置 */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --foreground-rgb: 255, 255, 255;
+        --background-start-rgb: 15, 23, 42;
+        --background-end-rgb: 15, 23, 42;
+
+        --theme-primary: 96, 165, 250;
+        --theme-primary-hover: 59, 130, 246;
+        --theme-bg: 15, 23, 42;
+        --theme-bg-secondary: 30, 41, 59;
+        --theme-bg-tertiary: 51, 65, 85;
+        --theme-text: 248, 250, 252;
+        --theme-text-secondary: 203, 213, 225;
+        --theme-text-muted: 148, 163, 184;
+        --theme-border: 51, 65, 85;
+        --theme-border-hover: 71, 85, 105;
+    }
+}
+
+/* ========== 深色模式：覆盖 newLayout 下卡片/文字/边框等样式 ========== */
+/* 使用 html[data-theme="dark"] 确保选择器生效且首屏/水合后一致 */
+html[data-theme="dark"] {
+  --dm-bg: rgb(var(--theme-bg));
+  --dm-bg-secondary: rgb(var(--theme-bg-secondary));
+  --dm-bg-tertiary: rgb(var(--theme-bg-tertiary));
+  --dm-border: rgb(var(--theme-border));
+  --dm-text: rgb(var(--theme-text));
+  --dm-text-secondary: rgb(var(--theme-text-secondary));
+  --dm-text-muted: rgb(var(--theme-text-muted));
+}
+
+html[data-theme="dark"] .bg-white {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+/* 开关/拇指等小控件保持浅色以便在深色背景上可见 */
+html[data-theme="dark"] span.rounded-full.bg-white.w-4.h-4,
+html[data-theme="dark"] span.rounded-full.bg-white.w-4,
+html[data-theme="dark"] .rounded-full.bg-white.w-4 {
+  background-color: rgb(248, 250, 252) !important;
+}
+
+html[data-theme="dark"] .bg-slate-50,
+html[data-theme="dark"] .bg-slate-50\/50,
+html[data-theme="dark"] .bg-slate-50\/80,
+html[data-theme="dark"] .bg-slate-50\/70 {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+}
+
+html[data-theme="dark"] .bg-slate-50\/60 {
+    background-color: rgb(var(--theme-bg-tertiary)) !important;
+}
+
+html[data-theme="dark"] .bg-slate-100,
+html[data-theme="dark"] .bg-slate-100\/50,
+html[data-theme="dark"] .bg-slate-100\/80 {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+}
+
+html[data-theme="dark"] .bg-slate-200 {
+  background-color: rgb(var(--theme-border)) !important;
+}
+
+/* 文字颜色：标题、描述、导航等不再发黑 */
+html[data-theme="dark"] .text-slate-900,
+html[data-theme="dark"] .text-slate-800 {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .text-slate-700,
+html[data-theme="dark"] .text-slate-600 {
+  color: rgb(var(--theme-text-secondary)) !important;
+}
+
+html[data-theme="dark"] .text-slate-500,
+html[data-theme="dark"] .text-slate-400 {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .text-slate-300,
+html[data-theme="dark"] .text-slate-200 {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+/* 边框（含透明度变体） */
+html[data-theme="dark"] .border-slate-200,
+html[data-theme="dark"] .border-slate-300,
+html[data-theme="dark"] .border-slate-300\/60 {
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .border-slate-100,
+html[data-theme="dark"] .border-b-slate-100,
+html[data-theme="dark"] .border-t-slate-100 {
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .divide-slate-100 > * + * {
+  border-top-color: rgb(var(--theme-border)) !important;
+}
+
+/* 灰色系 */
+html[data-theme="dark"] .bg-gray-100 {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+}
+
+html[data-theme="dark"] .text-gray-600,
+html[data-theme="dark"] .text-gray-700 {
+  color: rgb(var(--theme-text-secondary)) !important;
+}
+
+html[data-theme="dark"] .text-gray-400 {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+/* Hover 边框 */
+html[data-theme="dark"] .hover\:border-indigo-200:hover,
+html[data-theme="dark"] .hover\:border-indigo-300:hover,
+html[data-theme="dark"] .hover\:border-indigo-400\/80:hover,
+html[data-theme="dark"] .hover\:border-slate-300:hover {
+  border-color: rgb(var(--theme-border-hover)) !important;
+}
+
+/* Hover 背景 */
+html[data-theme="dark"] .hover\:bg-slate-50:hover,
+html[data-theme="dark"] .hover\:bg-slate-50\/50:hover,
+html[data-theme="dark"] .hover\:bg-slate-50\/70:hover {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+}
+
+html[data-theme="dark"] .hover\:bg-indigo-50:hover,
+html[data-theme="dark"] .hover\:bg-indigo-50\/30:hover,
+html[data-theme="dark"] .hover\:bg-indigo-50\/20:hover,
+html[data-theme="dark"] .hover\:bg-indigo-50\/50:hover {
+  background-color: rgba(var(--theme-primary), 0.15) !important;
+}
+
+html[data-theme="dark"] .hover\:bg-slate-100:hover {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+}
+
+html[data-theme="dark"] .hover\:bg-red-50:hover {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+}
+
+/* 渐变背景（如"添加新的数据源"大卡片） */
+html[data-theme="dark"] .from-blue-50,
+html[data-theme="dark"] .from-slate-50 {
+  --tw-gradient-from: rgb(var(--theme-bg-secondary));
+  --tw-gradient-to: rgb(var(--theme-bg-tertiary));
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+html[data-theme="dark"] .to-pink-50,
+html[data-theme="dark"] .to-indigo-50,
+html[data-theme="dark"] .to-slate-100,
+html[data-theme="dark"] .to-slate-100\/50,
+html[data-theme="dark"] .to-slate-200\/50 {
+  --tw-gradient-to: rgb(var(--theme-bg-tertiary));
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+html[data-theme="dark"] .from-slate-50\/60 {
+  --tw-gradient-from: rgb(var(--theme-bg-secondary));
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+/* 输入/选择框深色可读 */
+html[data-theme="dark"] input.bg-slate-50,
+html[data-theme="dark"] input.bg-white,
+html[data-theme="dark"] select.bg-slate-50,
+html[data-theme="dark"] select.bg-white,
+html[data-theme="dark"] textarea.bg-slate-50,
+html[data-theme="dark"] textarea.bg-white {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  color: rgb(var(--theme-text)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .focus\:ring-indigo-500:focus,
+html[data-theme="dark"] .focus\:ring-2:focus {
+  --tw-ring-color: rgb(var(--theme-primary));
+}
+
+/* 分割线/装饰 */
+html[data-theme="dark"] .bg-slate-200.w-px,
+html[data-theme="dark"] .h-px.bg-slate-200 {
+  background-color: rgb(var(--theme-border)) !important;
+}
+
+/* Ant Design 弹框 */
+html[data-theme="dark"] .ant-modal-content {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-color: rgb(var(--theme-border));
+}
+
+html[data-theme="dark"] .ant-modal-header {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .ant-modal-body {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text));
+}
+
+html[data-theme="dark"] .ant-modal-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-modal-close-x {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .ant-modal-close-x:hover {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* Ant Design 下拉/输入 */
+html[data-theme="dark"] .ant-select-selector,
+html[data-theme="dark"] .ant-input,
+html[data-theme="dark"] .ant-input-affix-wrapper {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  color: rgb(var(--theme-text)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .ant-dropdown {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .ant-dropdown-menu {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .ant-dropdown-menu-item {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-dropdown-menu-item:hover {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    /* 避免弹框打开时顶部出现白边 */
+}
+
+/* 全局滚动容器 - 让页面内容可以正常滚动 */
+.page-content-scroll {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+@layer utilities {
+    .text-balance {
+        text-wrap: balance;
+    }
+}
+
+.text-ellipsis {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    -webkit-line-clamp: 2;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+}
+
+.input_box {
+    background: none !important;
+    border: none !important;
+    margin: 10px 0px !important;
+    padding: 0px 10px !important;
+    box-shadow: none !important;
+}
+
+.shadow {
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.from_item {
+    margin-bottom: 10px !important;
+}
+
+/* 隐藏原生密码切换图标 - 解决浏览器自动添加的密码可见性图标问题 */
+input[type="password"]::-ms-reveal {
+  display: none !important;
+}
+
+input[type="password"]::-webkit-credentials-auto-fill-button {
+  visibility: hidden !important;
+  display: none !important;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+input[type="password"]::-webkit-caps-lock-indicator {
+  filter: invert(100%);
+}
+
+/* 登录页面密码输入框样式 */
+.login-page input[type="password"]::-ms-reveal {
+  display: none !important;
+}
+
+.login-page input[type="password"]::-webkit-credentials-auto-fill-button {
+  display: none !important;
+}
+
+/* ========================================
+   NProgress 进度条样式
+   ======================================== */
+
+/* 自定义进度条容器样式 */
+#nprogress {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 99999 !important;
+    pointer-events: none !important;
+}
+
+/* 进度条填充条 */
+#nprogress .bar {
+    background: #6366f1 !important;
+}
+
+/* 附加的深色辅助样式 */
+html[data-theme="dark"] .db-type-pill {
+    background-color: rgba(var(--theme-bg-secondary), 0.82);
+    border-color: rgb(var(--theme-border)) !important;
+    color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+    background-color: rgb(var(--theme-bg-tertiary)) !important;
+    color: rgb(var(--theme-text)) !important;
+    border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .workspace-detail-root {
+    color: rgb(var(--theme-text));
+}
+
+html[data-theme="dark"] .workspace-tab {
+    color: rgb(var(--theme-text));
+}
+
+html[data-theme="dark"] .workspace-tab :is(.bg-white, .bg-slate-50, .bg-slate-50\/50, .bg-slate-50\/60, .bg-slate-50\/70, .bg-slate-50\/80, .bg-slate-100, .bg-slate-100\/50, .bg-slate-100\/80),
+html[data-theme="dark"] .workspace-tab .bg-slate-50,
+html[data-theme="dark"] .workspace-tab .bg-slate-100 {
+    background-color: rgb(var(--theme-bg-secondary)) !important;
+    border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .workspace-tab .bg-gradient-to-r,
+html[data-theme="dark"] .workspace-tab .bg-gradient-to-br {
+    background-image: linear-gradient(135deg, rgba(var(--theme-bg-secondary), 0.95), rgba(var(--theme-bg), 0.95)) !important;
+}
+
+html[data-theme="dark"] .workspace-tab .bg-gradient-to-r .from-slate-50\/50,
+html[data-theme="dark"] .workspace-tab .bg-gradient-to-r .via-white,
+html[data-theme="dark"] .workspace-tab .bg-gradient-to-r .to-slate-50\/50 {
+    background-image: linear-gradient(135deg, rgba(var(--theme-bg-secondary), 0.9), rgba(var(--theme-bg), 0.95)) !important;
+}
+
+html[data-theme="dark"] .workspace-tab button,
+html[data-theme="dark"] .workspace-tab textarea,
+html[data-theme="dark"] .workspace-tab input,
+html[data-theme="dark"] .workspace-tab select {
+    border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .workspace-tab-enhance .enhance-field-input {
+    background-color: rgb(var(--theme-bg)) !important;
+    color: rgb(var(--theme-text)) !important;
+    border-color: rgba(var(--theme-border), 0.7) !important;
+}
+
+html[data-theme="dark"] .workspace-tab-enhance .enhance-field-input:focus {
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.4) !important;
+    border-color: rgb(var(--theme-primary)) !important;
+}
+
+html[data-theme="dark"] .login-page {
+    background: radial-gradient(circle at 15% 20%, rgba(var(--theme-primary), 0.3), transparent 45%), radial-gradient(circle at 80% 0%, rgba(var(--theme-primary), 0.2), transparent 50%), rgb(var(--theme-bg));
+}
+
+html[data-theme="dark"] .login-page .bg-white,
+html[data-theme="dark"] .login-page .bg-slate-50,
+html[data-theme="dark"] .login-page .border-slate-200 {
+    background-color: rgb(var(--theme-bg-secondary)) !important;
+    border-color: rgb(var(--theme-border)) !important;
+    color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .login-page h1,
+html[data-theme="dark"] .login-page p {
+    color: rgb(var(--theme-text));
+}
+
+/* 帮助文档弹框 Tab 导航栏 */
+html[data-theme="dark"] .help-modal .ant-tabs-nav {
+    background-color: rgb(var(--theme-bg)) !important;
+    border-bottom-color: rgb(var(--theme-border)) !important;
+}
+html[data-theme="dark"] .help-modal .ant-tabs-tab {
+    color: rgb(var(--theme-text-secondary)) !important;
+}
+html[data-theme="dark"] .help-modal .ant-tabs-tab-active .ant-tabs-tab-btn {
+    color: rgb(var(--theme-primary)) !important;
+}
+html[data-theme="dark"] .help-modal .ant-tabs-ink-bar {
+    background: rgb(var(--theme-primary)) !important;
+}
+
+html[data-theme="dark"] .help-modal .toc-sidebar,
+html[data-theme="dark"] .help-modal .help-content {
+    background-color: rgb(var(--theme-bg)) !important;
+    color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .help-modal .toc-title {
+    background-color: rgb(var(--theme-bg)) !important;
+    color: rgb(var(--theme-text-muted)) !important;
+    border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .help-modal h1,
+html[data-theme="dark"] .help-modal h2,
+html[data-theme="dark"] .help-modal h3,
+html[data-theme="dark"] .help-modal h4 {
+    color: rgb(var(--theme-text)) !important;
+    border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .help-modal .toc-item {
+    color: rgb(var(--theme-text-secondary)) !important;
+    border-color: transparent !important;
+}
+
+html[data-theme="dark"] .help-modal .toc-item.active,
+html[data-theme="dark"] .help-modal .toc-item:hover {
+    background-color: rgba(var(--theme-primary), 0.2) !important;
+    color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .help-modal .doc-layout {
+    background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .help-modal .help-content {
+    background-color: transparent !important;
+}
+
+html[data-theme="dark"] .help-modal .help-content hr {
+    border-color: rgba(var(--theme-border), 0.7) !important;
+}
+
+html[data-theme="dark"] .help-modal .help-content p,
+html[data-theme="dark"] .help-modal .help-content li {
+    color: rgb(var(--theme-text-secondary)) !important;
+}
+
+/* 帮助文档 blockquote/一句话概括 等强调框 */
+html[data-theme="dark"] .help-modal .help-content blockquote {
+    background-color: rgb(var(--theme-bg-secondary)) !important;
+    color: rgb(var(--theme-text-secondary)) !important;
+    border-left-color: rgb(var(--theme-primary)) !important;
+}
+
+html[data-theme="dark"] .help-modal .help-content code {
+    background-color: rgb(var(--theme-bg-tertiary)) !important;
+    color: rgb(var(--theme-text)) !important;
+    border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .help-modal .help-content strong {
+    color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .help-modal .help-content table th,
+html[data-theme="dark"] .help-modal .help-content table td {
+    background-color: rgb(var(--theme-bg-secondary)) !important;
+    border-color: rgb(var(--theme-border)) !important;
+    color: rgb(var(--theme-text-secondary)) !important;
+}
+
+html[data-theme="dark"] .help-modal .help-content table tr:nth-child(even) {
+    background-color: rgb(var(--theme-bg-tertiary)) !important;
+}
+
+html[data-theme="dark"] .help-modal .loading-container {
+    background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .help-modal .loading-text {
+    color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .workspace-tab-enhance :is([style*="backgroundColor: 'rgba(248,250,252,0.85)'"], [style*="backgroundColor: 'rgba(226,232,240,0.8)'"], [style*="backgroundColor: 'rgba(255,255,255,0.85)'"], [style*="backgroundColor: 'rgba(255,241,242,0.9)'"], [style*="backgroundColor: 'rgba(254,202,202,0.6)'"], [style*="backgroundColor: 'rgba(253,230,138,0.5)'"]) {
+    background-color: rgba(var(--theme-bg-secondary), 0.8) !important;
+    border-color: rgba(var(--theme-border), 0.7) !important;
+    color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .workspace-tab :is(.bg-blue-50, .bg-blue-50\/80, .border-blue-100, .bg-indigo-50\/60, .bg-indigo-50\/80, .bg-amber-50, .border-amber-200, .bg-purple-50, .border-purple-200, .bg-green-50, .border-green-200, .bg-orange-50, .border-orange-200) {
+    background-color: rgba(var(--theme-bg-tertiary), 0.85) !important;
+    border-color: rgba(var(--theme-border), 0.8) !important;
+    color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .workspace-tab .workspace-chip,
+html[data-theme="dark"] .workspace-tab .workspace-tag {
+    background-color: rgba(var(--theme-bg-secondary), 0.75) !important;
+    border-color: rgba(var(--theme-border), 0.7) !important;
+    color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] :is(.bg-indigo-50, .bg-purple-50, .bg-emerald-50, .bg-orange-50, .bg-red-50, .bg-amber-50, .bg-green-50, .bg-teal-50) {
+    background-color: rgba(var(--theme-bg-tertiary), 0.7) !important;
+    border-color: rgba(var(--theme-border), 0.8) !important;
+    color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] :is(.bg-blue-50, .bg-blue-50\/80, .border-blue-100) {
+    background-color: rgba(var(--theme-bg-tertiary), 0.7) !important;
+    border-color: rgba(var(--theme-border), 0.8) !important;
+    color: rgb(var(--theme-text)) !important;
+}
+
+/* ========== 连接信息卡片胶囊深色模式适配 ========== */
+html[data-theme="dark"] .workspace-tab .connection-info-card {
+    background-color: rgb(var(--theme-bg-secondary)) !important;
+    border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .workspace-tab .connection-info-card .text-slate-500 {
+    color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .workspace-tab .connection-info-card .text-slate-800 {
+    color: rgb(var(--theme-text)) !important;
+}
+
+/* 概览页面连接信息卡片中的信息胶囊 */
+html[data-theme="dark"] .workspace-tab-overview .flex.items-center.gap-2.p-2.bg-slate-50.rounded-\[8px\] {
+    background-color: rgb(var(--theme-bg-secondary)) !important;
+    border: 1px solid rgb(var(--theme-border)) !important;
+}
+
+/* 更新日志/Changelog 内容区域 prose 深色适配 */
+html[data-theme="dark"] .changelog-prose,
+html[data-theme="dark"] .changelog-prose p,
+html[data-theme="dark"] .changelog-prose li,
+html[data-theme="dark"] .changelog-prose h1,
+html[data-theme="dark"] .changelog-prose h2,
+html[data-theme="dark"] .changelog-prose h3,
+html[data-theme="dark"] .changelog-prose strong {
+    color: rgb(var(--theme-text-secondary)) !important;
+}
+
+/* 通知图标触发的版本更新日志弹框（ChangelogModal）深色适配 */
+html[data-theme="dark"] .changelog-modal .changelog-modal-item,
+html[data-theme="dark"] .changelog-modal .ant-collapse-item,
+html[data-theme="dark"] .changelog-modal .ant-collapse-content {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+}
+html[data-theme="dark"] .changelog-modal .ant-collapse-item .ant-collapse-header,
+html[data-theme="dark"] .changelog-modal .changelog-modal-label {
+  color: rgb(var(--theme-text)) !important;
+}
+html[data-theme="dark"] .changelog-modal .changelog-modal-date {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+html[data-theme="dark"] .changelog-modal .changelog-content,
+html[data-theme="dark"] .changelog-modal .changelog-content h1,
+html[data-theme="dark"] .changelog-modal .changelog-content h2,
+html[data-theme="dark"] .changelog-modal .changelog-content h3,
+html[data-theme="dark"] .changelog-modal .changelog-content h4,
+html[data-theme="dark"] .changelog-modal .changelog-content p,
+html[data-theme="dark"] .changelog-modal .changelog-content li,
+html[data-theme="dark"] .changelog-modal .changelog-content strong {
+  color: rgb(var(--theme-text-secondary)) !important;
+}
+html[data-theme="dark"] .changelog-modal .changelog-content code {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+html[data-theme="dark"] .changelog-modal .changelog-content pre {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  color: rgb(var(--theme-text-secondary)) !important;
+}
+html[data-theme="dark"] .changelog-modal .changelog-content blockquote {
+  border-left-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+/* ========== Ant Design Tabs 深色模式覆盖 ========== */
+html[data-theme="dark"] .ant-tabs {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-tabs-nav {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .ant-tabs-tab {
+  color: rgb(var(--theme-text-secondary)) !important;
+}
+
+html[data-theme="dark"] .ant-tabs-tab:hover {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: rgb(var(--theme-primary)) !important;
+}
+
+html[data-theme="dark"] .ant-tabs-ink-bar {
+  background: rgb(var(--theme-primary)) !important;
+}
+
+html[data-theme="dark"] .ant-tabs-content {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* Ant Design Table 深色模式覆盖 */
+html[data-theme="dark"] .ant-table {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-table-thead > tr > th {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+  color: rgb(var(--theme-text)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .ant-table-tbody > tr > td {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .ant-table-tbody > tr:hover > td {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+}
+
+html[data-theme="dark"] .ant-table-wrapper .ant-table-pagination {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .ant-pagination-item {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .ant-pagination-item a {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-pagination-item-active {
+  border-color: rgb(var(--theme-primary)) !important;
+}
+
+html[data-theme="dark"] .ant-pagination-item-active a {
+  color: rgb(var(--theme-primary)) !important;
+}
+
+/* Ant Design Empty 深色模式覆盖 */
+html[data-theme="dark"] .ant-empty-description {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+/* Ant Design Tag 深色模式覆盖 - 通用 */
+html[data-theme="dark"] .ant-tag {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* Ant Design Tag 蓝色覆盖 */
+html[data-theme="dark"] .ant-tag-blue,
+html[data-theme="dark"] .ant-tag.ant-tag-blue {
+  background-color: rgba(59, 130, 246, 0.3) !important;
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  color: #93c5fd !important;
+}
+
+/* Ant Design Tag 绿色覆盖 */
+html[data-theme="dark"] .ant-tag-green,
+html[data-theme="dark"] .ant-tag.ant-tag-green {
+  background-color: rgba(34, 197, 94, 0.2) !important;
+  border-color: rgba(34, 197, 94, 0.4) !important;
+  color: #4ade80 !important;
+}
+
+/* Ant Design Tag 橙色覆盖 */
+html[data-theme="dark"] .ant-tag-orange,
+html[data-theme="dark"] .ant-tag.ant-tag-orange {
+  background-color: rgba(251, 191, 36, 0.3) !important;
+  border-color: rgba(251, 191, 36, 0.5) !important;
+  color: #fbbf24 !important;
+}
+
+/* Ant Design Tag 紫色覆盖 */
+html[data-theme="dark"] .ant-tag-purple,
+html[data-theme="dark"] .ant-tag.ant-tag-purple {
+  background-color: rgba(139, 92, 246, 0.3) !important;
+  border-color: rgba(139, 92, 246, 0.5) !important;
+  color: #c084fc !important;
+}
+
+/* Ant Design Tag 青色覆盖 */
+html[data-theme="dark"] .ant-tag-cyan,
+html[data-theme="dark"] .ant-tag.ant-tag-cyan {
+  background-color: rgba(6, 182, 212, 0.2) !important;
+  border-color: rgba(6, 182, 212, 0.4) !important;
+  color: #67e8f9 !important;
+}
+
+/* Ant Design Tag 红色覆盖 */
+html[data-theme="dark"] .ant-tag-red,
+html[data-theme="dark"] .ant-tag.ant-tag-red {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  color: #f87171 !important;
+}
+
+/* Ant Design Tag 黄色覆盖 */
+html[data-theme="dark"] .ant-tag-gold,
+html[data-theme="dark"] .ant-tag.ant-tag-gold {
+  background-color: rgba(251, 191, 36, 0.3) !important;
+  border-color: rgba(251, 191, 36, 0.5) !important;
+  color: #fbbf24 !important;
+}
+
+/* Ant Design Tag 默认/灰色覆盖 */
+html[data-theme="dark"] .ant-tag-default,
+html[data-theme="dark"] .ant-tag.ant-tag-default {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text-secondary)) !important;
+}
+
+/* Ant Design Tag processing 覆盖 */
+html[data-theme="dark"] .ant-tag-processing,
+html[data-theme="dark"] .ant-tag.ant-tag-processing {
+  background-color: rgba(59, 130, 246, 0.3) !important;
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  color: #93c5fd !important;
+}
+
+/* Ant Design Tag success 覆盖 */
+html[data-theme="dark"] .ant-tag-success,
+html[data-theme="dark"] .ant-tag.ant-tag-success {
+  background-color: rgba(34, 197, 94, 0.2) !important;
+  border-color: rgba(34, 197, 94, 0.4) !important;
+  color: #4ade80 !important;
+}
+
+/* Ant Design Tag error 覆盖 */
+html[data-theme="dark"] .ant-tag-error,
+html[data-theme="dark"] .ant-tag.ant-tag-error {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  color: #f87171 !important;
+}
+
+/* Ant Design Tag warning 覆盖 */
+html[data-theme="dark"] .ant-tag-warning,
+html[data-theme="dark"] .ant-tag.ant-tag-warning {
+  background-color: rgba(251, 191, 36, 0.3) !important;
+  border-color: rgba(251, 191, 36, 0.5) !important;
+  color: #fbbf24 !important;
+}
+
+/* Ant Design Descriptions 深色模式 */
+html[data-theme="dark"] .ant-descriptions-item-label {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .ant-descriptions-item-content {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-descriptions-view {
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .ant-descriptions-item {
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+/* Ant Design Card 深色模式 */
+html[data-theme="dark"] .ant-card {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .ant-card-head {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-card-body {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-card-head-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* Ant Design Progress 深色模式 */
+html[data-theme="dark"] .ant-progress-text {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* Ant Design Button link 深色模式 */
+html[data-theme="dark"] .ant-btn-link {
+  color: rgb(var(--theme-primary)) !important;
+}
+
+html[data-theme="dark"] .ant-btn-link:hover {
+  color: rgb(var(--theme-primary-hover)) !important;
+}
+
+/* Ant Design Modal 深色模式 */
+html[data-theme="dark"] .ant-modal-body {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-modal-header {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .ant-modal-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* ========== Ant Design Modal.confirm 深色模式 ========== */
+html[data-theme="dark"] .ant-modal-confirm .ant-modal-content {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .ant-modal-confirm .ant-modal-header {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .ant-modal-confirm .ant-modal-body {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-modal-confirm .ant-modal-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* Modal.confirm 标题 - 使用 span 直接选择器 */
+html[data-theme="dark"] .ant-modal-confirm .ant-modal-title span {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-modal-confirm .ant-confirm-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-modal-confirm .ant-confirm-content {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-confirm-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-confirm-content {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* Modal.confirm 主体结构 */
+html[data-theme="dark"] .ant-modal-confirm-body {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-modal-confirm-body .anticon {
+  color: rgb(var(--theme-primary)) !important;
+}
+
+/* Modal.confirm 标题覆盖 - 直接选择 */
+html[data-theme="dark"] .ant-modal .ant-modal-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* Modal.confirm 最外层结构 */
+html[data-theme="dark"] .ant-modal-confirm > .ant-modal > .ant-modal-content > .ant-modal-body {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* Modal.confirm 内部所有文字 */
+html[data-theme="dark"] .ant-modal-confirm .ant-modal-body * {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-modal-confirm .ant-modal-body .ant-confirm-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-modal-confirm .ant-modal-body .ant-confirm-content {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* antd Modal.confirm 全局覆盖 */
+html[data-theme="dark"] div[role="dialog"].ant-modal-confirm .ant-modal-body {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] div[role="dialog"].ant-modal-confirm .ant-modal-body .ant-confirm-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] div[role="dialog"].ant-modal-confirm .ant-modal-body .ant-confirm-content {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-modal-confirm .ant-modal-footer {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-top-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .ant-modal-confirm .ant-modal-close-x {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+/* Modal.confirm 内部文字颜色 */
+html[data-theme="dark"] .ant-modal-confirm-content {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-modal-confirm .anticon {
+  color: rgb(var(--theme-primary)) !important;
+}
+
+/* Modal.confirm 按钮样式 */
+html[data-theme="dark"] .ant-modal-confirm .ant-btn {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-modal-confirm .ant-btn-default {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-modal-confirm .ant-btn-default:hover {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  border-color: rgb(var(--theme-border-hover)) !important;
+}
+
+html[data-theme="dark"] .ant-modal-confirm .ant-btn-primary {
+  background-color: rgb(var(--theme-primary)) !important;
+  border-color: rgb(var(--theme-primary)) !important;
+  color: white !important;
+}
+
+html[data-theme="dark"] .ant-modal-confirm .ant-btn-dangerous {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  color: #f87171 !important;
+}
+
+html[data-theme="dark"] .ant-modal-confirm .ant-btn-dangerous:hover {
+  background-color: rgba(239, 68, 68, 0.3) !important;
+  border-color: rgba(239, 68, 68, 0.6) !important;
+}
+
+/* 确认弹框内的段落文字 */
+html[data-theme="dark"] .ant-modal-confirm p {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* ========== ReportsPage 报告页面深色模式 ========== */
+html[data-theme="dark"] .reports-page .ant-input::placeholder {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .reports-page .ant-input {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .reports-page .ant-input-prefix {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .reports-page .ant-select-selector {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .reports-page .ant-select-selection-placeholder {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .reports-page .ant-select-selection-item {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .reports-page .ant-select-arrow {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .reports-page .ant-select-dropdown {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .reports-page .ant-select-item {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .reports-page .ant-select-item-option-selected {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+  color: rgb(var(--theme-primary)) !important;
+}
+
+html[data-theme="dark"] .reports-page .ant-select-item-option-active {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+}
+
+/* ========== 更新日志页面自定义滚动条样式 ========== */
+/* 左侧版本列表滚动条 */
+#changelog-tab-container .version-list-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+#changelog-tab-container .version-list-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+#changelog-tab-container .version-list-scroll::-webkit-scrollbar-thumb {
+  background: rgba(var(--theme-border), 0.6);
+  border-radius: 3px;
+}
+
+#changelog-tab-container .version-list-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--theme-border-hover), 0.8);
+}
+
+/* 右侧详情内容滚动条 */
+#changelog-tab-container .version-detail-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+#changelog-tab-container .version-detail-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+#changelog-tab-container .version-detail-scroll::-webkit-scrollbar-thumb {
+  background: rgba(var(--theme-border), 0.6);
+  border-radius: 3px;
+}
+
+#changelog-tab-container .version-detail-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--theme-border-hover), 0.8);
+}
+
+/* Firefox 滚动条兼容 */
+#changelog-tab-container .version-list-scroll,
+#changelog-tab-container .version-detail-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--theme-border), 0.6) transparent;
+}
+
+/* 深色模式适配 */
+html[data-theme="dark"] #changelog-tab-container .version-list-scroll::-webkit-scrollbar-thumb,
+html[data-theme="dark"] #changelog-tab-container .version-detail-scroll::-webkit-scrollbar-thumb {
+  background: rgba(var(--theme-border), 0.8);
+}
+
+html[data-theme="dark"] #changelog-tab-container .version-list-scroll::-webkit-scrollbar-thumb:hover,
+html[data-theme="dark"] #changelog-tab-container .version-detail-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--theme-border-hover), 1);
+}
+
+html[data-theme="dark"] #changelog-tab-container .version-list-scroll,
+html[data-theme="dark"] #changelog-tab-container .version-detail-scroll {
+  scrollbar-color: rgba(var(--theme-border), 0.8) transparent;
+}
+
+/* ========== 深色模式按钮样式 ========== */
+html[data-theme="dark"] .dark-mode-btn {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .dark-mode-btn:hover:not(:disabled) {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  border-color: rgb(var(--theme-border-hover)) !important;
+}
+
+html[data-theme="dark"] .dark-mode-btn-danger {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  color: #f87171 !important;
+}
+
+html[data-theme="dark"] .dark-mode-btn-danger:hover:not(:disabled) {
+  background-color: rgba(239, 68, 68, 0.3) !important;
+  border-color: rgba(239, 68, 68, 0.6) !important;
+}
+
+/* ========== 术语库相关组件深色模式适配 ========== */
+
+/* 术语库卡片 hover 效果阴影适配 */
+html[data-theme="dark"] .business-terms-card:hover {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25) !important;
+}
+
+html[data-theme="dark"] .term-card:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* 术语库列表页面操作栏标签切换按钮背景 */
+html[data-theme="dark"] .business-terms-tab-switch {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+html[data-theme="dark"] .business-terms-tab-switch button {
+  background: transparent !important;
+  color: rgb(var(--theme-text-secondary)) !important;
+}
+
+html[data-theme="dark"] .business-terms-tab-switch button.active {
+  background: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-primary)) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* 术语库引导弹框中的创建选项卡片 */
+html[data-theme="dark"] .business-terms-guide-option {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html[data-theme="dark"] .business-terms-guide-option:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* 术语库模板分类展开区域背景 */
+html[data-theme="dark"] .business-terms-template-section {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+/* 术语库模板项背景 */
+html[data-theme="dark"] .business-terms-template-item {
+  background: rgb(var(--theme-bg)) !important;
+}
+
+/* 术语库预览抽屉中的术语卡片 */
+html[data-theme="dark"] .term-preview-card {
+  background: rgb(var(--theme-bg)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .term-preview-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* 术语库术语别名标签 */
+html[data-theme="dark"] .term-alias-tag {
+  background: rgba(var(--theme-primary), 0.15) !important;
+  color: rgb(var(--theme-primary)) !important;
+}
+
+/* 术语库模板预览抽屉术语项 */
+html[data-theme="dark"] .term-preview-drawer-item {
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .term-preview-drawer-item:hover {
+  background-color: rgba(var(--theme-bg-secondary), 0.5) !important;
+}
+
+html[data-theme="dark"] .term-preview-drawer-item:last-child {
+  border-bottom: none !important;
+}
+
+/* ========== KnowledgeTab 知识管理组件深色模式适配 ========== */
+
+/* 知识Tab容器 */
+html[data-theme="dark"] .knowledge-tab-container {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+/* 知识Tab头部 */
+html[data-theme="dark"] .knowledge-tab-header {
+  background: linear-gradient(135deg, rgba(var(--theme-bg-secondary), 0.9) 0%, rgb(var(--theme-bg)) 50%, rgba(var(--theme-bg-secondary), 0.8) 100%) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+/* 知识Tab搜索框 */
+html[data-theme="dark"] .knowledge-tab-search input {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* 知识Tab术语项 */
+html[data-theme="dark"] .term-item-component:hover {
+  background-color: rgba(var(--theme-bg-secondary), 0.5) !important;
+}
+
+/* 知识Tab术语库卡片 */
+html[data-theme="dark"] .library-card-component {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+/* 知识Tab术语库卡片头部图标背景 */
+html[data-theme="dark"] .knowledge-tab-icon-bg {
+  background: linear-gradient(135deg, rgb(34, 197, 94), rgb(5, 150, 105)) !important;
+  box-shadow: 0 8px 16px -4px rgba(34, 197, 94, 0.3) !important;
+}
+
+/* 知识Tab空状态图标 */
+html[data-theme="dark"] .knowledge-tab-empty-icon {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+/* 知识Tab预览抽屉 */
+html[data-theme="dark"] .ant-drawer.term-preview-drawer .ant-drawer-content {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .ant-drawer.term-preview-drawer .ant-drawer-header {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .ant-drawer.term-preview-drawer .ant-drawer-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-drawer.term-preview-drawer .ant-drawer-close {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .ant-drawer.term-preview-drawer .ant-drawer-footer {
+  border-top-color: rgb(var(--theme-border)) !important;
+}
+
+/* 知识Tab术语详情弹框 */
+html[data-theme="dark"] .term-detail-modal .ant-modal-content {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .term-detail-modal .ant-modal-header {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .term-detail-modal .ant-modal-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .term-detail-modal .ant-modal-body {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .term-detail-modal .ant-modal-close-x {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+/* 知识Tab添加术语库弹框 */
+html[data-theme="dark"] .add-library-modal .ant-modal-content {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .add-library-modal .ant-modal-header {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .add-library-modal .ant-modal-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .add-library-modal .ant-modal-body {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* 知识Tab中 Ant Select 下拉选择器 */
+html[data-theme="dark"] .add-library-modal .ant-select-selector {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .add-library-modal .ant-select-selection-placeholder {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .add-library-modal .ant-select-selection-item {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* 知识Tab中下拉菜单项 */
+html[data-theme="dark"] .add-library-modal .ant-select-dropdown {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .add-library-modal .ant-select-item {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .add-library-modal .ant-select-item-option-selected {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+  color: rgb(var(--theme-primary)) !important;
+}
+
+html[data-theme="dark"] .add-library-modal .ant-select-item-option-active {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+}
+
+/* 知识Tab中确认删除弹框 */
+html[data-theme="dark"] .remove-confirm-modal .ant-modal-content {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .remove-confirm-modal .ant-modal-header {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .remove-confirm-modal .ant-modal-body {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* 知识Tab中 Switch 开关 */
+html[data-theme="dark"] .ant-switch {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+}
+
+html[data-theme="dark"] .ant-switch-checked {
+  background-color: rgb(var(--theme-primary)) !important;
+}
+
+/* 术语库列表页面专用样式类 */
+html[data-theme="dark"] .libraries-list-page .search-input input {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-page .search-input .ant-input-prefix {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+/* 术语库详情页面样式 */
+html[data-theme="dark"] .library-detail-page .search-input input {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page .search-input .ant-input-prefix {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+/* 术语库统计数字颜色适配 - 活跃状态绿色 */
+html[data-theme="dark"] .stat-value-green {
+  color: #4ade80 !important;
+}
+
+/* 术语库统计数字颜色适配 - 禁用状态灰色 */
+html[data-theme="dark"] .stat-value-gray {
+  color: rgb(var(--theme-text-secondary)) !important;
+}
+
+/* 术语库详情抽屉 */
+html[data-theme="dark"] .ant-drawer.library-detail-drawer .ant-drawer-content {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .ant-drawer.library-detail-drawer .ant-drawer-header {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .ant-drawer.library-detail-drawer .ant-drawer-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-drawer.library-detail-drawer .ant-drawer-close {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .ant-drawer.library-detail-drawer .ant-drawer-footer {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-top-color: rgb(var(--theme-border)) !important;
+}
+
+/* 术语库详情抽屉内的定义区域 */
+html[data-theme="dark"] .term-definition-box {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* 术语库详情抽屉内的适用条件区域 */
+html[data-theme="dark"] .term-conditions-box {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* 术语库详情抽屉内的备注区域 */
+html[data-theme="dark"] .term-remarks-box {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* 术语库相关 Ant Message 提示 */
+html[data-theme="dark"] .ant-message-notice-content {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text)) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 术语库相关 Ant Popconfirm 确认框 */
+html[data-theme="dark"] .ant-popconfirm .ant-popover-inner {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .ant-popconfirm .ant-popover-message-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* ========== KnowledgeTab 详细组件深色模式 ========== */
+
+/* 术语库卡片组件 */
+html[data-theme="dark"] .library-card-component {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+/* 术语库卡片内文字颜色 */
+html[data-theme="dark"] .library-card-component .text-base {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* 术语库卡片内次要文字 */
+html[data-theme="dark"] .library-card-component .text-secondary {
+  color: rgb(var(--theme-text-secondary)) !important;
+}
+
+/* 术语库卡片内图标颜色 */
+html[data-theme="dark"] .library-card-component .text-2xl {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* 术语库卡片术语预览标签 */
+html[data-theme="dark"] .library-card-component .term-alias-tag {
+  background-color: rgba(var(--theme-primary), 0.15) !important;
+  border-color: transparent !important;
+  color: rgb(var(--theme-primary)) !important;
+}
+
+/* 术语库卡片剩余数量标签 */
+html[data-theme="dark"] .library-card-component .ant-tag:not(.term-alias-tag) {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text-secondary)) !important;
+}
+
+/* 术语项组件 */
+html[data-theme="dark"] .term-item-component {
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .term-item-component:hover {
+  background-color: rgba(var(--theme-bg-secondary), 0.5) !important;
+}
+
+/* 术语项内术语名称 */
+html[data-theme="dark"] .term-item-component .text-sm {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* 术语项内术语定义 */
+html[data-theme="dark"] .term-item-component .text-xs {
+  color: rgb(var(--theme-text-secondary)) !important;
+}
+
+/* 术语项内术语别名 */
+html[data-theme="dark"] .term-item-component .text-muted {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+/* 术语预览抽屉内术语项 */
+html[data-theme="dark"] .term-preview-drawer .ant-drawer-body {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+/* 术语预览抽屉内的空状态 */
+html[data-theme="dark"] .term-preview-drawer .ant-empty-description {
+  color: rgb(var(--theme-text-secondary)) !important;
+}
+
+/* 术语预览抽屉内的加载状态文字 */
+html[data-theme="dark"] .term-preview-drawer .ant-spin-text {
+  color: rgb(var(--theme-text-secondary)) !important;
+}
+
+/* 术语详情弹框 */
+html[data-theme="dark"] .term-detail-modal .ant-modal-content {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .term-detail-modal .ant-modal-header {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .term-detail-modal .ant-modal-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .term-detail-modal .ant-modal-body {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .term-detail-modal .ant-modal-footer {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-top-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .term-detail-modal .ant-modal-close-x {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+/* 术语详情弹框内的定义/条件/备注区域 */
+html[data-theme="dark"] .term-detail-modal .term-definition-box,
+html[data-theme="dark"] .term-detail-modal .term-conditions-box,
+html[data-theme="dark"] .term-detail-modal .term-remarks-box {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* 添加术语库弹框 */
+html[data-theme="dark"] .add-library-modal .ant-modal-content {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .add-library-modal .ant-modal-header {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .add-library-modal .ant-modal-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .add-library-modal .ant-modal-body {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .add-library-modal .ant-modal-close-x {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+/* 确认移除弹框 */
+html[data-theme="dark"] .remove-confirm-modal .ant-modal-content {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .remove-confirm-modal .ant-modal-header {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .remove-confirm-modal .ant-modal-body {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .remove-confirm-modal .ant-modal-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .remove-confirm-modal .ant-modal-footer {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-top-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .remove-confirm-modal .ant-modal-close {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .remove-confirm-modal .ant-modal-close:hover {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* 知识Tab搜索框 */
+html[data-theme="dark"] .knowledge-tab-search input {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .knowledge-tab-search .ant-input-prefix {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .knowledge-tab-search .ant-input-clear-icon {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .knowledge-tab-search .ant-input-clear-icon:hover {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* 知识Tab空状态 */
+html[data-theme="dark"] .knowledge-tab-empty-icon {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+/* 知识Tab标题 */
+html[data-theme="dark"] .knowledge-tab-container h3 {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* 知识Tab描述文字 */
+html[data-theme="dark"] .knowledge-tab-container .text-sm {
+  color: rgb(var(--theme-text-secondary)) !important;
+}
+
+/* 知识Tab Badge徽章 */
+html[data-theme="dark"] .knowledge-tab-container .ant-badge-count {
+  background-color: rgb(var(--theme-primary)) !important;
+}
+
+/* 知识Tab内Tooltip */
+html[data-theme="dark"] .knowledge-tab-container .ant-tooltip-inner {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .knowledge-tab-container .ant-tooltip-arrow-content {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+/* ========== 问数Tab栏术语展开匹配项深色模式 ========== */
+html[data-theme="dark"] .term-match-item {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .term-match-item:hover {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+}
+
+/* ========== 知识Tab搜索框placeholder深色模式 ========== */
+html[data-theme="dark"] .knowledge-tab-search input::placeholder {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .knowledge-tab-search .ant-input {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* ========== 知识Tab术语库卡片中图标按钮深色模式 ========== */
+html[data-theme="dark"] .knowledge-tab-container .ant-btn-text:not(.ant-btn-dangerous) {
+  color: rgb(var(--theme-text-secondary)) !important;
+}
+
+html[data-theme="dark"] .knowledge-tab-container .ant-btn-text:not(.ant-btn-dangerous):hover {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* ========== 术语预览抽屉深色模式修复 ========== */
+html[data-theme="dark"] .ant-drawer.term-preview-drawer {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .ant-drawer.term-preview-drawer .ant-drawer-header {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .ant-drawer.term-preview-drawer .ant-drawer-header-title {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .ant-drawer.term-preview-drawer .ant-drawer-body {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .ant-drawer.term-preview-drawer .ant-drawer-footer {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-top-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .ant-drawer.term-preview-drawer .ant-drawer-close {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .ant-drawer.term-preview-drawer .ant-drawer-close:hover {
+  color: rgb(var(--theme-text)) !important;
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+}
+
+/* ========== 术语库列表页面搜索框和弹框深色模式 ========== */
+html[data-theme="dark"] .libraries-list-page .ant-input::placeholder {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-page .ant-input {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-page .ant-input-textarea textarea::placeholder {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-page .ant-input-textarea textarea {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* 新建术语库弹框表单 */
+html[data-theme="dark"] .libraries-list-page .ant-form-item-label > label {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-page .ant-modal-content {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-page .ant-modal-header {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-page .ant-modal-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-page .ant-modal-body {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-page .ant-modal-close-x {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+/* 术语库列表页面搜索框 */
+html[data-theme="dark"] .libraries-list-page .search-input input::placeholder {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-page .search-input input {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-page .search-input .ant-input-prefix {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+/* 新建术语库弹框标题 */
+html[data-theme="dark"] .libraries-list-page .ant-modal-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* ========== 术语库列表页面 Drawer 抽屉深色模式 ========== */
+html[data-theme="dark"] .libraries-list-term-preview-drawer.ant-drawer .ant-drawer-content {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-term-preview-drawer.ant-drawer .ant-drawer-header {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-term-preview-drawer.ant-drawer .ant-drawer-body {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-term-preview-drawer.ant-drawer .ant-drawer-close {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-term-preview-drawer.ant-drawer .ant-drawer-close:hover {
+  color: rgb(var(--theme-text)) !important;
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+}
+
+/* 新建术语库弹框 */
+html[data-theme="dark"] .libraries-list-page-modal .ant-modal-content {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-page-modal .ant-modal-header {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-page-modal .ant-modal-body {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-page-modal .ant-modal-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-page-modal .ant-modal-close-x {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+/* 新建术语库弹框表单标签 */
+html[data-theme="dark"] .libraries-list-page-modal .ant-form-item-label > label {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* 新建术语库弹框输入框 */
+html[data-theme="dark"] .libraries-list-page-modal .ant-input {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-page-modal .ant-input::placeholder {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-page-modal .ant-input:hover {
+  border-color: rgb(var(--theme-border-hover)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-page-modal .ant-input:focus {
+  border-color: rgb(var(--theme-primary)) !important;
+  box-shadow: 0 0 0 2px rgba(var(--theme-primary), 0.2) !important;
+}
+
+/* 新建术语库弹框文本域 */
+html[data-theme="dark"] .libraries-list-page-modal .ant-input-textarea textarea {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-page-modal .ant-input-textarea textarea::placeholder {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-page-modal .ant-input-textarea textarea:hover {
+  border-color: rgb(var(--theme-border-hover)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-page-modal .ant-input-textarea textarea:focus {
+  border-color: rgb(var(--theme-primary)) !important;
+  box-shadow: 0 0 0 2px rgba(var(--theme-primary), 0.2) !important;
+}
+
+/* ========== 知识Tab添加术语库弹框深色模式 ========== */
+html[data-theme="dark"] .add-library-modal .ant-modal-content {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .add-library-modal .ant-modal-header {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .add-library-modal .ant-modal-body {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .add-library-modal .ant-modal-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .add-library-modal .ant-modal-close-x {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .add-library-modal .ant-modal-footer {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-top-color: rgb(var(--theme-border)) !important;
+}
+
+/* 修复 Ant Design Text secondary 类型颜色 */
+html[data-theme="dark"] .add-library-modal .ant-typography-secondary,
+html[data-theme="dark"] .add-library-modal .ant-typography-secondary + *,
+html[data-theme="dark"] .add-library-modal span.ant-typography,
+html[data-theme="dark"] .add-library-modal .ant-text,
+html[data-theme="dark"] .add-library-modal p.ant-typography,
+html[data-theme="dark"] .add-library-modal .text-sm {
+  color: rgb(var(--theme-text-secondary)) !important;
+}
+
+/* 修复术语库选择弹框中placeholder颜色 */
+html[data-theme="dark"] .add-library-modal .ant-select-selection-placeholder {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .add-library-modal .ant-select-selection-item {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .add-library-modal .ant-select-selection-search-input {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .add-library-modal .ant-select-arrow {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+/* 术语预览抽屉关闭按钮 */
+html[data-theme="dark"] .term-preview-drawer .ant-drawer-close {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .term-preview-drawer .ant-drawer-close:hover {
+  color: rgb(var(--theme-text)) !important;
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+}
+
+/* 术语详情弹框深色模式 */
+html[data-theme="dark"] .term-detail-modal .ant-modal-content {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .term-detail-modal .ant-modal-header {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .term-detail-modal .ant-modal-body {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .term-detail-modal .ant-modal-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .term-detail-modal .ant-modal-footer {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-top-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .term-detail-modal .ant-modal-close-x {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+/* 术语库页面抽屉关闭按钮 - 修复优先级问题 */
+html[data-theme="dark"] .libraries-list-term-preview-drawer .ant-drawer-header,
+html[data-theme="dark"] .libraries-list-term-preview-drawer .ant-drawer-header .ant-drawer-header-title,
+html[data-theme="dark"] .libraries-list-term-preview-drawer .ant-drawer-header .ant-drawer-close {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-term-preview-drawer .ant-drawer-close {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-term-preview-drawer .ant-drawer-close:hover {
+  color: rgb(var(--theme-text)) !important;
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-term-preview-drawer .ant-drawer-body {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-term-preview-drawer > .ant-drawer-content-wrapper {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .libraries-list-term-preview-drawer .ant-drawer-wrapper-body {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+/* ========== 知识Tab术语预览抽屉深色模式 ========== */
+html[data-theme="dark"] .knowledge-term-preview-drawer.ant-drawer > .ant-drawer-content-wrapper {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .knowledge-term-preview-drawer.ant-drawer .ant-drawer-content {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .knowledge-term-preview-drawer.ant-drawer .ant-drawer-wrapper-body {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .knowledge-term-preview-drawer.ant-drawer .ant-drawer-footer {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-top-color: rgb(var(--theme-border)) !important;
+}
+
+/* 知识Tab添加术语库下拉列表文字颜色 */
+html[data-theme="dark"] .add-library-modal .ant-select-item-option-content {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .add-library-modal .ant-select-selection-item {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .add-library-modal .ant-select-selection-item + span {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+/* 修复下拉列表中每个选项的文字颜色 */
+html[data-theme="dark"] .add-library-modal .ant-select-item-option .ant-select-item-option-content {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* 修复下拉选项中的 Text 组件颜色 */
+html[data-theme="dark"] .add-library-modal .ant-select-item-option .ant-typography {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .add-library-modal .ant-select-item-option .ant-typography-secondary {
+  color: rgb(var(--theme-text-secondary)) !important;
+}
+
+/* ========== 业务术语库删除确认弹框深色模式 ========== */
+html[data-theme="dark"] .library-delete-confirm .ant-modal-content {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .library-delete-confirm .ant-modal-header {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .library-delete-confirm .ant-modal-body {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .library-delete-confirm .ant-modal-footer {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-top-color: rgb(var(--theme-border)) !important;
+}
+
+/* 术语库页面抽屉头部标题文字颜色 */
+html[data-theme="dark"] .libraries-list-term-preview-drawer .ant-drawer-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* ========== 术语库详情页面抽屉深色模式 ========== */
+html[data-theme="dark"] .library-detail-page-drawer.ant-drawer .ant-drawer-content {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page-drawer.ant-drawer .ant-drawer-header {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page-drawer.ant-drawer .ant-drawer-header-title {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page-drawer.ant-drawer .ant-drawer-body {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page-drawer.ant-drawer .ant-drawer-footer {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-top-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page-drawer.ant-drawer .ant-drawer-close {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page-drawer.ant-drawer .ant-drawer-close:hover {
+  color: rgb(var(--theme-text)) !important;
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page-drawer .ant-drawer-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* ========== 术语库详情页面弹框深色模式 ========== */
+html[data-theme="dark"] .library-detail-page-modal .ant-modal-content {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page-modal .ant-modal-header {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page-modal .ant-modal-body {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page-modal .ant-modal-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page-modal .ant-modal-close-x {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page-modal .ant-modal-footer {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-top-color: rgb(var(--theme-border)) !important;
+}
+
+/* 术语表单弹框 */
+html[data-theme="dark"] .term-form-modal .ant-form-item-label > label {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .term-form-modal .ant-form-item-extra {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .term-form-modal .ant-input,
+html[data-theme="dark"] .term-form-modal .ant-input-affix-wrapper {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .term-form-modal .ant-input::placeholder,
+html[data-theme="dark"] .term-form-modal .ant-input-affix-wrapper::placeholder {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .term-form-modal .ant-input:hover,
+html[data-theme="dark"] .term-form-modal .ant-input-affix-wrapper:hover {
+  border-color: rgb(var(--theme-border-hover)) !important;
+}
+
+html[data-theme="dark"] .term-form-modal .ant-input:focus,
+html[data-theme="dark"] .term-form-modal .ant-input-affix-wrapper:focus,
+html[data-theme="dark"] .term-form-modal .ant-input-focused,
+html[data-theme="dark"] .term-form-modal .ant-input-affix-wrapper-focused {
+  border-color: rgb(var(--theme-primary)) !important;
+  box-shadow: 0 0 0 2px rgba(var(--theme-primary), 0.2) !important;
+}
+
+/* 术语表单 Select/Tags 输入框 */
+html[data-theme="dark"] .term-form-modal .ant-select-selector {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .term-form-modal .ant-select-selection-placeholder {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .term-form-modal .ant-select-selection-item {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .term-form-modal .ant-select:hover .ant-select-selector {
+  border-color: rgb(var(--theme-border-hover)) !important;
+}
+
+html[data-theme="dark"] .term-form-modal .ant-select-focused .ant-select-selector {
+  border-color: rgb(var(--theme-primary)) !important;
+  box-shadow: 0 0 0 2px rgba(var(--theme-primary), 0.2) !important;
+}
+
+/* 术语表单弹框的 Ant Popconfirm */
+html[data-theme="dark"] .library-detail-page-modal .ant-popconfirm .ant-popover-inner {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page-modal .ant-popconfirm .ant-popover-message-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page-modal .ant-popconfirm .ant-popover-message-icon {
+  color: rgb(var(--theme-primary)) !important;
+}
+
+/* ========== 术语库详情页面搜索框深色模式 ========== */
+html[data-theme="dark"] .library-detail-search-input input::placeholder {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .library-detail-search-input input {
+  color: rgb(var(--theme-text)) !important;
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+}
+
+html[data-theme="dark"] .library-detail-search-input .ant-input-prefix {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .library-detail-search-input .ant-input-clear-icon {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .library-detail-search-input .ant-input-clear-icon:hover {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* ========== 术语库详情页面 Select 深色模式 ========== */
+html[data-theme="dark"] .library-detail-page .ant-select-selector {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page .ant-select-selection-placeholder {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page .ant-select-selection-item {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page .ant-select-arrow {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page .ant-select-dropdown {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page .ant-select-item {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page .ant-select-item-option-selected {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+  color: rgb(var(--theme-primary)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page .ant-select-item-option-active {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+}
+
+/* ========== 从模板导入弹框深色模式 ========== */
+html[data-theme="dark"] .library-detail-page-import-modal .ant-modal-content {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page-import-modal .ant-modal-header {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page-import-modal .ant-modal-body {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page-import-modal .ant-modal-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page-import-modal .ant-modal-close-x {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .library-detail-page-import-modal .ant-modal-footer {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-top-color: rgb(var(--theme-border)) !important;
+}
+
+/* ========== 模板选择标签深色模式 ========== */
+html[data-theme="dark"] .term-template-tag {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .term-template-tag:hover {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .term-template-tag-selected {
+  background-color: rgba(var(--theme-primary), 0.2) !important;
+  border-color: rgb(var(--theme-primary)) !important;
+  color: rgb(var(--theme-primary)) !important;
+}
+
+html[data-theme="dark"] .term-template-tag-selected:hover {
+  background-color: rgba(var(--theme-primary), 0.3) !important;
+}
+
+/* 术语库卡片删除确认弹框 */
+html[data-theme="dark"] .term-delete-confirm .ant-popover-inner,
+html[data-theme="dark"] .ant-popconfirm.term-delete-confirm .ant-popover-inner {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .term-delete-confirm .ant-popover-message-title,
+html[data-theme="dark"] .ant-popconfirm.term-delete-confirm .ant-popover-message-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+/* 定向盘点历史记录Card深色模式 */
+html[data-theme="dark"] .ant-card.target-inventory-history {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .ant-card.target-inventory-history .ant-card-body {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .target-inventory-history .text-gray-500,
+html[data-theme="dark"] .target-inventory-history .text-gray-400 {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+/* ========== JobDetailModal弹框深色模式样式 ========== */
+html[data-theme="dark"] .job-detail-modal .ant-collapse {
+  background-color: #0f172a !important;
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .job-detail-modal .ant-collapse-item {
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .job-detail-modal .ant-collapse-header {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .job-detail-modal .ant-collapse-content {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .job-detail-modal .ant-collapse-content-box {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .job-detail-modal .ant-table {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .job-detail-modal .ant-table-thead > tr > th {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+  color: rgb(var(--theme-text)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .job-detail-modal .ant-table-tbody > tr > td {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .job-detail-modal .ant-table-tbody > tr:hover > td {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+}
+
+/* ========== 深色模式 Select 选择器下拉菜单 ========== */
+html[data-theme="dark"] .dark-mode-select .ant-select-selector {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .dark-mode-select .ant-select-selection-placeholder {
+  color: rgb(var(--theme-text-secondary)) !important;
+}
+
+html[data-theme="dark"] .dark-mode-select .ant-select-selection-item {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .dark-mode-select .ant-select-selection-search-input {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .dark-mode-select.ant-select-clear + .ant-select-selector {
+  padding-right: 24px;
+}
+
+html[data-theme="dark"] .dark-mode-select-dropdown .ant-select-item {
+  color: rgb(var(--theme-text)) !important;
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .dark-mode-select-dropdown .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  color: rgb(var(--theme-primary)) !important;
+  font-weight: 500;
+}
+
+html[data-theme="dark"] .dark-mode-select-dropdown .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+}
+
+html[data-theme="dark"] .dark-mode-select-dropdown .ant-select-selection-placeholder {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .dark-mode-select .ant-select-selection-item {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .dark-mode-select-dropdown .ant-select-item-option-disabled {
+  color: rgb(var(--theme-text-muted)) !important;
+  opacity: 0.6;
+}
+
+/* 下拉面板背景 */
+html[data-theme="dark"] .dark-mode-select-dropdown .ant-select-tree {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .ant-select-dropdown {
+  background-color: rgb(var(--theme-bg)) !important;
+}
+
+html[data-theme="dark"] .ant-select-dropdown .ant-select-item {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .ant-select-dropdown .ant-select-item-option-selected {
+  background-color: rgb(var(--theme-bg-secondary)) !important;
+  color: rgb(var(--theme-primary)) !important;
+}
+
+/* ========== 创建规则弹框深色模式 ========== */
+html[data-theme="dark"] .rule-modal-dark .ant-modal-content {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .rule-modal-dark .ant-modal-header {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .rule-modal-dark .ant-modal-body {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .rule-modal-dark .ant-modal-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .rule-modal-dark .ant-modal-close-x {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .rule-modal-dark .ant-input::placeholder,
+html[data-theme="dark"] .rule-modal-dark .ant-input-affix-wrapper::placeholder,
+html[data-theme="dark"] .rule-modal-dark .ant-input-textarea textarea::placeholder {
+  color: rgb(var(--theme-text-muted)) !important;
+  opacity: 0.7 !important;
+}
+
+html[data-theme="dark"] .rule-modal-dark .ant-input,
+html[data-theme="dark"] .rule-modal-dark .ant-input-affix-wrapper,
+html[data-theme="dark"] .rule-modal-dark .ant-input-textarea textarea {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .rule-modal-dark .ant-input:hover,
+html[data-theme="dark"] .rule-modal-dark .ant-input-affix-wrapper:hover,
+html[data-theme="dark"] .rule-modal-dark .ant-input-textarea textarea:hover {
+  border-color: rgb(var(--theme-border-hover)) !important;
+}
+
+html[data-theme="dark"] .rule-modal-dark .ant-input:focus,
+html[data-theme="dark"] .rule-modal-dark .ant-input-affix-wrapper:focus,
+html[data-theme="dark"] .rule-modal-dark .ant-input-textarea textarea:focus {
+  border-color: rgb(var(--theme-primary)) !important;
+  box-shadow: 0 0 0 2px rgba(var(--theme-primary), 0.2) !important;
+}
+
+html[data-theme="dark"] .rule-modal-dark .ant-select-selector {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .rule-modal-dark .ant-select-selection-placeholder {
+  color: rgb(var(--theme-text-muted)) !important;
+  opacity: 0.7 !important;
+}
+
+html[data-theme="dark"] .rule-modal-dark .ant-select-selection-item {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .rule-modal-dark .ant-select-arrow {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+/* ========== 创建规则库弹框深色模式 ========== */
+html[data-theme="dark"] .create-library-modal-dark .ant-modal-content {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .create-library-modal-dark .ant-modal-header {
+  background-color: rgb(var(--theme-bg)) !important;
+  border-bottom-color: rgb(var(--theme-border)) !important;
+}
+
+html[data-theme="dark"] .create-library-modal-dark .ant-modal-body {
+  background-color: rgb(var(--theme-bg)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .create-library-modal-dark .ant-modal-title {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .create-library-modal-dark .ant-modal-close-x {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+html[data-theme="dark"] .create-library-modal-dark .ant-input::placeholder,
+html[data-theme="dark"] .create-library-modal-dark .ant-input-affix-wrapper::placeholder,
+html[data-theme="dark"] .create-library-modal-dark .ant-input-textarea textarea::placeholder {
+  color: rgb(var(--theme-text-muted)) !important;
+  opacity: 0.7 !important;
+}
+
+html[data-theme="dark"] .create-library-modal-dark .ant-input,
+html[data-theme="dark"] .create-library-modal-dark .ant-input-affix-wrapper,
+html[data-theme="dark"] .create-library-modal-dark .ant-input-textarea textarea {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .create-library-modal-dark .ant-input:hover,
+html[data-theme="dark"] .create-library-modal-dark .ant-input-affix-wrapper:hover,
+html[data-theme="dark"] .create-library-modal-dark .ant-input-textarea textarea:hover {
+  border-color: rgb(var(--theme-border-hover)) !important;
+}
+
+html[data-theme="dark"] .create-library-modal-dark .ant-input:focus,
+html[data-theme="dark"] .create-library-modal-dark .ant-input-affix-wrapper:focus,
+html[data-theme="dark"] .create-library-modal-dark .ant-input-textarea textarea:focus {
+  border-color: rgb(var(--theme-primary)) !important;
+  box-shadow: 0 0 0 2px rgba(var(--theme-primary), 0.2) !important;
+}
+
+html[data-theme="dark"] .create-library-modal-dark .ant-select-selector {
+  background-color: rgb(var(--theme-bg-tertiary)) !important;
+  border-color: rgb(var(--theme-border)) !important;
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .create-library-modal-dark .ant-select-selection-placeholder {
+  color: rgb(var(--theme-text-muted)) !important;
+  opacity: 0.7 !important;
+}
+
+html[data-theme="dark"] .create-library-modal-dark .ant-select-selection-item {
+  color: rgb(var(--theme-text)) !important;
+}
+
+html[data-theme="dark"] .create-library-modal-dark .ant-select-arrow {
+  color: rgb(var(--theme-text-muted)) !important;
+}
+
+/* 进度条 shimmer 动画 */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Spin 动画 */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Pulse 动画 */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Bounce 动画 */
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-bounce {
+  animation: bounce 1.4s ease-in-out infinite;
+}

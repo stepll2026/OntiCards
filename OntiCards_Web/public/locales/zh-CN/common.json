@@ -1,0 +1,43 @@
+{
+  "prompt": "大模型显示的信息（包括与人相关的信息）可能不完全准确，请注意核对。",
+  "sending": "发送中...",
+  "cancel": "取消",
+  "submit": "提交",
+  "confirm": "确认",
+  "modifiedSuccessfully": "修改成功",
+  "submitSuccessfully": "提交成功",
+  "uploadSuccessful": "上传成功",
+  "uploadFailed": "上传失败",
+
+  "tip": "提示",
+  "inquiryDel": "是否确认删除？",
+  "deleteSuccessful": "删除成功",
+  "delete": "删除",
+  "batchActivation": "批量启用",
+  "batchDisabling": "批量禁用",
+  "batchDeletion": "批量删除",
+  "batchTransfer": "批量转移",
+  "importUsers": "导入用户",
+  "operationSuccessful": "操作成功",
+  "requestFailure": "请求失败，请联系管理员",
+  "uploadFormatError": "上传格式有误,不支持{{type}}",
+  "uploadRequired": "上传列表不能为空",
+  "uploadSizeError": "{{name}}超过{{size}}MB",
+  "uploadLengthError": "每次最多上传{{length}}个文件",
+
+  "password": "密码",
+  "passwordPlaceholder": "请输入密码",
+  "passwordPrompt": "密码不能为空",
+
+  "usenNameExtra": "可以使用纯英文、纯数字或英文数字组合（可带横线，底线或@符号）的用户名",
+  "usenNameNMessage": "格式有误，可以使用纯英文、纯数字或英文数字组合（可带横线，底线或@符号）的用户名",
+  "passwordExtra": "可以使用纯英文、纯数字或英文数字组合，(必须同时包含英文字母和数字)",
+
+  "unknown": "系统出错，请联系管理员",
+
+  "copy": "复制",
+  "save": "保存",
+  "setUp": "设置",
+  "edit": "编辑",
+  "source": "来源"
+}

@@ -1,0 +1,68 @@
+IF OBJECT_ID('dbo.data_audit','P') IS NOT NULL DROP PROCEDURE dbo.data_audit;
+--@@split
+CREATE PROCEDURE dbo.data_audit
+  @schema SYSNAME,
+  @table  SYSNAME
+AS
+BEGIN
+  SET NOCOUNT ON;
+
+  DECLARE @obj_id INT = OBJECT_ID(QUOTENAME(@schema)+'.'+QUOTENAME(@table));
+  IF @obj_id IS NULL
+  BEGIN
+    RAISERROR('Table %s.%s not found',16,1,@schema,@table);
+    RETURN;
+  END
+
+  DECLARE @total BIGINT, @sql NVARCHAR(MAX), @col SYSNAME, @type SYSNAME, @is_char BIT, @nulls BIGINT, @empties BIGINT;
+
+  IF OBJECT_ID('tempdb..#audit') IS NOT NULL DROP TABLE #audit;
+  CREATE TABLE #audit(
+    column_name SYSNAME,
+    data_type   SYSNAME,
+    total_rows  BIGINT,
+    null_count  BIGINT,
+    empty_str_count BIGINT,
+    missing_count BIGINT,
+    missing_pct DECIMAL(10,2)
+  );
+
+  SET @sql = N'SELECT @t = COUNT(*) FROM '+QUOTENAME(@schema)+N'.'+QUOTENAME(@table);
+  EXEC sp_executesql @sql, N'@t BIGINT OUTPUT', @t=@total OUTPUT;
+
+  DECLARE cur CURSOR LOCAL FAST_FORWARD FOR
+    SELECT c.name, t.name,
+           CASE WHEN t.name IN ('char','nchar','varchar','nvarchar','text','ntext') THEN 1 ELSE 0 END
+    FROM sys.columns c
+    JOIN sys.types t ON t.user_type_id = c.user_type_id
+    WHERE c.object_id = @obj_id
+    ORDER BY c.column_id;
+
+  OPEN cur; FETCH NEXT FROM cur INTO @col, @type, @is_char;
+  WHILE @@FETCH_STATUS = 0
+  BEGIN
+    SET @sql = N'SELECT @n = SUM(CASE WHEN '+QUOTENAME(@col)+N' IS NULL THEN 1 ELSE 0 END) FROM '
+             + QUOTENAME(@schema)+N'.'+QUOTENAME(@table);
+    EXEC sp_executesql @sql, N'@n BIGINT OUTPUT', @n=@nulls OUTPUT;
+
+    IF @is_char = 1
+    BEGIN
+      SET @sql = N'SELECT @e = SUM(CASE WHEN '+QUOTENAME(@col)+N' IS NOT NULL AND LEN(LTRIM(RTRIM('
+               + QUOTENAME(@col) + N'))) = 0 THEN 1 ELSE 0 END) FROM '
+               + QUOTENAME(@schema)+N'.'+QUOTENAME(@table);
+      EXEC sp_executesql @sql, N'@e BIGINT OUTPUT', @e=@empties OUTPUT;
+    END
+    ELSE SET @empties = 0;
+
+    INSERT INTO #audit
+    SELECT @col, @type, @total, ISNULL(@nulls,0), ISNULL(@empties,0),
+           ISNULL(@nulls,0)+ISNULL(@empties,0),
+           CASE WHEN @total=0 THEN 0 ELSE CONVERT(DECIMAL(10,2),100.0*(ISNULL(@nulls,0)+ISNULL(@empties,0))/@total) END;
+
+    FETCH NEXT FROM cur INTO @col, @type, @is_char;
+  END
+  CLOSE cur; DEALLOCATE cur;
+
+  SELECT * FROM #audit ORDER BY missing_pct DESC, column_name;
+END;
+--@@split

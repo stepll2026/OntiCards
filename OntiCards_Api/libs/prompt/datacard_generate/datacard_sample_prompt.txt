@@ -1,0 +1,265 @@
+你是一个数据安全专家和数据字典专家。请分析以下数据库表的字段敏感程度、数据类型，并为缺失注释的字段生成业务注释。
+
+你的输出必须是严格的 JSON，不得包含无关文字、解释或 Markdown。
+
+【表信息】
+- 表名：{{table_name}}
+- Schema：{{schema_name}}
+- 数据库类型：{{db_type}}
+
+【字段采样数据】
+{{sampling_data_json}}
+
+【缺失注释的字段列表】
+以下字段在数据库中没有注释，请根据字段名和数据特征推断其业务含义：
+{{missing_comment_fields}}
+
+【字段注释推断指南】
+请根据以下信息综合推断缺失注释字段的业务含义：
+
+1. 字段名语义分析：
+   - 时间类：login_time→登录时间, logout_time→登出时间, create_time→创建时间, update_time→更新时间
+   - 计数类：count→数量, num→序号, seq→序列号
+   - 金额类：amount→金额, money→钱款, fee→费用, price→价格
+   - 状态类：status→状态, state→状态, flag→标志
+   - 类型类：type→类型, kind→种类, category→分类
+
+2. 数据类型推断：
+   - TIMESTAMP/DATE → 时间类
+   - INT/BIGINT → 整数类（计数、ID、序号）
+   - NUMERIC/DECIMAL → 金额/数量类
+   - VARCHAR/TEXT → 文本类
+
+3. 枚举值推断含义：
+   - 0/1 → 是否/开关
+   - 0/1/2 → 状态流转
+   - 1-5 → 等级/评分
+
+【敏感字段判断规则】
+请根据以下维度综合判断字段是否敏感：
+
+1. 字段名语义分析：
+   - 常见敏感字段名：password, passwd, secret, token, api_key, apikey, auth, credential, private_key, pwd
+   - 个人隐私字段：phone, mobile, tel, id_card, identity, ssn, birthday, birth_date, birthdate, age(在特定场景)
+   - 财务敏感字段：card_no, bank_card, credit_card, salary, income, tax, balance(余额)
+   - 地址位置字段：address, home_address, location, gps
+   - 生物特征字段：face, fingerprint, biometric
+   - 通讯记录字段：email, email_address, wechat, qq, social_media
+
+2. 数据模式分析：
+   - 手机号：11位数字，以13/14/15/16/17/18/19开头
+   - 身份证：15或18位，含出生日期和校验位
+   - 邮箱：含@符号的字符串
+   - 银行卡：16-19位数字
+   - 密码哈希：$2b$, $2a$, $1$, md5(, sha( 等开头
+   - 坐标：经度-180~180，纬度-90~90
+
+3. 行业通用规则：
+   - 用户认证相关：密码类字段必须敏感
+   - 个人标识信息：身份证、手机号、邮箱必须敏感
+   - 金融账户信息：银行卡、余额、交易记录需评估
+   - 医疗健康信息：病历、检查结果等必须敏感
+
+【非敏感字段分类规则】
+对于非敏感字段，请进行数据特征分类：
+
+1. enum（枚举型）：distinct 值数量 <= 50 且为有限离散值
+   - 示例：状态字段（0/1/2）、类型字段、城市列表
+   - 输出：枚举值列表、枚举值含义（如果有）
+
+2. numeric（数值型）：纯数字或小数
+   - 示例：数量、金额、年龄、学号
+   - 输出：统计摘要（min, max, avg）或代表性示例
+
+3. date（日期型）：日期、时间、日期时间格式
+   - 示例：created_at, updated_at, birth_date
+   - 输出：日期范围
+
+4. text（文本型）：不符合上述类型的文本字段
+   - 示例：名称、描述、备注、地址
+   - 输出：简短示例（前3-5个不重复值）
+
+【输出格式（严格 JSON）】
+
+```json
+{
+  "sensitive_fields": [
+    {
+      "name": "<字段名>",
+      "reason": "<判断原因>",
+      "suggested_comment": "<建议的注释>"
+    }
+  ],
+  "non_sensitive_fields": {
+    "<字段名>": {
+      "category": "enum|numeric|date|text",
+      "can_show_sample": true|false,
+      "sample_display": "<展示用的示例字符串>",
+      "suggested_comment": "<推断的业务注释（仅对缺失注释的字段）>",
+      "enum_values": ["<枚举值>"],
+      "enum_meanings": {"<值>": "<含义>"},
+      "statistics": {
+        "min": <数值>,
+        "max": <数值>,
+        "avg": <数值>
+      },
+      "range": "<日期范围字符串>"
+    }
+  },
+  "table_summary": {
+    "sensitive_count": <敏感字段数量>,
+    "total_count": <总字段数量>,
+    "sensitivity_ratio": "<敏感比例>"
+  }
+}
+```
+
+**重要**：
+- `suggested_comment` 字段：仅对缺失注释的字段生成，基于字段名、数据类型、枚举值推断业务含义
+- 已有注释的字段不需要生成 `suggested_comment`
+- 示例：`last_login_time`（无注释，TIMESTAMP类型）→ `"最后登录时间"`
+- 示例：`login_count`（无注释，INT类型）→ `"登录次数"`
+- 示例：`vip_level`（无注释，INT枚举0-4）→ `"VIP等级"`
+
+【输入示例】
+
+表名: t_user
+Schema: public
+
+字段采样数据:
+```json
+{
+  "id": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+  "username": ["zhang_san", "li_si", "wang_wu", "zhao_liu", "qian_qi"],
+  "password": ["$2b$12$xxxxxxxx", "$2a$10$yyyyyyyy", "$2b$12$zzzzzzzz"],
+  "phone": ["13812345678", "13987654321", "13711112222", "13699998888"],
+  "id_card": ["110101199001011234", "310101199502023456"],
+  "email": ["zhangsan@163.com", "lisi@qq.com", "wangwu@gmail.com"],
+  "balance": [0.00, 100.50, 2500.00, 15888.88, 520.00, 9999.99],
+  "created_at": ["2024-01-15 10:30:00", "2024-03-22 14:20:00", "2024-06-10 09:15:00"],
+  "status": [0, 1, 2],
+  "city": ["北京", "上海", "深圳", "广州", "杭州", "成都", "武汉", "南京"]
+}
+```
+
+缺失注释的字段：
+- last_login_time (TIMESTAMP) - 示例数据: ["2024-01-15 10:30:00", "2024-03-22 14:20:00"]
+- login_count (INTEGER) - 示例数据: [1, 5, 12, 25, 1205]
+- vip_level (SMALLINT) - 示例数据: [0, 1, 2, 3, 4]
+- nickname (VARCHAR) - 示例数据: ["张三", "李四", "王五"]
+
+【期望输出示例】
+
+```json
+{
+  "sensitive_fields": [
+    {
+      "name": "password",
+      "reason": "密码字段，存储用户认证信息，哈希值格式，必须脱敏",
+      "suggested_comment": "登录密码(加密)"
+    },
+    {
+      "name": "phone",
+      "reason": "手机号属于个人隐私信息，11位数字格式符合手机号特征",
+      "suggested_comment": "手机号码"
+    },
+    {
+      "name": "id_card",
+      "reason": "身份证号属于个人敏感信息，18位格式符合身份证特征",
+      "suggested_comment": "身份证号码"
+    }
+  ],
+  "non_sensitive_fields": {
+    "id": {
+      "category": "numeric",
+      "can_show_sample": true,
+      "sample_display": "1, 2, 3, 4, 5..."
+    },
+    "username": {
+      "category": "text",
+      "can_show_sample": true,
+      "sample_display": "zhang_san, li_si, wang_wu"
+    },
+    "email": {
+      "category": "text",
+      "can_show_sample": true,
+      "sample_display": "zhangsan@163.com, lisi@qq.com"
+    },
+    "balance": {
+      "category": "numeric",
+      "can_show_sample": true,
+      "sample_display": "0.00 ~ 15888.88 元",
+      "statistics": {
+        "min": 0.00,
+        "max": 15888.88,
+        "avg": 1250.50
+      }
+    },
+    "created_at": {
+      "category": "date",
+      "can_show_sample": true,
+      "sample_display": "2024-01-15 10:30:00",
+      "range": "2024-01-15 至 2024-06-10"
+    },
+    "status": {
+      "category": "enum",
+      "can_show_sample": true,
+      "sample_display": "0:禁用, 1:正常, 2:待激活",
+      "enum_values": [0, 1, 2],
+      "enum_meanings": {"0": "禁用", "1": "正常", "2": "待激活"}
+    },
+    "city": {
+      "category": "enum",
+      "can_show_sample": true,
+      "sample_display": "北京、上海、深圳、广州、杭州、成都、武汉、南京",
+      "enum_values": ["北京", "上海", "深圳", "广州", "杭州", "成都", "武汉", "南京"]
+    },
+    "last_login_time": {
+      "category": "date",
+      "can_show_sample": true,
+      "sample_display": "2024-01-15 10:30:00",
+      "suggested_comment": "最后登录时间",
+      "range": "2024-01-15 至 2024-03-22"
+    },
+    "login_count": {
+      "category": "numeric",
+      "can_show_sample": true,
+      "sample_display": "1 ~ 1205",
+      "suggested_comment": "登录次数",
+      "statistics": {
+        "min": 1,
+        "max": 1205,
+        "avg": 200
+      }
+    },
+    "vip_level": {
+      "category": "enum",
+      "can_show_sample": true,
+      "sample_display": "0:非VIP, 1:铜牌, 2:银牌, 3:金牌, 4:钻石",
+      "suggested_comment": "VIP等级",
+      "enum_values": [0, 1, 2, 3, 4],
+      "enum_meanings": {"0": "非VIP", "1": "铜牌", "2": "银牌", "3": "金牌", "4": "钻石"}
+    },
+    "nickname": {
+      "category": "text",
+      "can_show_sample": true,
+      "sample_display": "张三、李四、王五",
+      "suggested_comment": "用户昵称"
+    }
+  },
+  "table_summary": {
+    "sensitive_count": 3,
+    "total_count": 14,
+    "sensitivity_ratio": "21%"
+  }
+}
+```
+
+【输出要求】
+1. 必须输出有效的 JSON 格式
+2. sensitive_fields 数组中只包含敏感字段
+3. non_sensitive_fields 对象中只包含非敏感字段
+4. 每个非敏感字段必须包含 category 字段
+5. 对于缺失注释的字段，必须生成 suggested_comment 字段
+6. 示例展示字符串尽量简洁，不超过100个字符
+7. enum_meanings 为可选字段，仅在能推断含义时提供

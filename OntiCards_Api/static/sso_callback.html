@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSO 回调处理</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 { color: #333; margin-bottom: 20px; font-size: 24px; }
+        .spinner {
+            width: 60px;
+            height: 60px;
+            margin: 20px auto;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #11998e;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .info-box {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .info-box p { margin: 8px 0; font-size: 14px; color: #555; }
+        .info-box code { background: #e9ecef; padding: 2px 6px; border-radius: 4px; font-size: 12px; word-break: break-all; display: block; margin-top: 4px; }
+        .btn {
+            display: inline-block;
+            background: #11998e;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            margin: 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn:hover { background: #0e7a6e; }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .hidden { display: none; }
+        .token-box { word-break: break-all; font-size: 11px; background: #f5f5f5; padding: 10px; border-radius: 6px; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SSO 登录回调</h1>
+        <div class="spinner" id="loading"></div>
+        <div id="result">
+            <div class="info-box">
+                <p><strong>状态:</strong> <span id="status">处理中...</span></p>
+                <p id="token-row" class="hidden"><strong>Token:</strong> <div id="token-display" class="token-box"></div></p>
+                <p id="user-row" class="hidden"><strong>用户:</strong> <span id="user-display"></span></p>
+            </div>
+            <div id="actions"></div>
+        </div>
+    </div>
+    <script>
+        // ============================================================
+        // ⚙️ SSO回调配置 - 部署时需要修改以下配置
+        // ============================================================
+
+        // 登录成功后的跳转目标（你的前端首页地址）
+        const FRONTEND_HOME_URL = 'http://localhost:3000';
+
+        // ============================================================
+
+        function getQueryParam(name) {
+            const params = new URLSearchParams(window.location.search);
+            return params.get(name);
+        }
+        function show(id) { document.getElementById(id).classList.remove('hidden'); }
+        function set(id, content) { document.getElementById(id).textContent = content; }
+        function setHtml(id, content) { document.getElementById(id).innerHTML = content; }
+
+        const accessToken = getQueryParam('access_token');
+        if (!accessToken) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('status').textContent = '未收到Token';
+            document.getElementById('status').className = 'error';
+            document.getElementById('actions').innerHTML = '<a href="sso_test.html" class="btn">返回测试页面</a>';
+        } else {
+            setHtml('token-display', accessToken.length > 100 ? accessToken.substring(0, 100) + '...' : accessToken);
+            show('token-row');
+            try {
+                localStorage.setItem('access_token', accessToken);
+                document.getElementById('status').textContent = 'Token存储成功';
+                document.getElementById('status').className = 'success';
+                const parts = accessToken.split('.');
+                if (parts.length === 3) {
+                    try {
+                        const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+                        localStorage.setItem('user_info', JSON.stringify({id: payload.id, username: payload.username, nickname: payload.nickname, role: payload.role}));
+                        set('user-display', payload.nickname + ' (' + payload.username + ')');
+                        show('user-row');
+                    } catch (e) {
+                        console.log('无法解析token payload');
+                    }
+                }
+                window.history.replaceState({}, document.title, window.location.pathname);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('actions').innerHTML = '<p class="success" style="font-size:18px; margin-bottom:15px;">登录成功！</p><a href="' + FRONTEND_HOME_URL + '" target="_blank" class="btn">打开前端应用</a><a href="sso_test.html" class="btn" style="background:#6c757d;">返回测试页</a>';
+            } catch (e) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('status').textContent = '处理失败: ' + e.message;
+                document.getElementById('status').className = 'error';
+            }
+        }
+    </script>
+</body>
+</html>

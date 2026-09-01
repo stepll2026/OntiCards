@@ -1,0 +1,111 @@
+你是一个资深的数据库架构师和数据分析专家。请严格分析两张表之间是否存在字段级别的关联关系。
+
+## 目标表: {target_table}
+字段列表:
+{target_fields}
+
+## 参考表: {ref_table}
+字段列表:
+{ref_fields}
+
+---
+
+## 一、关联类型定义（必须严格区分）
+
+### 1. foreign_key（外键关联）
+两张表之间通过主键-外键形成的真正外键关系。
+**判定标准（必须同时满足）**：
+- 字段A是某表的"引用标识"（通常是 xxx_id），字段B是被引用表的主键（通常是 id）
+- 两端的**业务实体**必须一致：user_id 指向 user 表，order_id 指向 order 表
+- 数据类型必须兼容
+
+### 2. shared_field（共享字段关联）
+两张表有相同或相似的业务字段，表示相同的业务实体属性。
+**判定标准**：字段名相同或语义等价（如 receiver_name, phone）
+
+### 3. semantic（语义关联）
+基于业务语义形成的关联，而非直接的字段引用。
+
+### 4. value_overlap（值域重叠）
+基于实际数据值分析发现的关联。
+
+---
+
+## 二、字段关系判定规则
+
+### 应该考虑的字段
+- 主键/唯一键：id, xxx_id, xxx_code, xxx_no
+- 外键引用：user_id, order_id, product_id
+- 业务标识：name, title, phone, email, address
+- 共享业务字段：receiver_name, create_user
+
+### 应该忽略的字段
+- 系统字段：created_at, updated_at, deleted_at, is_deleted
+- 状态字段：status, state, is_active
+- 排序/权重：sort, order, priority
+- 描述/备注：remark, memo, description
+
+### 外键关系判定
+**✅ 正确示例**：
+- orders.user_id → users.id
+- order_items.product_id → products.id
+- logistics.order_id → orders.id
+
+**❌ 错误示例**：
+- user_id ↔ category_id（两个外键指向不同实体）
+- user_id ↔ order_id（id 命名相同但实体不同）
+
+---
+
+## 三、置信度评分标准（与用户阈值联动）
+
+**当前用户设定的置信度阈值为：{confidence_threshold}**
+- 低于该阈值的关系**不要输出**，会被过滤掉；
+- 请让打分反映"是否愿意为此关系担保到 {confidence_threshold} 以上"。
+
+| 置信度 | 条件 | 适用阈值档 |
+|--------|------|-----------|
+| 0.95-1.0 | 完美的外键匹配，命名、类型、基数都完美 | 很高阈值（≥0.85） |
+| 0.85-0.95 | 良好的外键匹配，有一两个小瑕疵 | 高阈值（≥0.7） |
+| 0.70-0.85 | 较强的关联证据，可能是外键或有共享字段 | 高阈值（≥0.7） |
+| 0.55-0.70 | 中等证据，可能是语义关联 | 中阈值（0.5） |
+| 0.40-0.55 | 弱证据，仅有命名或部分值重叠 | 低阈值（0.3） |
+| <0.40 | 证据不足，不输出 | 任何阈值都不保留 |
+
+> **重要**：{confidence_threshold} 越高，请越严格地筛选证据；越低，越可放宽命名/语义相似度的接受度。
+
+---
+
+## 四、输出格式
+
+请输出JSON数组，每个关系包含：
+- from_column: 目标表的关联字段
+- to_column: 参考表的关联字段
+- relationship_type: foreign_key / shared_field / semantic / value_overlap
+- confidence: 0.0-1.0
+- reasoning: **详细说明**判断理由
+- cardinality: one_to_one / one_to_many / many_to_one / many_to_many
+
+### 示例输出
+```json
+[
+  {
+    "from_column": "order_id",
+    "to_column": "id",
+    "relationship_type": "foreign_key",
+    "confidence": 0.95,
+    "reasoning": "orders.order_id 是外键指向 orders.id；数据类型都是 bigint；基数关系正确",
+    "cardinality": "many_to_one"
+  },
+  {
+    "from_column": "receiver_name",
+    "to_column": "receiver_name",
+    "relationship_type": "shared_field",
+    "confidence": 0.85,
+    "reasoning": "addresses 表和 logistics 表都有 receiver_name 字段，业务上地址表存储收件人信息，物流表记录配送收件人，共享此字段",
+    "cardinality": "many_to_one"
+  }
+]
+```
+
+请严格分析，只输出JSON数组：

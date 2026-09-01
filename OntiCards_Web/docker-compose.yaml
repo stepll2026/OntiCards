@@ -1,0 +1,14 @@
+version: '3.1'
+services:
+  vigor-web:
+    container_name: vigor-web
+    image: registry.cn-hongkong.aliyuncs.com/souther/vigor-web:1.0.0
+    restart: always
+    environment:
+      CONSOLE_API_URL: 'http://127.0.0.1'
+    networks:
+      - back
+
+networks:
+  back:
+    external: true

@@ -1,0 +1,121 @@
+{
+    "DocInfo": {
+      "doc_id": "844b89f1-2ad9-4165-b42a-3f6eef57b1a0",
+      "title": "数据表: sys_region",
+      "source_type": "sql",
+      "publish_date": "",
+      "domain": "系统配置, 基础数据管理",
+      "language": "zh-CN",
+      "author": "DB-Connector",
+      "pages": 0,
+      "origin_url": "",
+      "connect_name": "测试卡片生成优化-加入数据采样",
+      "datasource_id": "4a1a1a53-960b-4283-b43e-a5907ae5a9ba"
+    },
+    "Abstract": "本表为系统基础数据配置表，用于存储省市区等各级行政区域或业务区域的基础字典数据，支持层级管理，常作为维度表被用户表等关联引用以提供地域信息。\n\n【字段详情】\n- code(VARCHAR)：行政区划代码，作为主键唯一标识区域，示例：330100, 310000, 440100\n- name(VARCHAR)：行政区划名称，记录区域的标准中文名称，示例：广州市, 深圳市, 上海市\n- level(SMALLINT)：区域层级，标识行政级别，枚举值：[1=一级区划(省/直辖市)]\n\n【查询场景】\n- 查询所有省份或指定层级的行政区划列表\n- 根据行政区划代码反查对应的区域名称\n- 关联用户表（如t_user_test）统计用户的省份与地域分布情况\n- 获取系统支持的省市区基础字典数据用于前端下拉框展示",
+    "KeyConcepts": {
+      "canonical_topic": "行政区划",
+      "alias": [
+        "区域字典表",
+        "省市区配置表",
+        "sys_region",
+        "行政区划表"
+      ],
+      "taxonomy_code": "",
+      "key_entities": [
+        "省",
+        "直辖市",
+        "市",
+        "区",
+        "一级区划",
+        "行政区划代码",
+        "行政区划名称"
+      ],
+      "applicable_scenarios": [
+        "查询所有省份列表",
+        "根据区划代码获取区域名称",
+        "统计用户地域分布",
+        "获取指定层级的行政区划"
+      ]
+    },
+    "MongoMap": [],
+    "GraphMap": {
+      "nodes": [],
+      "edges": []
+    },
+    "SQLMeta": {
+      "table": "sys_region",
+      "pk": "code",
+      "pk_value": null,
+      "file_path": "",
+      "checksum": "",
+      "columns": [
+        {
+          "name": "code",
+          "type": "VARCHAR(20)",
+          "nullable": false,
+          "default": null,
+          "comment": "行政区划代码",
+          "is_primary": true,
+          "is_foreign": false
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "default": null,
+          "comment": "行政区划名称",
+          "is_primary": false,
+          "is_foreign": false
+        },
+        {
+          "name": "level",
+          "type": "SMALLINT",
+          "nullable": true,
+          "default": "1",
+          "comment": "区域层级",
+          "is_primary": false,
+          "is_foreign": false
+        }
+      ],
+      "foreign_keys": []
+    },
+    "Tags": [
+      "sys_region",
+      "行政区划表",
+      "区域字典表",
+      "省市区配置表",
+      "系统区域表",
+      "code",
+      "行政区划代码",
+      "区域代码",
+      "name",
+      "行政区划名称",
+      "区域名称",
+      "level",
+      "区域层级",
+      "行政级别",
+      "一级区划",
+      "省",
+      "直辖市",
+      "广州市",
+      "深圳市",
+      "上海市",
+      "330100",
+      "310000",
+      "440100",
+      "行政区划",
+      "省市区",
+      "基础字典",
+      "层级管理",
+      "地域分布",
+      "省份",
+      "城市",
+      "查询省份",
+      "获取城市",
+      "区域代码查询",
+      "怎么查询区划",
+      "有哪些省份",
+      "统计地域分布"
+    ]
+  }

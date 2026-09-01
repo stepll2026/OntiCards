@@ -1,0 +1,85 @@
+-- OceanBase MySQL 模式专用存储过程：
+--   存储过程名称为 ob_data_audit，与 MySQL 版本的 data_audit 完全隔离，
+--   避免同一数据库集群中同时使用 MySQL 和 OceanBase 时产生名称冲突。
+--
+--   OceanBase MySQL 模式特殊处理：
+--   - 不使用 SET AUTOCOMMIT = 1（OceanBase 不支持该语法）
+--   - 临时表操作在事务内执行，由应用层确保 autocommit 设置
+--@@split
+DROP PROCEDURE IF EXISTS ob_data_audit;
+--@@split
+CREATE PROCEDURE ob_data_audit(IN p_schema VARCHAR(128), IN p_table VARCHAR(128))
+BEGIN
+  -- 所有 DECLARE 必须紧跟在 BEGIN 后
+  DECLARE v_done INT DEFAULT 0;
+  DECLARE v_col_name VARCHAR(128);
+  DECLARE v_data_type VARCHAR(128);
+  DECLARE v_is_char TINYINT;
+
+  DECLARE v_nulls BIGINT;
+  DECLARE v_empty BIGINT;
+  DECLARE v_total BIGINT;
+
+  DECLARE cur CURSOR FOR
+    SELECT COLUMN_NAME, DATA_TYPE,
+           CASE WHEN LOWER(DATA_TYPE) IN ('char','varchar','tinytext','text','mediumtext','longtext','enum','set')
+                THEN 1 ELSE 0 END AS is_char
+      FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = p_schema AND TABLE_NAME = p_table
+     ORDER BY ORDINAL_POSITION;
+
+  DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = 1;
+
+  -- 临时表操作
+  -- OceanBase MySQL 模式：直接创建临时表，不使用 AUTOCOMMIT 控制
+  DROP TEMPORARY TABLE IF EXISTS tmp_data_audit;
+  CREATE TEMPORARY TABLE tmp_data_audit (
+    column_name      VARCHAR(128),
+    data_type        VARCHAR(128),
+    total_rows       BIGINT,
+    null_count       BIGINT,
+    empty_str_count  BIGINT,
+    missing_count    BIGINT,
+    missing_pct      DECIMAL(10,2)
+  );
+
+  -- 总行数（动态 SQL → 会话变量 → 赋给局部变量）
+  SET @sql_total := CONCAT('SELECT COUNT(*) INTO @v_total FROM `', p_schema, '`.`', p_table, '`');
+  PREPARE stmt FROM @sql_total; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+  SET v_total = IFNULL(@v_total, 0);
+
+  OPEN cur;
+  read_loop: LOOP
+    FETCH cur INTO v_col_name, v_data_type, v_is_char;
+    IF v_done = 1 THEN LEAVE read_loop; END IF;
+
+    -- NULL
+    SET @sql_nulls := CONCAT(
+      'SELECT SUM(CASE WHEN `', v_col_name, '` IS NULL THEN 1 ELSE 0 END) INTO @v_nulls ',
+      'FROM `', p_schema, '`.`', p_table, '`'
+    );
+    PREPARE stmt FROM @sql_nulls; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+    SET v_nulls = IFNULL(@v_nulls, 0);
+
+    -- 空字符串/空白（仅字符型）
+    IF v_is_char = 1 THEN
+      SET @sql_empty := CONCAT(
+        'SELECT SUM(CASE WHEN `', v_col_name, '` IS NOT NULL AND TRIM(`', v_col_name, '`) = '''' THEN 1 ELSE 0 END) INTO @v_empty ',
+        'FROM `', p_schema, '`.`', p_table, '`'
+      );
+      PREPARE stmt FROM @sql_empty; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+      SET v_empty = IFNULL(@v_empty, 0);
+    ELSE
+      SET v_empty = 0;
+    END IF;
+
+    INSERT INTO tmp_data_audit
+    SELECT v_col_name, v_data_type, v_total, v_nulls, v_empty,
+           (v_nulls + v_empty) AS missing_count,
+           CASE WHEN v_total = 0 THEN 0 ELSE ROUND(100.0 * (v_nulls + v_empty) / v_total, 2) END;
+  END LOOP;
+  CLOSE cur;
+
+  SELECT * FROM tmp_data_audit ORDER BY missing_pct DESC, column_name;
+END;
+--@@split

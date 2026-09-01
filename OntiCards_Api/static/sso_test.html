@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSO JWT 测试中心</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+        h1 { color: #333; text-align: center; margin-bottom: 10px; font-size: 28px; }
+        .subtitle { color: #666; text-align: center; margin-bottom: 30px; font-size: 14px; }
+        .test-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s;
+        }
+        .test-card:hover { border-color: #667eea; transform: translateY(-2px); }
+        .test-card h3 { color: #333; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+        .test-card p { color: #666; font-size: 14px; margin-bottom: 16px; line-height: 1.6; }
+        .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4); }
+        .btn-secondary { background: #6c757d; }
+        .btn-secondary:hover { background: #5a6268; box-shadow: 0 8px 20px rgba(108, 117, 125, 0.4); }
+        .info-box {
+            background: #e7f3ff;
+            border: 1px solid #b3d7ff;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 20px;
+            font-size: 13px;
+            color: #004085;
+        }
+        .info-box code { background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+        .status { margin-top: 20px; padding: 16px; border-radius: 8px; display: none; }
+        .status.success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; display: block; }
+        .status.error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; display: block; }
+        .status pre { background: rgba(0,0,0,0.1); padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 12px; margin-top: 8px; }
+        .token-display { word-break: break-all; font-family: monospace; font-size: 11px; }
+        .link-box {
+            background: #f0f0f0;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 13px;
+            word-break: break-all;
+        }
+        .link-box a { color: #667eea; text-decoration: none; }
+        .link-box a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SSO JWT 测试中心</h1>
+        <p class="subtitle">模拟第三方系统发起SSO单点登录</p>
+
+        <div class="test-card">
+            <h3><span>1</span>完整SSO登录流程</h3>
+            <p>点击按钮后，将生成JWT Token并跳转到SSO登录接口，然后重定向到回调页面。</p>
+            <button class="btn" onclick="runFullTest()">发起SSO登录</button>
+            <div id="status1" class="status"></div>
+        </div>
+
+        <div class="test-card">
+            <h3><span>2</span>获取测试URL</h3>
+            <p>直接生成并显示完整的SSO登录URL，可以复制使用。</p>
+            <button class="btn btn-secondary" onclick="generateUrl()">生成测试URL</button>
+            <div id="url-result" style="display:none; margin-top: 16px;">
+                <div class="link-box" id="url-display"></div>
+                <button class="btn" onclick="openUrl()">在浏览器打开</button>
+            </div>
+        </div>
+
+        <div class="test-card">
+            <h3><span>3</span>返回前端页面</h3>
+            <p>跳转到前端React应用的SSO测试页面。</p>
+            <a href="http://localhost:3000/sso_test.html" target="_blank" class="btn">打开前端测试页面</a>
+        </div>
+
+    <div class="info-box">
+        <strong>⚙️ 配置说明（部署时需要修改）：</strong><br><br>
+        <code>API地址</code>: <span style="color:#c00;font-weight:bold;">http://localhost:9000</span> → 替换为你的OntiCards API地址<br>
+        <code>回调地址</code>: <span style="color:#c00;font-weight:bold;">http://localhost:3000/overview</span> → 替换为你的前端页面地址<br>
+        <code>SSO密钥</code>: <span style="color:#c00;font-weight:bold;">my_jwt_secret_key_123</span> → 需要与后端 SSO_SECRET_KEY 环境变量一致
+    </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // ⚙️ SSO配置 - 部署时需要修改以下配置
+        // ============================================================
+
+        // OntiCards API地址（后端服务地址）
+        const API_BASE = 'http://localhost:9000';
+
+        // SSO登录成功后的回调地址（你的前端项目地址）
+        const CALLBACK_URL = 'http://localhost:3000/overview';
+
+        // SSO共享密钥（必须与后端 SSO_SECRET_KEY 环境变量一致）
+        // ⚠️ 生产环境请使用更复杂的密钥，并确保安全存储
+        const SSO_SECRET = 'onticards_sso_secret_key_for_step2';
+
+        // ============================================================
+
+        // 兼容UTF-8的Base64编码
+        function utf8ToBase64(str) {
+            return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) => String.fromCharCode(parseInt(p1, 16))));
+        }
+
+        // 解析Base64（用于调试）
+        function base64ToUtf8(base64) {
+            return decodeURIComponent(Array.from(atob(base64), c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+        }
+
+        // 正确转换ArrayBuffer为base64url
+        function arrayBufferToBase64(buffer) {
+            const bytes = new Uint8Array(buffer);
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+        }
+
+        async function signWithCrypto(message, secret) {
+            const encoder = new TextEncoder();
+            const keyData = encoder.encode(secret);
+            const messageData = encoder.encode(message);
+            const key = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+            const signature = await crypto.subtle.sign('HMAC', key, messageData);
+            return arrayBufferToBase64(signature);
+        }
+
+        function showStatus(id, type, title, content) {
+            const el = document.getElementById(id);
+            el.className = 'status ' + type;
+            el.innerHTML = '<h4>' + title + '</h4>' + content;
+        }
+
+        async function generateUrl() {
+            const now = Math.floor(Date.now() / 1000);
+            const payload = {
+                "username": "test_user_003",
+                "user_id": "TEST_USER_ID_003",
+                "nickname": "sso测试用户3",
+                "email": "test3@example.com",
+                "source": "test3",
+                "iat": now,
+                "exp": now + 3000
+            };
+            const header = { "alg": "HS256", "typ": "JWT" };
+            const headerB64 = utf8ToBase64(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+            const payloadB64 = utf8ToBase64(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+            const signature = await signWithCrypto(headerB64 + '.' + payloadB64, SSO_SECRET);
+            const token = headerB64 + '.' + payloadB64 + '.' + signature;
+            const callbackUrl = API_BASE + '/sso/login?token=' + encodeURIComponent(token) + '&redirect_url=' + encodeURIComponent(CALLBACK_URL);
+            document.getElementById('url-display').innerHTML = '<a href="' + callbackUrl + '">' + callbackUrl + '</a>';
+            document.getElementById('url-result').style.display = 'block';
+            window.generatedUrl = callbackUrl;
+        }
+
+        function openUrl() {
+            if (window.generatedUrl) {
+                window.open(window.generatedUrl, '_blank');
+            }
+        }
+
+        async function runFullTest() {
+            showStatus('status1', 'success', '正在生成Token...', '请稍候...');
+            try {
+                const now = Math.floor(Date.now() / 1000);
+                const payload = {
+                    "username": "test_user_004",
+                    "user_id": "TEST_USER_ID_004",
+                    "nickname": "测试用户04",
+                    "email": "test04@example.com",
+                    "source": "test4",
+                    "iat": now,
+                    "exp": now + 3000
+                };
+                const header = { "alg": "HS256", "typ": "JWT" };
+                const headerB64 = utf8ToBase64(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+                const payloadB64 = utf8ToBase64(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+                const signature = await signWithCrypto(headerB64 + '.' + payloadB64, SSO_SECRET);
+                const token = headerB64 + '.' + payloadB64 + '.' + signature;
+                const callbackUrl = API_BASE + '/sso/login?token=' + encodeURIComponent(token) + '&redirect_url=' + encodeURIComponent(CALLBACK_URL);
+                showStatus('status1', 'success', 'Token生成成功，正在跳转...', '<p>Token: <code class="token-display">' + token + '</code></p><p style="margin-top:10px;">即将跳转到: ' + callbackUrl + '</p>');
+                setTimeout(() => { window.location.href = callbackUrl; }, 1500);
+            } catch (error) {
+                showStatus('status1', 'error', '生成Token失败', error.message);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,131 @@
+.container {
+  background: none !important;
+  color: inherit !important;
+  font-size: 14px !important;
+  line-height: 1.7 !important;
+  word-wrap: break-word;
+
+  :global(ul) {
+    list-style-type: disc !important;
+    padding-left: 1.5em !important;
+    margin: 0.5em 0 !important;
+  }
+
+  :global(ol) {
+    list-style-type: decimal !important;
+    padding-left: 1.5em !important;
+    margin: 0.5em 0 !important;
+  }
+
+  :global(li) {
+    list-style-type: inherit !important;
+    margin: 0.25em 0 !important;
+    line-height: 1.6 !important;
+  }
+
+  :global(li > ul), :global(li > ol) {
+    margin: 0.25em 0 !important;
+  }
+
+  :global(h1), :global(h2), :global(h3), :global(h4), :global(h5), :global(h6) {
+    font-weight: 600 !important;
+    margin: 1em 0 0.5em !important;
+    line-height: 1.4 !important;
+  }
+
+  :global(h2) {
+    font-size: 1.1em !important;
+  }
+
+  :global(h3) {
+    font-size: 1em !important;
+  }
+
+  :global(p) {
+    margin: 0.5em 0 !important;
+  }
+
+  :global(hr) {
+    border: 0 !important;
+    border-top: 1px solid rgba(128, 128, 128, 0.3) !important;
+    margin: 1em 0 !important;
+  }
+
+  :global(code) {
+    background: rgba(0, 0, 0, 0.06) !important;
+    padding: 0.2em 0.4em !important;
+    border-radius: 4px !important;
+    font-size: 0.9em !important;
+  }
+
+  :global(pre) {
+    background: rgba(0, 0, 0, 0.06) !important;
+    padding: 1em !important;
+    border-radius: 8px !important;
+    overflow-x: auto !important;
+    margin: 0.75em 0 !important;
+  }
+
+  :global(pre code) {
+    background: none !important;
+    padding: 0 !important;
+  }
+
+  :global(table) {
+    border-collapse: collapse !important;
+    width: 100% !important;
+    margin: 0.75em 0 !important;
+  }
+
+  :global(th), :global(td) {
+    border: 1px solid rgba(128, 128, 128, 0.3) !important;
+    padding: 0.5em 0.75em !important;
+    text-align: left !important;
+  }
+
+  :global(blockquote) {
+    border-left: 3px solid rgba(128, 128, 128, 0.3) !important;
+    margin: 0.75em 0 !important;
+    padding-left: 1em !important;
+    opacity: 0.8 !important;
+  }
+
+  :global(a) {
+    color: #6366f1 !important;
+    text-decoration: none !important;
+  }
+
+  :global(strong) {
+    font-weight: 600 !important;
+  }
+
+  :global(img) {
+    max-width: 100% !important;
+    height: auto !important;
+    border-radius: 8px !important;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .container {
+    :global(code) {
+      background: rgba(255, 255, 255, 0.1) !important;
+    }
+
+    :global(pre) {
+      background: rgba(255, 255, 255, 0.05) !important;
+    }
+
+    :global(th), :global(td) {
+      border-color: rgba(255, 255, 255, 0.2) !important;
+    }
+
+    :global(blockquote) {
+      border-left-color: rgba(255, 255, 255, 0.2) !important;
+    }
+
+    :global(hr) {
+      border-top-color: rgba(255, 255, 255, 0.2) !important;
+    }
+  }
+}

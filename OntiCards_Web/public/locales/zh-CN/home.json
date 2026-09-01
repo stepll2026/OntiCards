@@ -1,0 +1,60 @@
+{
+  "title": "Admin，您好！",
+  "greetings": "今日有何需要我协助的工作？",
+
+  "personalData": "个人资料",
+  "changePassword": "修改密码",
+  "language": "语言",
+  "quit": "退出",
+
+  "newChat": "新会话",
+  "history": "历史会话",
+  "dataset": "资料库",
+  "apps": "应用",
+  "userGroup": "用户与用户组",
+
+  "chat": "会话",
+  "dataRetrieval": "资料检索",
+
+  "oldPassword": "旧密码",
+  "oldPasswordPlaceholder": "请输入旧密码",
+  "oldPasswordPrompt": "旧密码不能为空",
+
+  "newPassword": "新密码",
+  "newPasswordPlaceholder": "请输入新密码",
+  "newPasswordPrompt": "新密码不能为空",
+
+  "confirmNewPassword": "确认新密码",
+  "confirmNewPasswordPlaceholder": "请输入确认新密码",
+  "confirmNewPasswordPrompt": "确认新密码不能为空",
+
+  "passwordFormatMessage": "格式有误，请输入纯英文、纯数字或英文数位组合，（必须同时包含英文字母和数字）",
+
+  "uploadFormatError": "上传格式有误",
+
+  "editFullName": "编辑全名",
+  "fullName": "全名",
+  "email": "邮箱",
+  "defaultLang": "预设语言",
+  "defaultLangError": "预设语言不能为空",
+  "defaultLangPlaceholder": "请选择预设语言",
+  "fullNamePlaceholder": "请输入全名",
+  "emailPlaceholder": "请输入邮箱",
+  "userPhotos": "头像",
+  "userName": "用户名",
+  "userNamePlaceholder": "请输入用户名",
+  "belongUserGroup": "所属用户组",
+  "enter": "进入使用",
+  "notice": "公告管理",
+
+  "enterConfiguration": "进入高级配置",
+  "password": "密码",
+  "passwordPlaceholder": "请输入密码",
+  "login":"登录",
+  "loginTitle1":"星岛头条AICG及媒体信息管理平台",
+  "loginTitle":"Apollo",
+
+  "logoutConfim":"是否确认退出",
+  "logoutSuccess":"退出成功",
+  "solution":"解决方案"
+}

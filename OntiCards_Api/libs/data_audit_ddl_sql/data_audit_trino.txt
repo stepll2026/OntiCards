@@ -1,0 +1,188 @@
+-- Trino 数据盘查 SQL 模板
+-- Trino 不支持存储过程，使用动态生成的 SQL 查询进行数据盘查
+-- 
+-- 使用方式：
+-- 1. 获取表的所有列信息
+-- 2. 对每个列生成一个统计查询
+-- 3. 执行查询并汇总结果
+--
+-- 注意：此模板文件仅用于文档说明，实际的数据盘查逻辑在 Python 代码中实现
+
+--@@split
+
+-- 第1步：获取表的列信息（通过 information_schema 或 Trino 系统表）
+-- SELECT 
+--     "column_name",
+--     "data_type",
+--     CASE 
+--         WHEN LOWER("data_type") LIKE '%char%' 
+--             OR LOWER("data_type") LIKE '%text%' 
+--             OR LOWER("data_type") IN ('varchar', 'char') 
+--         THEN true 
+--         ELSE false 
+--     END AS is_string_type
+-- FROM information_schema.columns
+-- WHERE "table_schema" = '<schema_name>' 
+--   AND "table_name" = '<table_name>'
+-- ORDER BY "ordinal_position"
+
+--@@split
+
+-- 第2步：对每个列执行数据盘查查询
+-- 示例查询模板（需要针对每个列生成）：
+-- 
+-- WITH stats AS (
+--     SELECT
+--         COUNT(*) AS total_rows,
+--         SUM(CASE WHEN "<column_name>" IS NULL THEN 1 ELSE 0 END) AS null_count,
+--         -- 仅对字符串类型列统计空字符串
+--         SUM(CASE WHEN "<column_name>" IS NOT NULL AND TRIM("<column_name>") = '' THEN 1 ELSE 0 END) AS empty_str_count
+--     FROM "<catalog>"."<schema>"."<table>"
+-- )
+-- SELECT
+--     '<column_name>' AS column_name,
+--     '<data_type>' AS data_type,
+--     total_rows,
+--     null_count,
+--     empty_str_count,
+--     (null_count + empty_str_count) AS missing_count,
+--     CASE 
+--         WHEN total_rows = 0 THEN 0.0 
+--         ELSE ROUND(CAST(100.0 * (null_count + empty_str_count) AS DOUBLE) / total_rows, 2) 
+--     END AS missing_pct
+-- FROM stats
+
+--@@split
+
+-- 第3步：汇总所有列的统计结果
+-- 注意：Trino 需要逐个执行每列的查询，然后在 Python 层面进行汇总
+-- 最终结果格式：
+-- [
+--     {
+--         "column_name": "id",
+--         "data_type": "integer",
+--         "total_rows": 1000,
+--         "null_count": 0,
+--         "empty_str_count": 0,
+--         "missing_count": 0,
+--         "missing_pct": 0.0
+--     },
+--     {
+--         "column_name": "name",
+--         "data_type": "varchar",
+--         "total_rows": 1000,
+--         "null_count": 10,
+--         "empty_str_count": 5,
+--         "missing_count": 15,
+--         "missing_pct": 1.5
+--     },
+--     ...
+-- ]
+
+--@@split
+
+-- 辅助函数说明：
+-- 
+-- 1. 字符串类型判断：
+--    - varchar, char, text 等类型需要统计空字符串
+--    - 其他类型（数值、日期等）只统计 NULL 值
+--
+-- 2. NULL 值统计：
+--    SUM(CASE WHEN "column_name" IS NULL THEN 1 ELSE 0 END)
+--
+-- 3. 空字符串统计（仅字符串类型）：
+--    SUM(CASE WHEN "column_name" IS NOT NULL AND TRIM("column_name") = '' THEN 1 ELSE 0 END)
+--
+-- 4. 缺失率计算：
+--    ROUND(CAST(100.0 * (null_count + empty_str_count) AS DOUBLE) / total_rows, 2)
+
+--@@split
+
+-- 防错与稳健性建议（生成 SQL 时务必遵守）：
+-- 1. 日期/时间列：
+--    - 若列类型为 timestamp/date，直接使用 CAST(col AS DATE)；不要对 varchar 直接 DATE(col)。
+--    - 若列是字符串存储时间，使用 TRY_CAST(col AS DATE) 或 TRY_CAST(DATE_PARSE(col, '%Y-%m-%d %H:%i:%s') AS DATE)，避免 INVALID_CAST。
+--    - 进行日期比较时，优先使用 CAST/TRY_CAST，并在 WHERE 中先判空再比较。
+--      例如：
+--        WHERE col IS NOT NULL
+--          AND TRY_CAST(col AS DATE) = CURRENT_DATE
+--    - 避免 DATE(col) 直接作用于字符串，以免触发 “INVALID_CAST_ARGUMENT”。
+-- 2. 数值列：
+--    - 若存为字符串，使用 TRY_CAST(col AS DOUBLE/INTEGER)；禁止直接 CAST，避免非数值报错。
+-- 3. 字符串列统计空值：
+--    - 空字符串判断使用 TRIM(col) = ''，并先判 NOT NULL。
+-- 4. 任何 CAST 建议替换为 TRY_CAST，确保遇到脏数据时返回 NULL 而不是报错。
+-- 5. 组装动态 SQL 时，注意对标识符使用双引号，对字面量使用单引号。
+
+--@@split
+
+-- Catalog / Schema / 表名 防错约束（务必遵守）：
+-- 1) 只允许使用“白名单”中提供的 catalog.schema.table；不要臆造 catalog 名（如 oracle、mysql 等）。
+-- 2) 生成 SQL 前先从输入表清单提取合法的 catalog 与 schema，拼接时必须复用这些值。
+-- 3) 执行前可扫描 SQL 中出现的 catalog.schema：
+--      - 若发现不在白名单的 catalog，直接拒绝执行并要求重试。
+--      - 若缺少 catalog 或 schema，拒绝执行，避免落到默认 catalog。
+-- 4) 所有标识符一律双引号包裹："catalog"."schema"."table"；不要省略 catalog。
+-- 5) 多表/多列场景下，每张表都必须是白名单内表；若模型生成了白名单外的表，直接报错并重试。
+
+--@@split
+
+-- Python 实现参考（data_audit.py）：
+-- 
+-- def _audit_trino_table(engine: Engine, schema: str, table: str) -> List[Dict]:
+--     """Trino 数据盘查实现"""
+--     # 1. 获取列信息
+--     col_query = text("""
+--         SELECT "column_name", "data_type"
+--         FROM information_schema.columns
+--         WHERE "table_schema" = :schema AND "table_name" = :table
+--         ORDER BY "ordinal_position"
+--     """)
+--     with engine.connect() as conn:
+--         columns = conn.execute(col_query, {"schema": schema, "table": table}).fetchall()
+--     
+--     # 2. 获取总行数
+--     total_query = text(f'SELECT COUNT(*) FROM "{schema}"."{table}"')
+--     with engine.connect() as conn:
+--         total_rows = conn.execute(total_query).scalar()
+--     
+--     # 3. 对每个列统计缺失情况
+--     results = []
+--     for col_name, data_type in columns:
+--         is_string = any(t in data_type.lower() for t in ['char', 'text', 'varchar'])
+--         
+--         # 构建统计查询
+--         if is_string:
+--             audit_sql = text(f'''
+--                 SELECT
+--                     SUM(CASE WHEN "{col_name}" IS NULL THEN 1 ELSE 0 END) AS null_count,
+--                     SUM(CASE WHEN "{col_name}" IS NOT NULL AND TRIM("{col_name}") = '' THEN 1 ELSE 0 END) AS empty_count
+--                 FROM "{schema}"."{table}"
+--             ''')
+--         else:
+--             audit_sql = text(f'''
+--                 SELECT
+--                     SUM(CASE WHEN "{col_name}" IS NULL THEN 1 ELSE 0 END) AS null_count,
+--                     0 AS empty_count
+--                 FROM "{schema}"."{table}"
+--             ''')
+--         
+--         with engine.connect() as conn:
+--             row = conn.execute(audit_sql).fetchone()
+--             null_count = row[0] or 0
+--             empty_count = row[1] or 0
+--         
+--         missing_count = null_count + empty_count
+--         missing_pct = round(100.0 * missing_count / total_rows, 2) if total_rows > 0 else 0.0
+--         
+--         results.append({
+--             "column_name": col_name,
+--             "data_type": data_type,
+--             "total_rows": total_rows,
+--             "null_count": null_count,
+--             "empty_str_count": empty_count,
+--             "missing_count": missing_count,
+--             "missing_pct": missing_pct
+--         })
+--     
+--     return sorted(results, key=lambda x: (-x["missing_pct"], x["column_name"]))

@@ -1,0 +1,81 @@
+{
+  "semi": false,
+  "singleQuote": true,
+  "jsxSingleQuote": true,
+  "trailingComma": "all",
+  "bracketSpacing": true,
+  "jsxBracketSameLine": false,
+  "arrowParens": "always",
+  "printWidth": 160,
+  "tabWidth": 2,
+  "useTabs": false,
+  "endOfLine": "lf",
+  "quoteProps": "as-needed",
+  "rangeStart": 0,
+  "proseWrap": "always",
+  "htmlWhitespaceSensitivity": "css",
+  "embeddedLanguageFormatting": "auto",
+  "vueIndentScriptAndStyle": true,
+  "bracketSameLine": false,
+  "overrides": [
+    {
+      "files": [
+        "*.json",
+        "*.yml",
+        "*.yaml",
+        "*.md",
+        "*.markdown"
+      ],
+      "options": {
+        "printWidth": 160,
+        "tabWidth": 2,
+        "useTabs": false,
+        "singleQuote": false,
+        "trailingComma": "none",
+        "bracketSpacing": true,
+        "semi": true
+      }
+    },
+    {
+      "files": [
+        "*.css",
+        "*.scss",
+        "*.less"
+      ],
+      "options": {
+        "singleQuote": false,
+        "semi": true
+      }
+    },
+    {
+      "files": [
+        "*.ts",
+        "*.tsx"
+      ],
+      "options": {
+        "singleQuote": true,
+        "semi": false
+      }
+    },
+    {
+      "files": [
+        "*.js",
+        "*.jsx"
+      ],
+      "options": {
+        "singleQuote": true,
+        "semi": false
+      }
+    },
+    {
+      "files": [
+        "*.html"
+      ],
+      "options": {
+        "printWidth": 160,
+        "tabWidth": 2,
+        "useTabs": false
+      }
+    }
+  ]
+}

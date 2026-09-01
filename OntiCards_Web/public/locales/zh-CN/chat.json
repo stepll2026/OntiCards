@@ -1,0 +1,48 @@
+{
+  "attachment": "附件",
+  "internet": "从互联网搜寻资料",
+  "database": "从资料库搜寻资料",
+  "chatPlaceholder": "请在这里输入您的问题",
+
+  "updateButton": "会话记忆关注点更新",
+  "audioError": "未检测到麦克风，请检查是否已连接",
+  "copySuccess": "复制成功",
+  "copyFailed": "复制失败",
+  "readError": "当前浏览器不支持Web Speech API",
+  "replyError": "当前算力高峰，请稍等一会后重新发送。 点击重新发送",
+  "source": "来源",
+  "searchImages": "搜寻图片",
+  "searchNews": "寻找音频",
+  "viewMore": "查看更多",
+  "answer": "答案",
+  "question": "问题",
+  "relatedIssues": "相关问题",
+
+  "images": "图片",
+  "news": "音频",
+
+  "chatError": "请输入您的问题",
+  "chatError2": "请先开启其中一项：从互联网搜寻资料、从资料库搜寻资料、上传附件",
+
+  "reChat": "重新回答",
+  "selectSource": "至少选择一个来源",
+  "noPictures": "未检索到相关照片",
+  "noAudio": "未检索到相关音频",
+  "uploadTitle": "支持上传txt，doc，xls，ppt，pdf，markdown格式文件，最多可上传5个，每个大小不超过15MB",
+  "historicalPlaceholder": "请输入会话的相关内容进行搜索",
+  "net": "互联网",
+  "resource": "附件",
+  "dataset": "资料库",
+  "netImageNoMore": "未从互联网中搜寻出相关图片",
+  "datasetImageNoMore": "未从资料库中搜寻出相关图片",
+  "sourceNet": "来源于互联网",
+  "sourceResource": "来源于资料库",
+  "recordDel": "是否确认删除？删除后会话记录将无法恢复",
+  "editTitle": "修改标题",
+  "editTitlePlaceholder": "请输入标题",
+
+  "responseTypeCode2101": "正在分析问题的数据需求",
+  "responseTypeCode2102": "正在根据数据需求从资料库查询相关数据",
+  "responseTypeCode2103": "正在对查询数据进行分析，提取有用信息",
+  "responseTypeCode2104": "正在总结问题的答案"
+}

@@ -1,0 +1,23 @@
+-- ① 统计某表总行数（必须是第一段，且是 SELECT）
+SELECT COUNT(*) AS total_rows
+FROM {table_name};
+
+--@@split
+
+-- ② 获取表结构信息（PRAGMA）
+PRAGMA table_info({table_name});
+
+--@@split
+
+-- ③ 统计某列的 NULL 数量
+SELECT COUNT(*) AS null_count
+FROM {table_name}
+WHERE {column_name} IS NULL;
+
+--@@split
+
+-- ④ 统计某列的空字符串数量（仅在字符型字段上使用）
+SELECT COUNT(*) AS empty_str_count
+FROM {table_name}
+WHERE {column_name} IS NOT NULL
+  AND TRIM({column_name}) = '';

@@ -1,0 +1,92 @@
+你是一个 SQL 方言适配专家。请根据目标数据库类型，生成正确的 SQL 语句。
+
+## 输入信息
+
+**源 SQL 模板**: {source_sql}
+**目标数据库类型**: {db_type}
+**表名**: {table_name}
+**列名**: {column_name}
+
+## {db_type} 语法规范
+
+### 标识符引号
+{identifier_quote}
+
+### 日期函数
+{date_functions}
+
+### 字符串函数
+{string_functions}
+
+### 正则表达式
+{regex_syntax}
+
+### 空值判断
+{null_check_syntax}
+
+## SQL 方言差异对照表
+
+| 功能 | PostgreSQL | MySQL | SQL Server | Oracle | SQLite |
+|------|-----------|-------|------------|--------|--------|
+| 当前时间 | `NOW()` | `NOW()` | `GETDATE()` | `SYSDATE` | `datetime('now')` |
+| 日期加减 | `INTERVAL '7 days'` | `INTERVAL 7 DAY` | `DATEADD(day, 7, GETDATE())` | `SYSDATE + 7` | `datetime('now', '+7 days')` |
+| 字符串长度 | `CHAR_LENGTH()` | `LENGTH()` | `LEN()` | `LENGTH()` | `LENGTH()` |
+| 空字符串判断 | `= ''` | `= ''` | `= ''` | `= ''` | `= ''` |
+| 正则匹配 | `~* 'pattern'` | `REGEXP 'pattern'` | `LIKE '%pattern%'` | `REGEXP_LIKE()` | 不支持 |
+| 字符串截取 | `SUBSTRING()` | `SUBSTRING()` | `SUBSTRING()` | `SUBSTR()` | `SUBSTR()` |
+| 大小写转换 | `UPPER()/LOWER()` | `UPPER()/LOWER()` | `UPPER()/LOWER()` | `UPPER()/LOWER()` | `UPPER()/LOWER()` |
+| 类型转换 | `CAST()` | `CAST()` | `CAST()` | `TO_NUMBER()` | `CAST()` |
+
+## 输出格式
+
+请严格输出以下 JSON 格式：
+
+```json
+{{
+    "adapted_sql": "适配后的完整 SQL 语句",
+    "warnings": ["警告信息（如有）"],
+    "notes": ["注意事项（如有）"]
+}}
+```
+
+## 适配规则
+
+### 1. 标识符引号适配
+
+- PostgreSQL: 双引号 `"column_name"`
+- MySQL: 反引号 `` `column_name` ``
+- SQL Server: 方括号 `[column_name]`
+- Oracle: 双引号 `"COLUMN_NAME"`
+- SQLite: 双引号 `"column_name"`
+
+### 2. 日期函数适配
+
+- `NOW()` → 按目标数据库转换
+- `CURRENT_DATE` → 按目标数据库转换
+- `INTERVAL 'N days'` → 按目标数据库转换
+
+### 3. 正则表达式适配
+
+- 如果目标数据库不支持正则，使用 `LIKE` 模式匹配作为备选
+- 记录警告信息
+
+### 4. 字符串函数适配
+
+- `LENGTH()` → 根据目标数据库选择正确函数
+
+## 示例
+
+**输入**:
+- 源SQL: `SELECT COUNT(*) FROM orders WHERE column > 0`
+- 目标: MySQL
+
+**输出**:
+```json
+{
+    "adapted_sql": "SELECT COUNT(*) FROM `orders` WHERE `column` > 0",
+    "warnings": [],
+    "notes": []
+}
+```
+
+请开始适配：
