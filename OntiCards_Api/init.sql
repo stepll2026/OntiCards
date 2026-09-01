@@ -23,6 +23,7 @@ CREATE TYPE "public"."call_status_enum" AS ENUM (
 
 -- !!!!!!!!!!!!!!!!!!!!!!!!!!!! 【需填成实际数据库用户名】 !!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ALTER TYPE "public"."call_status_enum" OWNER TO "postgres";
+-- !!!!!!!!!!!!!!!!!!!!!!!!!!!! 【需填成实际数据库用户名】 !!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 -- ----------------------------
 -- Sequence structure for change_logs_id_seq
