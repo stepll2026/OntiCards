@@ -8,14 +8,14 @@ dotenv.load_dotenv()
 DEFAULTS = {
     # 数据库配置
     'DB_USERNAME': 'postgres',
-    'DB_PASSWORD': 'admin123',
+    'DB_PASSWORD': '',
     'DB_HOST': 'localhost',
     'DB_PORT': '5432',
-    'DB_DATABASE': 'Snaildy',
+    'DB_DATABASE': '',
     'DB_CHARSET': '',
     
     # Redis 配置
-    'REDIS_HOST': '119.29.91.37',
+    'REDIS_HOST': 'localhost',
     'REDIS_PORT': '6379',
     'REDIS_DB': '0',
     'REDIS_USE_SSL': 'False',
