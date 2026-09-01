@@ -4,12 +4,12 @@ export function getNamespaces() {
   return ['common', 'home', 'chat']
 }
 const i18nConfig = {
-  defaultLocale: 'zh-HK',
+  defaultLocale: 'zh-CN',
   locales: ['zh-CN', 'en', 'zh-HK'],
   getNamespaces,
   cookieName: 'NEXT_LOCALE',
   localeDetector: (request, config) => {
-    return 'zh-HK'
+    return 'zh-CN'
   },
 }
 
