@@ -1,23 +1,3 @@
-// module.exports = {
-//   eslint: {
-//     // Warning: This allows production builds to successfully complete even if
-//     // your project has ESLint errors.
-//     ignoreDuringBuilds: true,
-//   },
-// }
-
-// const withLess = require('@zeit/next-less')
-//
-// module.exports = withLess({
-//   lessLoaderOptions: {
-//     javascriptEnabled: true,
-//     modifyVars: {
-//       // 粉红色
-//       '@primary-color': '#FF69B4',
-//     },
-//   },
-// })
-
 const withMDX = require('@next/mdx')({
   extension: /\.mdx?$/,
   options: {
@@ -36,8 +16,7 @@ const nextConfig = {
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   // Configure pageExtensions to include md and mdx
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
-  experimental: {
-  },
+  experimental: {},
   // fix all before production. Now it slow the develop speed.
   eslint: {
     // Warning: This allows production builds to successfully complete even if
@@ -48,15 +27,6 @@ const nextConfig = {
   typescript: {
     // https://nextjs.org/docs/api-reference/next.config.js/ignoring-typescript-errors
     ignoreBuildErrors: true,
-  },
-  // 移除 redirects，由 middleware 统一处理根路径重定向
-  async rewrites() {
-    return [
-      {
-        source: '/console/api/:path*',
-        destination: 'https://dataconnector.step2.com.cn/console/api/:path*',
-      },
-    ]
   },
   output: 'standalone',
   // 关闭模拟立即卸载组件和重新挂载组件
