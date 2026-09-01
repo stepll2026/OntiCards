@@ -101,15 +101,15 @@ open http://localhost:3000
 ### ⚙️ 后端技术栈
 
 
-| 分类     | 技术                                                            | 说明                    |
-| ------ | ------------------------------------------------------------- | --------------------- |
-| 核心框架   | Flask 2.3.3, Flask-RESTful, Gunicorn 21.2.0                   | RESTful API + WSGI服务器 |
-| 数据库    | PostgreSQL 10+, SQLAlchemy 2.0.36                             | 主数据库 + ORM            |
-| 向量库    | Weaviate 4.20.4                                               | 语义向量存储与检索             |
-| AI/LLM | 通义千问、DeepSeek、智谱AI、GPT、Claude、Azure OpenAI等                   | 支持 Embedding/Rerank   |
-| 任务队列   | Celery 5.4.0 + RabbitMQ 5.3.1, APScheduler 3.10.4             | 异步任务 + 定时调度           |
-| 数据处理   | pandas 2.0.3, numpy 1.24.4, openpyxl, python-docx、LibreOffice | 数据处理 + 文档生成           |
-| 安全     | cryptography 44.0.2, PyJWT 2.9.0, passlib/bcrypt              | AES加密 + JWT + 密码哈希    |
+| 分类     | 技术                                                         | 说明                     |
+| -------- | ------------------------------------------------------------ | ------------------------ |
+| 核心框架 | Flask 2.3.3, Flask-RESTful, Gunicorn 21.2.0                  | RESTful API + WSGI服务器 |
+| 数据库   | PostgreSQL 10+, SQLAlchemy 2.0.36                            | 主数据库 + ORM           |
+| 向量库   | Weaviate 4.20.4                                              | 语义向量存储与检索       |
+| AI/LLM   | 通义千问、DeepSeek、智谱AI、GPT、Claude、Azure OpenAI等      | 支持 Embedding/Rerank    |
+| 任务队列 | APScheduler 3.10.4                                           | 定时任务                 |
+| 数据处理 | pandas 2.0.3, numpy 1.24.4, openpyxl, python-docx、LibreOffice | 数据处理 + 文档生成      |
+| 安全     | cryptography 44.0.2, PyJWT 2.9.0, passlib/bcrypt             | AES加密 + JWT + 密码哈希 |
 
 
 ### 🗄️ 支持的数据源
