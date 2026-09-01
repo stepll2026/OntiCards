@@ -2,7 +2,7 @@
 # Base Stage: 基础镜像定义
 # ============================================================
 FROM node:20.11-alpine3.19 AS base
-LABEL maintainer="takatost@gmail.com"
+LABEL maintainer="stepii2024@gmail.com"
 
 # 安装时区数据（所有阶段共享）
 RUN apk add --no-cache tzdata
