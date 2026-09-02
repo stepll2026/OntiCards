@@ -38,7 +38,7 @@ OntiCards 是面向企业的 AI 数据中枢，**不只是简单 NL2SQL**。
 ```bash
 # 1. Clone repo
 git clone https://github.com/stepll2026/OntiCards.git
-cd onticards
+cd OntiCards
 
 # 2. 一键启动
 docker-compose up -d
