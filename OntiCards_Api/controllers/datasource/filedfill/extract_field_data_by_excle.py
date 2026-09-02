@@ -21,6 +21,7 @@ from controllers.datacard.datacard_generator import generate_datacards_for_schem
 from controllers.datasource.filedfill.fill_field_by_llm import enrich_table_before_insert, check_tables_health_batch
 from controllers.datasource.filedfill.fill_filed_comment_excel import fill_field_comments_from_excel
 from controllers.weaviate_db_tool.weaviate_api import batch_delete_by_uuids
+from core.connect_info_encryptor import get_connect_info_hash, decrypt_connect_info, is_encrypted
 from extensions.ext_database import db
 from models.user_datasource_schema import UserDatasourceSchema
 from models.datacards_datasource import DataCardDataSource
@@ -35,9 +36,9 @@ from models.datacards_datasource import DataCardDataSource
 
 # 基础配置
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # 回到 datasource 目录
-UPLOAD_FOLDER = os.path.join(BASE_DIR, "yploads")             # 固定存到项目内的 yploads
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "yploads")  # 固定存到项目内的 yploads
 # 允许的文件，后面做拓展，目前支持excel
-ALLOWED_EXTENSIONS = {"xlsx","xls"}
+ALLOWED_EXTENSIONS = {"xlsx", "xls"}
 MAX_FILE_SIZE = 20 * 1024 * 1024  # 最大20 MB
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -46,9 +47,12 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 extract_field_data_excel = Blueprint('extract_field_data_excel', __name__)
 api = Api(extract_field_data_excel)
 
+
 # 校验文件类型是否合法
 def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
 # 校验文件大小
 def too_large(stream) -> bool:
     """仅本接口的大小限制，不影响全局。"""
@@ -83,6 +87,7 @@ def convert_excel_dict(input_dict: dict) -> dict:
                 output_dict[key] = value
     return output_dict
 
+
 def is_empty(x):
     """把 None、NaN、''、'   ' 都视为空"""
     if x is None:
@@ -96,11 +101,13 @@ def is_empty(x):
     # 其它转成字符串再判断空白
     return str(x).strip() == ""
 
+
 def first_index(lst, predicate, start=0):
     for i in range(start, len(lst)):
         if predicate(lst[i]):
             return i
     return -1
+
 
 def gap_after_anchor_to_next_nonempty(lst, anchor_marker):
     """从锚点（如 'TDTPRD'）后一行起，直到下一个非空值之间的长度"""
@@ -115,6 +122,7 @@ def gap_after_anchor_to_next_nonempty(lst, anchor_marker):
     if j == -1:
         return len(lst) - i - 1
     return max(0, j - i - 1)
+
 
 # 获取字段内容
 def get_field_content_for_excel(file_path: str, sheet_name: str, field_data: dict, schema: dict):
@@ -238,8 +246,10 @@ def get_field_content_for_excel(file_path: str, sheet_name: str, field_data: dic
         print(json.dumps(results, ensure_ascii=False, indent=2))
         return results
 
+
 # 更新数据库中对应的数据库表字段描述
-def update_schema_text(fill_rs_dict: dict, rs_table_names: list, user_id: str, connect_info: str, original_schema_dict: dict):
+def update_schema_text(fill_rs_dict: dict, rs_table_names: list, user_id: str, connect_info: str,
+                       original_schema_dict: dict):
     """
     遍历 rs_table_names，匹配 fill_rs 中的对象，更新数据库中 schema_text 字段
     :param fill_rs_dict: {'tables':[{'table_name': 'DDTCCY1', ...}, {...}], 'views':[...]}
@@ -285,11 +295,39 @@ def update_schema_text(fill_rs_dict: dict, rs_table_names: list, user_id: str, c
 
     # 先构建一个 {table_name: obj} 的映射，加快匹配
     table_to_obj = {obj["table_name"]: obj for obj in fill_rs if "table_name" in obj}
+
     # ORM 查询符合条件的记录
-    records = UserDatasourceSchema.query.filter_by(
-        user_id=user_id,
-        connect_info=connect_info
-    ).all()
+    # 重要：UserDatasourceSchema.connect_info 已加密存储，必须用 connect_info_hash 稳定哈希匹配。
+    # 同时兼容 connect_info 可能为密文（前端回传）或明文（直接传 DSN）两种情况：
+    #   - 优先用传入明文计算 hash 直接匹配（性能最佳）
+    #   - 若未命中，再尝试用解密后的明文计算 hash（兼容前端回传密文的链路）
+    def _records_by_hash(user_id, connect_info):
+        if not connect_info:
+            return []
+        # 直接用入参明文计算 hash
+        direct_hash = get_connect_info_hash(connect_info)
+        recs = UserDatasourceSchema.query.filter_by(
+            user_id=user_id,
+            connect_info_hash=direct_hash
+        ).all()
+        if recs:
+            return recs
+        # 入参可能是密文，解密后再算一次 hash 兜底
+        try:
+            plain = decrypt_connect_info(connect_info) if is_encrypted(connect_info) else connect_info
+        except Exception:
+            plain = connect_info
+        if plain == connect_info:
+            return recs
+        plain_hash = get_connect_info_hash(plain)
+        if plain_hash == direct_hash:
+            return recs
+        return UserDatasourceSchema.query.filter_by(
+            user_id=user_id,
+            connect_info_hash=plain_hash
+        ).all()
+
+    records = _records_by_hash(user_id, connect_info)
 
     # 保存填充后的表对象，用于后续对比
     enriched_tables = []
@@ -385,7 +423,7 @@ def update_schema_text(fill_rs_dict: dict, rs_table_names: list, user_id: str, c
         record.schema_text = json.dumps(enriched_obj, ensure_ascii=False)
 
     db.session.commit()
-    
+
     # 在填充后，再次进行健康检查，对比填充前后的状态
     health_check_result_after = None
     if fill_rs and enriched_tables:
@@ -487,6 +525,7 @@ def update_schema_text(fill_rs_dict: dict, rs_table_names: list, user_id: str, c
         "table_change_details": table_change_details
     }
 
+
 class ExtractFieldDataFromExcel(Resource):
     """
         请求参数:
@@ -506,7 +545,7 @@ class ExtractFieldDataFromExcel(Resource):
     """
 
     @login_required
-    def post(self) :
+    def post(self):
         # 1、接收文件
         if "file" not in request.files:
             return {"error": "No file part"}, 400
@@ -564,10 +603,32 @@ class ExtractFieldDataFromExcel(Resource):
         # (1)先根据 用户id+数据库连接信息 获取目标库中的所有表信息和视图信息
         tables = []
         views = []
-        for record in UserDatasourceSchema.query.filter_by(
-                user_id=flask_login.current_user.id,
-                connect_info=connect_info
-        ).all():
+        # 重要：UserDatasourceSchema.connect_info 已加密存储，AES-GCM nonce 随机，密文不可等值比较。
+        # 统一改用 connect_info_hash 稳定哈希匹配。
+        connect_info_hash = get_connect_info_hash(connect_info) if connect_info else ''
+        records_q = UserDatasourceSchema.query.filter_by(
+            user_id=flask_login.current_user.id,
+            connect_info_hash=connect_info_hash
+        )
+        # 回退：若 hash 未命中，再用解密后的明文 connect_info 匹配（兼容历史未加密数据 / 密文入参）
+        records = records_q.all()
+        if not records and connect_info:
+            try:
+                plain = decrypt_connect_info(connect_info) if is_encrypted(connect_info) else connect_info
+            except Exception:
+                plain = connect_info
+            if plain and plain != connect_info:
+                records = UserDatasourceSchema.query.filter_by(
+                    user_id=flask_login.current_user.id,
+                    connect_info_hash=get_connect_info_hash(plain)
+                ).all()
+            if not records and plain:
+                # 兜底：直接用明文等值匹配（覆盖历史 connect_info 未加密的数据）
+                records = UserDatasourceSchema.query.filter_by(
+                    user_id=flask_login.current_user.id,
+                    connect_info=plain
+                ).all()
+        for record in records:
             s = record.schema_text
             if not s:
                 continue
@@ -592,8 +653,8 @@ class ExtractFieldDataFromExcel(Resource):
         original_schema_dict = copy.deepcopy(schema_dict)
 
         # (2)获取字段提取结果【多个obj的列表】
-        excel_filed_datas = get_field_content_for_excel(save_path, sheet_name, field_data,schema_dict)
-        print("字段提取结果:",excel_filed_datas) # 只含目标表的字段描述
+        excel_filed_datas = get_field_content_for_excel(save_path, sheet_name, field_data, schema_dict)
+        print("字段提取结果:", excel_filed_datas)  # 只含目标表的字段描述
 
         # 收集Excel中的所有表名
         excel_table_names = [obj.get("table_name") for obj in excel_filed_datas if obj.get("table_name")]
@@ -609,7 +670,8 @@ class ExtractFieldDataFromExcel(Resource):
         unmatched_tables_detail = []
 
         # 获取数据库中所有表名（忽略大小写）
-        db_table_names_lower = {t.get("table_name", "").strip().lower(): t.get("table_name") for t in (tables + views) if t.get("table_name")}
+        db_table_names_lower = {t.get("table_name", "").strip().lower(): t.get("table_name") for t in (tables + views)
+                                if t.get("table_name")}
 
         for excel_table_name in excel_table_names:
             excel_name_lower = excel_table_name.strip().lower()
@@ -627,17 +689,39 @@ class ExtractFieldDataFromExcel(Resource):
 
         ids = []  # 收集目标数据表的id，用以后续查数据卡片库获取w_uuid
         # 根据 rs_table_names 中的表名查询数据库，获取表名对应的id
+        # 重要：connect_info 已加密存储，统一用 connect_info_hash 稳定哈希匹配
+        _ci_hash = get_connect_info_hash(connect_info) if connect_info else ''
+        # 同时准备解密后的明文 hash（兼容 connect_info 是密文的链路）
+        try:
+            _ci_plain = decrypt_connect_info(connect_info) if is_encrypted(connect_info) else connect_info
+        except Exception:
+            _ci_plain = connect_info
+        _ci_plain_hash = get_connect_info_hash(_ci_plain) if (_ci_plain and _ci_plain != connect_info) else _ci_hash
         for table_name in rs_table_names:
             record = UserDatasourceSchema.query.filter_by(
                 user_id=flask_login.current_user.id,
-                connect_info=connect_info,
+                connect_info_hash=_ci_hash,
                 table_name=table_name
             ).first()
+            if not record and _ci_plain_hash != _ci_hash:
+                record = UserDatasourceSchema.query.filter_by(
+                    user_id=flask_login.current_user.id,
+                    connect_info_hash=_ci_plain_hash,
+                    table_name=table_name
+                ).first()
+            if not record and _ci_plain:
+                # 兜底：明文等值匹配（兼容历史数据）
+                record = UserDatasourceSchema.query.filter_by(
+                    user_id=flask_login.current_user.id,
+                    connect_info=_ci_plain,
+                    table_name=table_name
+                ).first()
             if record:
                 print(f"已找到表名: {table_name} 对应的记录 ID: {record.id}")
                 ids.append(str(record.id))
 
-        update_rs = update_schema_text(fill_rs, rs_table_names, flask_login.current_user.id, connect_info, original_schema_dict)
+        update_rs = update_schema_text(fill_rs, rs_table_names, flask_login.current_user.id, connect_info,
+                                       original_schema_dict)
         print("更新数据库结果:", update_rs)
 
         # (3)用最新的schema结构数据生成卡片并更新数据库和向量库【删除旧的再新增】
@@ -654,16 +738,36 @@ class ExtractFieldDataFromExcel(Resource):
         # 删除数据卡片库中已生成的卡片和向量库中的数据
         delete_db_rs = delete_records_by_ids(ids)
         print("删除数据卡片库中已生成的卡片结果:", delete_db_rs)
-        delete_w_rs = batch_delete_by_uuids(w_uuids,class_name=flask_login.current_user.weaviate_class_name)
+        delete_w_rs = batch_delete_by_uuids(w_uuids, class_name=flask_login.current_user.weaviate_class_name)
         print("删除向量库中的数据结果:", delete_w_rs)
 
         # 回查 connect_name 和 datasource_id（同一 connect_info 下应一致）
         from models.datasource_infos import DatasourceInfo
+        # 重要：DatasourceInfo.connect_info 已加密存储，必须用 connect_info_hash 稳定哈希匹配
+        _ds_ci_hash = get_connect_info_hash(connect_info) if connect_info else ''
         datasource = (
             db.session.query(DatasourceInfo)
-            .filter_by(user_id=flask_login.current_user.id, connect_info=connect_info)
+            .filter_by(user_id=flask_login.current_user.id, connect_info_hash=_ds_ci_hash)
             .first()
         )
+        if not datasource and connect_info:
+            try:
+                _ds_plain = decrypt_connect_info(connect_info) if is_encrypted(connect_info) else connect_info
+            except Exception:
+                _ds_plain = connect_info
+            if _ds_plain and _ds_plain != connect_info:
+                datasource = (
+                    db.session.query(DatasourceInfo)
+                    .filter_by(user_id=flask_login.current_user.id, connect_info_hash=get_connect_info_hash(_ds_plain))
+                    .first()
+                )
+            if not datasource and _ds_plain:
+                # 兜底：明文等值匹配（兼容历史数据）
+                datasource = (
+                    db.session.query(DatasourceInfo)
+                    .filter_by(user_id=flask_login.current_user.id, connect_info=_ds_plain)
+                    .first()
+                )
         connect_name = datasource.connect_name if datasource else None
         datasource_id = str(datasource.id) if datasource else None
 
@@ -716,5 +820,6 @@ class ExtractFieldDataFromExcel(Resource):
         }
         # 让 Flask-RESTful 自己序列化
         return result, 200
+
 
 api.add_resource(ExtractFieldDataFromExcel, '/extract_field_data_excel')

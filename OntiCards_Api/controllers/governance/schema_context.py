@@ -206,11 +206,37 @@ def get_schema_for_target_table(
     # ============================================
     # 策略2: 从 UserDatasourceSchema 获取
     # ============================================
-    db_schema = UserDatasourceSchema.query.filter_by(
-        user_id=user_id,
-        connect_info=datasource.connect_info,
-        table_name=table_name
-    ).first()
+    # 重要：connect_info 已加密存储（AES-GCM，nonce 随机，密文不可等值比较），
+    # 必须用 connect_info_hash（稳定哈希）匹配。
+    from core.connect_info_encryptor import get_connect_info_hash
+
+    connect_info_hash = get_connect_info_hash(datasource.connect_info) if datasource.connect_info else ''
+    db_schema = None
+    if connect_info_hash:
+        hash_query = UserDatasourceSchema.query.filter_by(
+            user_id=user_id,
+            connect_info_hash=connect_info_hash,
+            table_name=table_name
+        )
+        if datasource.schema_name is not None:
+            hash_query = hash_query.filter_by(schema_name=datasource.schema_name)
+        db_schema = hash_query.first()
+
+    # 回退：hash 未命中或为空时，尝试用解密后的明文 connect_info 做兼容匹配
+    if not db_schema and datasource.connect_info:
+        from core.connect_info_encryptor import decrypt_connect_info, is_encrypted
+        try:
+            connect_info_plain = decrypt_connect_info(datasource.connect_info) if is_encrypted(datasource.connect_info) else datasource.connect_info
+        except Exception:
+            connect_info_plain = datasource.connect_info
+        fallback_query = UserDatasourceSchema.query.filter_by(
+            user_id=user_id,
+            connect_info=connect_info_plain,
+            table_name=table_name
+        )
+        if datasource.schema_name is not None:
+            fallback_query = fallback_query.filter_by(schema_name=datasource.schema_name)
+        db_schema = fallback_query.first()
 
     if db_schema and db_schema.schema_text:
         try:
@@ -382,10 +408,34 @@ def get_schema_from_datasource(datasource_id: str, user_id: str) -> List[TableSc
     # ============================================
     # 步骤0: 预先收集所有表的 is_view 信息
     # ============================================
-    db_schemas = UserDatasourceSchema.query.filter_by(
-        user_id=user_id,
-        connect_info=datasource.connect_info
-    ).all()
+    # 重要：connect_info 已加密存储，必须用 connect_info_hash 匹配。
+    from core.connect_info_encryptor import get_connect_info_hash
+
+    connect_info_hash = get_connect_info_hash(datasource.connect_info) if datasource.connect_info else ''
+    db_schemas = []
+    if connect_info_hash:
+        hash_query = UserDatasourceSchema.query.filter_by(
+            user_id=user_id,
+            connect_info_hash=connect_info_hash
+        )
+        if datasource.schema_name is not None:
+            hash_query = hash_query.filter_by(schema_name=datasource.schema_name)
+        db_schemas = hash_query.all()
+
+    # 回退：hash 未命中或为空时，尝试明文匹配
+    if not db_schemas and datasource.connect_info:
+        from core.connect_info_encryptor import decrypt_connect_info, is_encrypted
+        try:
+            connect_info_plain = decrypt_connect_info(datasource.connect_info) if is_encrypted(datasource.connect_info) else datasource.connect_info
+        except Exception:
+            connect_info_plain = datasource.connect_info
+        fallback_query = UserDatasourceSchema.query.filter_by(
+            user_id=user_id,
+            connect_info=connect_info_plain
+        )
+        if datasource.schema_name is not None:
+            fallback_query = fallback_query.filter_by(schema_name=datasource.schema_name)
+        db_schemas = fallback_query.all()
 
     # 构建表名 -> is_view 的映射
     table_is_view_map = {}

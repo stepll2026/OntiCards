@@ -622,13 +622,13 @@ class RuleListApi(Resource):
         return resp(data=rule.to_dict())
 
     def _generate_preview_sql(
-        self,
-        table_name: str,
-        column_name: str,
-        condition_expr: str,
-        rule_type: str,
-        schema: str = None,
-        db_type: str = 'postgresql'
+            self,
+            table_name: str,
+            column_name: str,
+            condition_expr: str,
+            rule_type: str,
+            schema: str = None,
+            db_type: str = 'postgresql'
     ) -> str:
         """
         生成预览SQL（用于手动模式和模板模式）
@@ -702,12 +702,12 @@ class RuleListApi(Resource):
         return f'SELECT COUNT(*) as total_count FROM {quoted_table}'
 
     def _generate_composite_preview_sql(
-        self,
-        table_name: str,
-        conditions: list,
-        condition_mode: str = 'AND',
-        schema: str = None,
-        db_type: str = 'postgresql'
+            self,
+            table_name: str,
+            conditions: list,
+            condition_mode: str = 'AND',
+            schema: str = None,
+            db_type: str = 'postgresql'
     ) -> str:
         """
         生成复合条件的预览SQL（用于手动模式的多条件规则）
@@ -763,15 +763,15 @@ class RuleListApi(Resource):
         return f'SELECT COUNT(*) as total_count, SUM(CASE WHEN {combined_condition} THEN 1 ELSE 0 END) as failed_count FROM {quoted_table}'
 
     def _generate_ai_preview_sql(
-        self,
-        target_table: str,
-        target_column: str,
-        condition_expr: str,
-        conditions: list,
-        condition_mode: str,
-        rule_type: str,
-        schema: str = None,
-        db_type: str = 'postgresql'
+            self,
+            target_table: str,
+            target_column: str,
+            condition_expr: str,
+            conditions: list,
+            condition_mode: str,
+            rule_type: str,
+            schema: str = None,
+            db_type: str = 'postgresql'
     ) -> str:
         """
         生成AI模式下的预览SQL（用于自然语言模式创建规则时自动生成sql_text）
@@ -1429,7 +1429,6 @@ api.add_resource(TemplateImportApi, '/templates/import')
 api.add_resource(ReportListApi, '/reports')
 api.add_resource(ReportDetailApi, '/reports/<string:report_id>')
 
-
 # ==================== 报告导出/下载 API ====================
 
 from flask import send_file, current_app, Response
@@ -1448,9 +1447,9 @@ class ReportDownloadApi(Resource):
         from flask_login import current_user
         from flask import request
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"[环节四 - 下载报告] 开始下载 | report_id={report_id}")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
         # 获取可选的 file_id 参数
         file_id = request.args.get('file_id')
@@ -1464,7 +1463,8 @@ class ReportDownloadApi(Resource):
             print(f"[环节四 - 下载报告] 报告不存在 | report_id={report_id}")
             return resp(code=404, msg="报告不存在", http_status=404)
 
-        print(f"[环节四 - 下载报告] 报告查询成功 | report_name={report.report_name}, exported_file_name={report.exported_file_name}, file_status={report.file_status}")
+        print(
+            f"[环节四 - 下载报告] 报告查询成功 | report_name={report.report_name}, exported_file_name={report.exported_file_name}, file_status={report.file_status}")
 
         # 如果指定了 file_id，下载对应文件
         if file_id:
@@ -1768,10 +1768,10 @@ class GovernanceRuleExecutionApi(Resource):
         if not datasource_id:
             return resp(code=400, msg="数据源ID不能为空", http_status=400)
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"[环节二 - 规则执行] 开始执行 | datasource_id={datasource_id}")
         print(f"[环节二 - 规则执行] 请求参数: {data}")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
         datasource = DatasourceInfo.query.filter_by(
             id=datasource_id,
@@ -1905,7 +1905,8 @@ class GovernanceRuleExecutionApi(Resource):
                     max_workers=10,
                     enable_profiling=True
                 )
-                print(f"[环节二 - 规则执行] 表关系发现完成: {relation_discovery_result.get('relationships_count', 0)} 个关系")
+                print(
+                    f"[环节二 - 规则执行] 表关系发现完成: {relation_discovery_result.get('relationships_count', 0)} 个关系")
 
                 # 关联本次关系结果到治理报告
                 report_uuid = uuid_module.UUID(str(report.id))
@@ -2001,7 +2002,8 @@ class GovernanceRuleExecutionApi(Resource):
         report.execution_response = _sanitize(response_data)
         db.session.commit()
 
-        print(f"[环节二 - 规则执行] 报告更新完成 | quality_score={stats['quality_score']}, grade={stats['grade']}, rules_applied={len(results)}")
+        print(
+            f"[环节二 - 规则执行] 报告更新完成 | quality_score={stats['quality_score']}, grade={stats['grade']}, rules_applied={len(results)}")
         print(f"[环节二 - 规则执行] 执行完毕 | report_id={report.id}\n")
 
         return resp(data=response_data)
@@ -2049,10 +2051,10 @@ class GovernanceRuleExecutionApi(Resource):
         return connection_string
 
     def _tag_relation_results_with_report(
-        self,
-        report_uuid,
-        job_uuid,
-        datasource_id
+            self,
+            report_uuid,
+            job_uuid,
+            datasource_id
     ):
         """
         将本次关系盘点产生的 table_relationship / table_relationship_card 记录
@@ -2231,9 +2233,9 @@ class GovernanceReportGenerateApi(Resource):
         from flask_login import current_user
         from controllers.governance.libreoffice_exporter import LibreOfficeExporter
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"[环节三 - 生成报告] 开始生成报告文档")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
         try:
             data = request.get_json(force=True, silent=True)
@@ -2254,7 +2256,8 @@ class GovernanceReportGenerateApi(Resource):
         valid_formats = ['docx', 'pdf', 'xlsx', 'md']
         if export_format not in valid_formats:
             print(f"[环节三 - 生成报告] 不支持的格式: {export_format}")
-            return resp(code=400, msg=f"不支持的格式: {export_format}，可选值: {', '.join(valid_formats)}", http_status=400)
+            return resp(code=400, msg=f"不支持的格式: {export_format}，可选值: {', '.join(valid_formats)}",
+                        http_status=400)
 
         print(f"[环节三 - 生成报告] 参数 | report_id={report_id}, format={export_format}")
 
@@ -2299,14 +2302,16 @@ class GovernanceReportGenerateApi(Resource):
                 exporter = MarkdownExporter(user_id=user_id)
                 print(f"[环节三 - 生成报告] 开始导出 Markdown 格式...")
                 export_result = exporter.export(report, results, fmt='md', custom_file_name=custom_file_name)
-                print(f"[环节三 - 生成报告] Markdown 生成成功 | mode={export_result['mode']}, file_path={export_result['file_path']}")
+                print(
+                    f"[环节三 - 生成报告] Markdown 生成成功 | mode={export_result['mode']}, file_path={export_result['file_path']}")
             else:
                 from controllers.governance.libreoffice_exporter import LibreOfficeExporter
                 print(f"[环节三 - 生成报告] 初始化 LibreOfficeExporter...")
                 exporter = LibreOfficeExporter(user_id=user_id)
                 print(f"[环节三 - 生成报告] 开始导出 | format={export_format}")
                 export_result = exporter.export(report, results, fmt=export_format, custom_file_name=custom_file_name)
-                print(f"[环节三 - 生成报告] 文档生成成功 | mode={export_result['mode']}, file_path={export_result['file_path']}")
+                print(
+                    f"[环节三 - 生成报告] 文档生成成功 | mode={export_result['mode']}, file_path={export_result['file_path']}")
         except Exception as e:
             report.file_status = 'failed'
             report.file_error_msg = str(e)
@@ -2639,8 +2644,10 @@ class RuleParseApi(Resource):
                         if col:
                             inferred_columns.append({'column': col, 'reason': (item.get('reason') or '').strip()})
 
-        print(f"[INFO] /governance/rules/parse 入口参数: user_input={user_input}, selected_table={selected_table}, target_table={target_table_input}, selected_column={selected_column}, target_column={target_column_input}, target_columns={target_columns_str}, inferred_columns={inferred_columns}")
-        print(f"[INFO] schemas 数量: {len(schemas) if schemas else 0}, final_table={final_table}, final_column={final_column}, final_columns={final_columns}")
+        print(
+            f"[INFO] /governance/rules/parse 入口参数: user_input={user_input}, selected_table={selected_table}, target_table={target_table_input}, selected_column={selected_column}, target_column={target_column_input}, target_columns={target_columns_str}, inferred_columns={inferred_columns}")
+        print(
+            f"[INFO] schemas 数量: {len(schemas) if schemas else 0}, final_table={final_table}, final_column={final_column}, final_columns={final_columns}")
 
         # 情况1：无目标表 → 全局规则
         if not final_table:
@@ -2724,8 +2731,9 @@ class RuleParseApi(Resource):
                 parsed, alternatives = self._parse_column_rule(
                     user_input, schemas, actual_table, actual_column, parser
                 )
-                return self._build_response(parsed, alternatives, db_type, 'rule_preview', schema=datasource.schema_name)
-        
+                return self._build_response(parsed, alternatives, db_type, 'rule_preview',
+                                            schema=datasource.schema_name)
+
         # 情况5：表不存在
         return resp(data={
             'success': False,
@@ -2740,13 +2748,13 @@ class RuleParseApi(Resource):
         })
 
     def _get_single_table_schema(
-        self,
-        datasource_id: str,
-        user_id: str,
-        table_name: str,
-        connect_info: str,
-        schema_name: str = None,
-        db_type: str = None
+            self,
+            datasource_id: str,
+            user_id: str,
+            table_name: str,
+            connect_info: str,
+            schema_name: str = None,
+            db_type: str = None
     ) -> tuple:
         """
         互斥获取单个表的 Schema 信息
@@ -2772,13 +2780,40 @@ class RuleParseApi(Resource):
             return schema, SchemaSource.DATA_CARD
 
         # 策略2: 从 UserDatasourceSchema 获取
-        # 注意：connect_info 在数据库中存储的是加密值，所以查询时用加密值
+        # 重要：DatasourceInfo.connect_info 与 UserDatasourceSchema.connect_info 均已加密存储，
+        #       AES-GCM 每次加密 nonce 不同，密文不可直接等值比较。
+        #       必须改用 connect_info_hash（SHA256 稳定哈希）匹配。
         from models.user_datasource_schema import UserDatasourceSchema
-        db_schema = UserDatasourceSchema.query.filter_by(
-            user_id=user_id,
-            connect_info=connect_info,  # 参数已是加密值
-            table_name=table_name
-        ).first()
+        from core.connect_info_encryptor import get_connect_info_hash
+
+        db_schema = None
+        connect_info_hash = get_connect_info_hash(connect_info) if connect_info else ''
+        if connect_info_hash:
+            hash_query = UserDatasourceSchema.query.filter_by(
+                user_id=user_id,
+                connect_info_hash=connect_info_hash,
+                table_name=table_name
+            )
+            if schema_name is not None:
+                hash_query = hash_query.filter_by(schema_name=schema_name)
+            db_schema = hash_query.first()
+
+        # 回退：hash 未命中或为空时，尝试用解密后的明文 connect_info 做兼容匹配
+        if not db_schema and connect_info:
+            from core.connect_info_encryptor import decrypt_connect_info, is_encrypted
+            try:
+                connect_info_plain = decrypt_connect_info(connect_info) if is_encrypted(connect_info) else connect_info
+            except Exception:
+                connect_info_plain = connect_info
+
+            fallback_query = UserDatasourceSchema.query.filter_by(
+                user_id=user_id,
+                connect_info=connect_info_plain,
+                table_name=table_name
+            )
+            if schema_name is not None:
+                fallback_query = fallback_query.filter_by(schema_name=schema_name)
+            db_schema = fallback_query.first()
 
         if db_schema and db_schema.schema_text:
             try:
@@ -3069,7 +3104,8 @@ class RuleParseApi(Resource):
         # ============================================
         # 先检测是否涉及多列关系比较（如"结束时间必须晚于开始时间"）
         # ============================================
-        if parser and hasattr(parser, '_is_multi_column_relation_text') and parser._is_multi_column_relation_text(user_input):
+        if parser and hasattr(parser, '_is_multi_column_relation_text') and parser._is_multi_column_relation_text(
+                user_input):
             multi_col_result = parser._parse_multi_column_relation(user_input, schemas)
             if multi_col_result is not None and multi_col_result[0] is not None:
                 parsed = multi_col_result[0]
@@ -3092,7 +3128,8 @@ class RuleParseApi(Resource):
             if result:
                 # result = (parsed, candidates)，parsed 总是 None（未确定），candidates 是候选表列表
                 _, table_candidates = result
-                print(f"[DEBUG] _parse_global_with_llm: table_candidates={table_candidates}, type={type(table_candidates)}")
+                print(
+                    f"[DEBUG] _parse_global_with_llm: table_candidates={table_candidates}, type={type(table_candidates)}")
                 if table_candidates:
                     print(f"[INFO] _parse_global_with_llm: 解析出 {len(table_candidates)} 个候选表")
                     # parsed=None 表示尚未确定；表候选列表进 alternatives
@@ -3185,7 +3222,7 @@ class RuleParseApi(Resource):
         for i, schema in enumerate(schemas):
             # 表类型标识
             obj_type = "视图" if schema.is_view else "表"
-            lines.append(f"--- {obj_type} {i+1}: {schema.table_name} ---")
+            lines.append(f"--- {obj_type} {i + 1}: {schema.table_name} ---")
 
             # 数据卡片核心信息
             if schema.card_topic:
@@ -3311,7 +3348,7 @@ class RuleParseApi(Resource):
                     table_name = item.get('table_name', '')
                     confidence = item.get('confidence', 0.5)
                     reasoning = item.get('reasoning', '')
-                    print(f"[DEBUG] 处理第 {idx+1} 个表: {table_name}")
+                    print(f"[DEBUG] 处理第 {idx + 1} 个表: {table_name}")
 
                     # 查找对应的 schema 获取更多信息
                     target_schema = None
@@ -3356,12 +3393,14 @@ class RuleParseApi(Resource):
                     # 从 schema 中补充 data_type 和 comment
                     if target_schema:
                         col_name_to_meta = {}
-                        print(f"[DEBUG] target_schema.columns type: {type(target_schema.columns)}, value: {target_schema.columns}")
+                        print(
+                            f"[DEBUG] target_schema.columns type: {type(target_schema.columns)}, value: {target_schema.columns}")
                         for col in (target_schema.columns or []):
                             col_n = col.name if hasattr(col, 'name') else col.get('name', '')
                             if col_n:
                                 col_name_to_meta[col_n.lower()] = {
-                                    'data_type': (col.data_type if hasattr(col, 'data_type') else col.get('data_type', '')),
+                                    'data_type': (
+                                        col.data_type if hasattr(col, 'data_type') else col.get('data_type', '')),
                                     'comment': (col.comment if hasattr(col, 'comment') else col.get('comment', ''))
                                 }
                         for ic in inferred_columns:
@@ -3385,7 +3424,7 @@ class RuleParseApi(Resource):
                     })
                 except Exception as e:
                     import traceback
-                    print(f"[WARN] 处理第 {idx+1} 个表 ({item.get('table_name', '')}) 时出错: {str(e)}")
+                    print(f"[WARN] 处理第 {idx + 1} 个表 ({item.get('table_name', '')}) 时出错: {str(e)}")
                     traceback.print_exc()
                     continue
 
@@ -3404,7 +3443,8 @@ class RuleParseApi(Resource):
             print("[DEBUG] _parse_global_llm_response: 返回 (None, []) — 外层 except")
             return None, []
 
-    def _parse_table_rule(self, user_input: str, schemas: list, table_name: str, parser, inferred_columns=None) -> tuple:
+    def _parse_table_rule(self, user_input: str, schemas: list, table_name: str, parser,
+                          inferred_columns=None) -> tuple:
         """解析表级规则（有目标表，推断列）
 
         Args:
@@ -3415,7 +3455,8 @@ class RuleParseApi(Resource):
             - stage = 'multi_column_selection' 表示多列候选，需要用户确认
             - stage = 'table_selection'        表示正常表级规则解析
         """
-        print(f"[INFO] _parse_table_rule: user_input={user_input}, table={table_name}, inferred_columns={inferred_columns}")
+        print(
+            f"[INFO] _parse_table_rule: user_input={user_input}, table={table_name}, inferred_columns={inferred_columns}")
         parsed, alternatives, stage = parser.parse_for_table(
             user_input, schemas, table_name, inferred_columns=inferred_columns
         )
@@ -3423,8 +3464,8 @@ class RuleParseApi(Resource):
         return parsed, alternatives, stage
 
     def _parse_column_rule(
-        self, user_input: str, schemas: list,
-        table_name: str, column_name: str, parser
+            self, user_input: str, schemas: list,
+            table_name: str, column_name: str, parser
     ) -> tuple:
         """解析列级规则（有目标表和列）
 
@@ -3446,7 +3487,8 @@ class RuleParseApi(Resource):
                         for col in (schema.columns or []):
                             cn = col.name if hasattr(col, 'name') else col.get('name', '')
                             if cn.lower() == col_name_lower:
-                                col_comment_cn = (col.comment if hasattr(col, 'comment') else col.get('comment', '')).strip()
+                                col_comment_cn = (
+                                    col.comment if hasattr(col, 'comment') else col.get('comment', '')).strip()
                                 break
 
                 relevant_parts = []
@@ -3496,14 +3538,14 @@ class RuleParseApi(Resource):
         return parsed, alternatives
 
     def _build_multi_preview(
-        self,
-        user_input: str,
-        schemas: list,
-        table_name: str,
-        column_names: list,
-        parser,
-        db_type: str,
-        schema: str = None
+            self,
+            user_input: str,
+            schemas: list,
+            table_name: str,
+            column_names: list,
+            parser,
+            db_type: str,
+            schema: str = None
     ) -> dict:
         """多列批量预览：为每个列分别生成规则配置
 
@@ -3520,7 +3562,8 @@ class RuleParseApi(Resource):
         """
         from controllers.governance.dialect_adapter import DialectAdapter
 
-        print(f"[INFO] _build_multi_preview: user_input={user_input}, table={table_name}, columns={column_names}, schema={schema}")
+        print(
+            f"[INFO] _build_multi_preview: user_input={user_input}, table={table_name}, columns={column_names}, schema={schema}")
         adapter = DialectAdapter(db_type)
 
         # ① 拆条件：按"且/并且/and"切分成独立片段
@@ -3650,8 +3693,8 @@ class RuleParseApi(Resource):
 
             # 判断是否为候选格式（dict格式 = 表候选，ParsedRule格式 = 列候选）
             is_table_candidates = (
-                stage == 'table_selection' or
-                (alternatives and isinstance(alternatives[0], dict) and 'name' in alternatives[0])
+                    stage == 'table_selection' or
+                    (alternatives and isinstance(alternatives[0], dict) and 'name' in alternatives[0])
             )
 
             if is_table_candidates:
@@ -4133,10 +4176,33 @@ class RuleSuggestApi(Resource):
         ).all()
 
         # 查询 UserDatasourceSchema（用于 is_view 和兜底表结构）
-        db_schemas = UserDatasourceSchema.query.filter_by(
-            user_id=user_id,
-            connect_info=datasource.connect_info
-        ).all()
+        # 重要：connect_info 已加密存储，AES-GCM nonce 随机，密文不可直接等值比较。
+        # 必须改用 connect_info_hash 匹配。
+        from core.connect_info_encryptor import get_connect_info_hash
+        connect_info_hash = get_connect_info_hash(datasource.connect_info) if datasource.connect_info else ''
+        if connect_info_hash:
+            hash_query = UserDatasourceSchema.query.filter_by(
+                user_id=user_id,
+                connect_info_hash=connect_info_hash
+            )
+            if datasource.schema_name is not None:
+                hash_query = hash_query.filter_by(schema_name=datasource.schema_name)
+            db_schemas = hash_query.all()
+        else:
+            # 回退到明文 connect_info 比较（兼容历史未加密数据）
+            from core.connect_info_encryptor import decrypt_connect_info, is_encrypted
+            try:
+                connect_info_plain = decrypt_connect_info(datasource.connect_info) if is_encrypted(
+                    datasource.connect_info) else datasource.connect_info
+            except Exception:
+                connect_info_plain = datasource.connect_info
+            fallback_query = UserDatasourceSchema.query.filter_by(
+                user_id=user_id,
+                connect_info=connect_info_plain
+            )
+            if datasource.schema_name is not None:
+                fallback_query = fallback_query.filter_by(schema_name=datasource.schema_name)
+            db_schemas = fallback_query.all()
 
         # 构建 is_view 映射
         table_is_view_map = {s.table_name.lower(): bool(s.is_view) for s in db_schemas}
@@ -4457,11 +4523,11 @@ class RuleSuggestApi(Resource):
         return suggestions
 
     def _match_rules_for_column(
-        self,
-        col_name: str,
-        col_comment: str,
-        col_type: str,
-        table_entities: List[str]
+            self,
+            col_name: str,
+            col_comment: str,
+            col_type: str,
+            table_entities: List[str]
     ) -> List[Dict]:
         """为单个列匹配适用的规则模板"""
         matched = []
@@ -4491,7 +4557,7 @@ class RuleSuggestApi(Resource):
             elif keyword_hit and keywords[0].lower() in col_lower:
                 confidence = 0.85  # 列名命中
             else:
-                confidence = 0.7   # 实体命中
+                confidence = 0.7  # 实体命中
 
             # 特殊规则置信度调整
             if rule_type == 'null_check' and not col_comment:
@@ -4641,15 +4707,15 @@ class QualityOverviewApi(Resource):
     # 扩展归类，把语义上同属一类的规则类型合并，避免遗漏
     DIMENSION_RULE_TYPES = {
         'completeness': {'null_check'},
-        'uniqueness':   {'unique'},
-        'validity':     {'format', 'enum', 'threshold',
-                         'length_check', 'range_check',
-                         'date_check', 'value_distribution',
-                         'custom_sql'},
-        'consistency':  {'consistency_check'},
-        'timeliness':   {'freshness_check'},
+        'uniqueness': {'unique'},
+        'validity': {'format', 'enum', 'threshold',
+                     'length_check', 'range_check',
+                     'date_check', 'value_distribution',
+                     'custom_sql'},
+        'consistency': {'consistency_check'},
+        'timeliness': {'freshness_check'},
         # composite 单独展示，不混入主维度
-        'composite':    {'composite'},
+        'composite': {'composite'},
     }
 
     def _calculate_dimensions(self, rule_query, report_query):
@@ -4829,6 +4895,87 @@ class QualityOverviewApi(Resource):
 
 # ==================== 数据源元数据 API ====================
 
+
+def _resolve_datasource_hash(datasource) -> str:
+    """
+    获取数据源的 connect_info_hash（SHA256 稳定哈希）。
+    如果数据源本身没有 hash 字段，则解密 connect_info 后计算并回填。
+    """
+    from core.connect_info_encryptor import get_connect_info_hash, decrypt_connect_info
+
+    if getattr(datasource, 'connect_info_hash', None):
+        return datasource.connect_info_hash
+
+    try:
+        plaintext = decrypt_connect_info(datasource.connect_info) if datasource.connect_info else ''
+    except Exception:
+        plaintext = datasource.connect_info or ''
+
+    if not plaintext:
+        return ''
+
+    new_hash = get_connect_info_hash(plaintext)
+    try:
+        datasource.connect_info_hash = new_hash
+        db.session.add(datasource)
+        db.session.commit()
+    except Exception as e:
+        # 回填失败不影响主流程
+        db.session.rollback()
+        print(f"[WARN] 回填 datasource.connect_info_hash 失败: {e}")
+
+    return new_hash
+
+
+def _query_schemas_for_datasource(datasource, user_id) -> List[UserDatasourceSchema]:
+    """
+    根据数据源查询其下所有 UserDatasourceSchema 记录。
+
+    策略：
+    1. 优先按 connect_info_hash + schema_name 精确匹配（兼容同一 connect_info 不同 schema 的场景）
+    2. 回退：若 hash 为空，则先解密 connect_info 用明文匹配（兼容迁移前的历史数据）
+
+    注意：不能直接用 connect_info 等值过滤，因为 AES-GCM 加密的 nonce 是随机的，
+         两个表的密文永远不会相等。
+    """
+    target_hash = _resolve_datasource_hash(datasource)
+    schema_name = getattr(datasource, 'schema_name', None)
+
+    # 策略1：hash + schema_name 精确匹配
+    schemas: List[UserDatasourceSchema] = []
+    if target_hash:
+        query = UserDatasourceSchema.query.filter_by(
+            user_id=user_id,
+            connect_info_hash=target_hash
+        )
+        if schema_name is not None:
+            query = query.filter_by(schema_name=schema_name)
+        schemas = query.all()
+
+    if schemas:
+        return schemas
+
+    # 策略2：哈希为空的回退方案 —— 解密后用明文 connect_info 比较（兼容历史数据）
+    from core.connect_info_encryptor import decrypt_connect_info
+    try:
+        connect_info_plain = decrypt_connect_info(datasource.connect_info) if datasource.connect_info else ''
+    except Exception:
+        connect_info_plain = datasource.connect_info or ''
+
+    if not connect_info_plain:
+        return []
+
+    # 历史数据可能 connect_info 也未被加密（迁移前），此时 connect_info_plain 可能等于数据库中的 connect_info，
+    # 因此这里直接用解密后的明文去匹配即可。
+    fallback_query = UserDatasourceSchema.query.filter_by(
+        user_id=user_id,
+        connect_info=connect_info_plain
+    )
+    if schema_name is not None:
+        fallback_query = fallback_query.filter_by(schema_name=schema_name)
+    return fallback_query.all()
+
+
 class DatasourceTablesApi(Resource):
     """获取数据源下的所有表"""
 
@@ -4856,11 +5003,10 @@ class DatasourceTablesApi(Resource):
             return resp(code=404, msg="数据源不存在或无权访问", http_status=404)
 
         # 从 UserDatasourceSchema 读取该数据源下的所有表
-        connect_info = datasource.connect_info
-        schemas = UserDatasourceSchema.query.filter_by(
-            user_id=current_user.id,
-            connect_info=connect_info
-        ).all()
+        # 重要：DatasourceInfo.connect_info 与 UserDatasourceSchema.connect_info 均已加密存储
+        #       AES-GCM 每次加密随机 nonce，密文不可直接相等比较。
+        #       必须改用 connect_info_hash（SHA256 稳定哈希）进行匹配。
+        schemas = _query_schemas_for_datasource(datasource, current_user.id)
 
         if not schemas:
             return resp(data={
@@ -4935,12 +5081,11 @@ class DatasourceColumnsApi(Resource):
             return resp(code=400, msg="表名称不能为空", http_status=400)
 
         # 从 UserDatasourceSchema 读取指定表的字段信息
-        connect_info = datasource.connect_info
-        schema = UserDatasourceSchema.query.filter_by(
-            user_id=current_user.id,
-            connect_info=connect_info,
-            table_name=table_name
-        ).first()
+        # 重要：DatasourceInfo.connect_info 与 UserDatasourceSchema.connect_info 均已加密存储，
+        #       密文不可直接比较；统一改为 connect_info_hash 稳定哈希匹配。
+        # 先取出该数据源的所有 schema 记录，再按表名精确过滤（避免在 hash 为空的回退路径下误匹配其它数据源）。
+        candidate_schemas = _query_schemas_for_datasource(datasource, current_user.id)
+        schema = next((s for s in candidate_schemas if s.table_name == table_name), None)
 
         if not schema:
             return resp(code=404, msg=f"表 '{table_name}' 不存在或未提取结构信息", http_status=404)
