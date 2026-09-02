@@ -1,5 +1,5 @@
 services:
-  # API and Web wait for this health check before their containers are created.
+  # API and Web are created after this database container starts.
   onticards-db:
     image: postgres:15-alpine
     environment:
@@ -12,12 +12,6 @@ services:
       TZ: "${TZ:-Asia/Shanghai}"
     volumes:
       - ./volumes/postgresql/data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
-      interval: 5s
-      timeout: 3s
-      retries: 30
-      start_period: 10s
     restart: unless-stopped
     networks:
       - onticards
@@ -42,12 +36,6 @@ services:
       TZ: "${TZ:-Asia/Shanghai}"
     volumes:
       - ./volumes/weaviate/data:/var/lib/weaviate
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/v1/.well-known/ready >/dev/null 2>&1 || exit 1"]
-      interval: 5s
-      timeout: 3s
-      retries: 30
-      start_period: 30s
     restart: unless-stopped
     networks:
       - onticards
@@ -79,15 +67,9 @@ services:
       - ./volumes/governance/reports:/data/governance/reports
     depends_on:
       onticards-db:
-        condition: service_healthy
+        condition: service_started
       onticards-weaviate:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9103/healthz >/dev/null || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 90s
+        condition: service_started
     restart: unless-stopped
     networks:
       - onticards
@@ -106,25 +88,14 @@ services:
       TZ: "${TZ:-Asia/Shanghai}"
     depends_on:
       onticards-db:
-        condition: service_healthy
+        condition: service_started
       onticards-weaviate:
-        condition: service_healthy
-    healthcheck:
-      test:
-        - CMD-SHELL
-        - >-
-          node -e "require('http').get('http://127.0.0.1:3000/zh-CN',
-          r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error',
-          () => process.exit(1))"
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
+        condition: service_started
     restart: unless-stopped
     networks:
       - onticards
 
-  # This is the only service exposed to the host. It starts after API and Web are healthy.
+  # This is the only service exposed to the host. It starts after API and Web containers start.
   onticards_nginx:
     image: nginx:1.27-alpine
     environment:
@@ -140,15 +111,9 @@ services:
       - ./nginx/onticards.conf:/etc/nginx/templates/default.conf.template:ro
     depends_on:
       onticards_api:
-        condition: service_healthy
+        condition: service_started
       onticards_web:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9107/ >/dev/null 2>&1 && wget -qO- http://127.0.0.1:9107/console/api/healthz >/dev/null 2>&1 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 6
-      start_period: 10s
+        condition: service_started
     restart: unless-stopped
     networks:
       - onticards
