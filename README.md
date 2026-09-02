@@ -37,18 +37,14 @@ OntiCards 是面向企业的 AI 数据中枢，**不只是简单 NL2SQL**。
 
 ```bash
 # 1. Clone repo
-git clone https://github.com/your-org/onticards.git
+git clone https://github.com/stepll2026/OntiCards.git
 cd onticards
 
-# 2. 复制并编辑环境变量
-cp .env.example .env
-# 修改 .env 中数据库、模型等配置
-
-# 3. 一键启动
+# 2. 一键启动
 docker-compose up -d
 
-# 4. 访问
-open http://localhost:3000
+# 3. 访问
+open http://your-ip:9107
 ```
 
 > 📖 完整部署、配置步骤见：[部署指南](./docs_open/部署指南.md)
@@ -146,7 +142,6 @@ open http://localhost:3000
 
 | 文档    | 链接                                |
 | ----- | --------------------------------- |
-| 快速上手  | [快速开始](./docs_open/快速开始.md)       |
 | 部署文档  | [部署指南](./docs_open/部署指南.md)       |
 | 用户手册  | [用户手册](./docs_open/用户手册.md)       |
 | API参考 | [API接口文档](./docs_open/API接口文档.md) |
@@ -179,8 +174,6 @@ OntiCards 开源版可以免费部署使用。
 ## 📮 联系我们
 
 - GitHub Issues：提交bug、需求反馈
-- 产品官网：[https://onticards.example.com](https://onticards.example.com)
-- 技术博客：[https://onticards.example.com/blog](https://onticards.example.com/blog)
+- 产品官网：[https://onticards.com/](https://onticards.com/)
 
 > OntiCards — 让企业的数据「会说话、能听懂、可治理」
-
