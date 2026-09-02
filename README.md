@@ -41,7 +41,7 @@ git clone https://github.com/stepll2026/OntiCards.git
 cd OntiCards
 
 # 2. 一键启动
-docker-compose up -d
+docker compose up -d
 
 # 3. 访问
 open http://your-ip:9107
