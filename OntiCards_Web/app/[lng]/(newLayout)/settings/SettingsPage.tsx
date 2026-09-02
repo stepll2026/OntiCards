@@ -1990,7 +1990,7 @@ const ModelConfigTab = () => {
                   type="text"
                   value={formData.model_name}
                   onChange={(e) => setFormData({ ...formData, model_name: e.target.value })}
-                  placeholder="例如：豆包-在线客服"
+                  placeholder="例如：qwen3.7-max"
                   maxLength={128}
                   className="w-full px-4 py-2.5 border border-slate-200 rounded-[12px] text-sm"
                 />
