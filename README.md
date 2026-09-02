@@ -169,11 +169,11 @@ OntiCards 开源版本基于 **AGPL-3.0** 开源协议开源，请遵守协议�
 ## 💼 商业服务
 
 OntiCards 开源版可以免费部署使用。
-如果你需要：多租户版本、行列级权限、定制开发、技术支持、企业版数据治理、私有化实施服务，欢迎联系我们商业团队。
+如果需要：多租户版本、行列级权限、定制开发、技术支持、企业版数据治理、私有化实施服务，欢迎联系我们商业团队。
 
 ## 📮 联系我们
 
-- GitHub Issues：提交bug、需求反馈
+- GitHub Issues：[https://github.com/stepll2026/OntiCards/issues](https://github.com/stepll2026/OntiCards/issues)提交bug、需求反馈
 - 产品官网：[https://onticards.com/](https://onticards.com/)
 
 > OntiCards — 让企业的数据「会说话、能听懂、可治理」
