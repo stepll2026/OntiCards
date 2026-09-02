@@ -28,7 +28,7 @@ import {
   ArrowRightOutlined,
   EyeOutlined,
 } from '@ant-design/icons'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import {
   getDataSourceLibraries,
   getAvailableLibraries,
@@ -506,6 +506,8 @@ interface KnowledgeTabProps {
 
 const KnowledgeTab: React.FC<KnowledgeTabProps> = ({ workspaceId, workspaceName }) => {
   const router = useRouter()
+  const params = useParams<{ lng?: string }>()
+  const lng = params?.lng ?? 'zh-CN'
 
   const [dsLibraries, setDsLibraries] = useState<DataSourceTermLibraryWithTerms[]>([])
   const [loadingDsLibraries, setLoadingDsLibraries] = useState(false)
@@ -650,7 +652,7 @@ const KnowledgeTab: React.FC<KnowledgeTabProps> = ({ workspaceId, workspaceName 
 
   // 跳转到术语库管理
   const handleGoToLibraryManagement = () => {
-    router.push('/business-terms')
+    router.push(`/${lng}/business-terms`)
   }
 
   // 过滤术语库

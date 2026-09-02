@@ -2,7 +2,7 @@ import acceptLanguage from 'accept-language'
 import { i18nRouter } from 'next-i18n-router'
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
-import i18nConfig from '@/app/i18n/i18nConfig'
+import i18nConfig from './app/i18n/i18nConfig'
 
 acceptLanguage.languages(i18nConfig.locales)
 
@@ -12,8 +12,6 @@ const isApiRoute = (pathname: string) => {
 }
 
 export function middleware(request: NextRequest) {
-  const cookieName = i18nConfig.cookieName
-
   // 排除 API 路由
   if (isApiRoute(request.nextUrl.pathname))
     return NextResponse.next()

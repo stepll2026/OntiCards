@@ -11,6 +11,7 @@ import {
 } from '@ant-design/icons'
 import { ChevronRight, Loader2 } from 'lucide-react'
 import { useRouter } from 'next-nprogress-bar'
+import { useParams } from 'next/navigation'
 import {
   getLibraryList, createLibrary, updateLibrary, deleteLibrary,
   getTemplateCategories, getTemplateList, importFromTemplate,
@@ -63,15 +64,15 @@ const LibraryCard: React.FC<{
       border: '1px solid rgb(var(--theme-border))', overflow: 'hidden', transition: 'all 0.25s',
       cursor: 'pointer',
     }}
-    onClick={onEnter}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.transform = 'translateY(-2px)'
-      e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.08)'
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.transform = 'translateY(0)'
-      e.currentTarget.style.boxShadow = 'none'
-    }}
+         onClick={onEnter}
+         onMouseEnter={(e) => {
+           e.currentTarget.style.transform = 'translateY(-2px)'
+           e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.08)'
+         }}
+         onMouseLeave={(e) => {
+           e.currentTarget.style.transform = 'translateY(0)'
+           e.currentTarget.style.boxShadow = 'none'
+         }}
     >
       <div style={{ padding: '20px' }}>
         {/* 顶部：图标 + 信息区 */}
@@ -151,6 +152,8 @@ const LibraryCard: React.FC<{
 // 主页面
 const LibrariesListPage: React.FC = () => {
   const router = useRouter()
+  const params = useParams<{ lng?: string }>()
+  const lng = (params?.lng as string) || 'zh-CN'
   const [libraries, setLibraries] = useState<BusinessTermLibrary[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -456,7 +459,7 @@ const LibrariesListPage: React.FC = () => {
               lib={lib}
               onEdit={() => openEdit(lib)}
               onDelete={handleDelete}
-              onEnter={() => router.push(`/business-terms/${lib.id}`)}
+              onEnter={() => router.push(`/${lng}/business-terms/${lib.id}`)}
             />
           ))}
         </div>
@@ -498,11 +501,11 @@ const LibrariesListPage: React.FC = () => {
                     setTemplateLoading(false)
                   }
                 }}
-                  style={{
-                    padding: '20px', borderRadius: '14px',
-                    border: '2px solid rgba(var(--theme-primary), 0.3)',
-                    background: 'rgba(var(--theme-primary), 0.05)', cursor: 'pointer', textAlign: 'center'
-                  }}>
+                     style={{
+                       padding: '20px', borderRadius: '14px',
+                       border: '2px solid rgba(var(--theme-primary), 0.3)',
+                       background: 'rgba(var(--theme-primary), 0.05)', cursor: 'pointer', textAlign: 'center'
+                     }}>
                   <div style={{
                     width: '52px', height: '52px', borderRadius: '14px',
                     background: 'rgba(var(--theme-primary), 0.15)',
@@ -563,84 +566,84 @@ const LibrariesListPage: React.FC = () => {
                   </div>
                 ) : (
                   templates.map(t => {
-                  const isSelected = selectedCat === t.category
-                  const totalTerms = t.templates.reduce((s, x) => s + x.count, 0)
-                  return (
-                    <div key={t.category} style={{
-                      borderRadius: '12px', marginBottom: '10px',
-                      border: `2px solid ${isSelected ? '#3b82f6' : 'rgb(var(--theme-border))'}`,
-                      background: 'rgb(var(--theme-bg))',
-                      overflow: 'hidden',
-                      transition: 'all 0.2s'
-                    }}>
-                      {/* 分类头部 - 可点击展开 */}
-                      <div onClick={() => setSelectedCat(isSelected ? '' : t.category)}
-                        style={{
-                          padding: '14px 16px', cursor: 'pointer',
-                          background: isSelected ? 'rgba(59,130,246,0.06)' : 'transparent',
-                          display: 'flex', alignItems: 'center', gap: '12px'
-                        }}>
-                        <ChevronRight size={16} style={{
-                          color: 'rgb(var(--theme-text-secondary))',
-                          transform: isSelected ? 'rotate(90deg)' : 'rotate(0deg)',
-                          transition: 'transform 0.2s'
-                        }} />
-                        <Tag color={getColor(t.category)} style={{ borderRadius: '6px', fontSize: '11px', margin: 0 }}>{t.category}</Tag>
-                        <span style={{ fontSize: '12px', color: 'rgb(var(--theme-text-secondary))', flex: 1 }}>
+                    const isSelected = selectedCat === t.category
+                    const totalTerms = t.templates.reduce((s, x) => s + x.count, 0)
+                    return (
+                      <div key={t.category} style={{
+                        borderRadius: '12px', marginBottom: '10px',
+                        border: `2px solid ${isSelected ? '#3b82f6' : 'rgb(var(--theme-border))'}`,
+                        background: 'rgb(var(--theme-bg))',
+                        overflow: 'hidden',
+                        transition: 'all 0.2s'
+                      }}>
+                        {/* 分类头部 - 可点击展开 */}
+                        <div onClick={() => setSelectedCat(isSelected ? '' : t.category)}
+                             style={{
+                               padding: '14px 16px', cursor: 'pointer',
+                               background: isSelected ? 'rgba(59,130,246,0.06)' : 'transparent',
+                               display: 'flex', alignItems: 'center', gap: '12px'
+                             }}>
+                          <ChevronRight size={16} style={{
+                            color: 'rgb(var(--theme-text-secondary))',
+                            transform: isSelected ? 'rotate(90deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.2s'
+                          }} />
+                          <Tag color={getColor(t.category)} style={{ borderRadius: '6px', fontSize: '11px', margin: 0 }}>{t.category}</Tag>
+                          <span style={{ fontSize: '12px', color: 'rgb(var(--theme-text-secondary))', flex: 1 }}>
                           {t.templates.length} 个模板 · 共 {totalTerms} 个术语
                         </span>
+                          {isSelected && (
+                            <CheckCircleOutlined style={{ color: '#3b82f6' }} />
+                          )}
+                        </div>
+                        {/* 展开的模板列表 */}
                         {isSelected && (
-                          <CheckCircleOutlined style={{ color: '#3b82f6' }} />
+                          <div style={{
+                            borderTop: '1px solid rgb(var(--theme-border))',
+                            padding: '12px 16px',
+                            background: 'rgb(var(--theme-bg-secondary))'
+                          }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {t.templates.map(x => (
+                                <div key={x.template_name} style={{
+                                  display: 'flex', alignItems: 'center', gap: '10px',
+                                  padding: '10px 12px', borderRadius: '8px',
+                                  background: 'rgb(var(--theme-bg))',
+                                  border: '1px solid rgb(var(--theme-border))',
+                                  transition: 'all 0.2s'
+                                }}>
+                                  <div style={{
+                                    width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0,
+                                    background: `${getColor(t.category)}20`,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontSize: '14px'
+                                  }}>📋</div>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: '13px', fontWeight: 500, color: 'rgb(var(--theme-text))', marginBottom: '4px' }}>
+                                      {x.template_name}
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: 'rgb(var(--theme-text-secondary))' }}>
+                                      包含 <span style={{ color: 'rgb(var(--theme-primary))', fontWeight: 600 }}>{x.count}</span> 个术语
+                                    </div>
+                                  </div>
+                                  <Button
+                                    type="text" size="small"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      openTermPreview({ ...x, category: t.category })
+                                    }}
+                                    style={{ fontSize: '12px', color: 'rgb(var(--theme-primary))', flexShrink: 0 }}
+                                  >
+                                    查看术语
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         )}
                       </div>
-                      {/* 展开的模板列表 */}
-                      {isSelected && (
-                        <div style={{
-                          borderTop: '1px solid rgb(var(--theme-border))',
-                          padding: '12px 16px',
-                          background: 'rgb(var(--theme-bg-secondary))'
-                        }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {t.templates.map(x => (
-                              <div key={x.template_name} style={{
-                                display: 'flex', alignItems: 'center', gap: '10px',
-                                padding: '10px 12px', borderRadius: '8px',
-                                background: 'rgb(var(--theme-bg))',
-                                border: '1px solid rgb(var(--theme-border))',
-                                transition: 'all 0.2s'
-                              }}>
-                                <div style={{
-                                  width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0,
-                                  background: `${getColor(t.category)}20`,
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  fontSize: '14px'
-                                }}>📋</div>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div style={{ fontSize: '13px', fontWeight: 500, color: 'rgb(var(--theme-text))', marginBottom: '4px' }}>
-                                    {x.template_name}
-                                  </div>
-                                  <div style={{ fontSize: '11px', color: 'rgb(var(--theme-text-secondary))' }}>
-                                    包含 <span style={{ color: 'rgb(var(--theme-primary))', fontWeight: 600 }}>{x.count}</span> 个术语
-                                  </div>
-                                </div>
-                                <Button
-                                  type="text" size="small"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    openTermPreview({ ...x, category: t.category })
-                                  }}
-                                  style={{ fontSize: '12px', color: 'rgb(var(--theme-primary))', flexShrink: 0 }}
-                                >
-                                  查看术语
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })
+                    )
+                  })
                 )}
               </div>
               <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>

@@ -175,15 +175,15 @@ const TermCard: React.FC<{
     border: '1px solid rgb(var(--theme-border))', overflow: 'hidden',
     transition: 'all 0.2s', cursor: 'pointer',
   }}
-  onClick={onView}
-  onMouseEnter={(e) => {
-    e.currentTarget.style.transform = 'translateY(-2px)'
-    e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.12)'
-  }}
-  onMouseLeave={(e) => {
-    e.currentTarget.style.transform = 'translateY(0)'
-    e.currentTarget.style.boxShadow = 'none'
-  }}
+       onClick={onView}
+       onMouseEnter={(e) => {
+         e.currentTarget.style.transform = 'translateY(-2px)'
+         e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.12)'
+       }}
+       onMouseLeave={(e) => {
+         e.currentTarget.style.transform = 'translateY(0)'
+         e.currentTarget.style.boxShadow = 'none'
+       }}
   >
     <div style={{ padding: '14px 14px 12px' }}>
       {/* 第一行：名称 + 状态 + 操作按钮 */}
@@ -243,6 +243,7 @@ const TermCard: React.FC<{
 const LibraryDetailPage: React.FC = () => {
   const params = useParams()
   const router = useRouter()
+  const lng = (params?.lng as string) || 'zh-CN'
   const libId = params.id as string
 
   const [lib, setLib] = useState<BusinessTermLibrary | null>(null)
@@ -271,8 +272,8 @@ const LibraryDetailPage: React.FC = () => {
       if (search) {
         const k = search.toLowerCase()
         if (!t.term_name.toLowerCase().includes(k) &&
-            !t.term_alias?.some(a => a.toLowerCase().includes(k)) &&
-            !t.term_definition.toLowerCase().includes(k)) return false
+          !t.term_alias?.some(a => a.toLowerCase().includes(k)) &&
+          !t.term_definition.toLowerCase().includes(k)) return false
       }
       if (status && t.status !== status) return false
       return true
@@ -369,7 +370,7 @@ const LibraryDetailPage: React.FC = () => {
       {/* 返回 + 标题区 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
         <Link
-          href="/business-terms"
+          href={`/${lng}/business-terms`}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: '4px',
             color: 'rgb(var(--theme-text-secondary))', textDecoration: 'none', fontSize: '14px',

@@ -38,9 +38,9 @@ type RecentActivity = {
 };
 
 export default function NewLayout({
-  children,
-  params,
-}: {
+                                    children,
+                                    params,
+                                  }: {
   children: React.ReactNode;
   params: { lng: string };
 }) {
@@ -105,6 +105,11 @@ export default function NewLayout({
     if (short.startsWith("/business-terms")) return "业务术语库";
     return "";
   };
+
+  // 判断当前是否处于“系统与账户”路径，用于阻止重复点击触发进度条
+  const settingsHref = '/settings'
+  const isOnSettingsPage =
+    pathname === settingsHref || (pathname?.startsWith(settingsHref + '/') ?? false);
 
   useEffect(() => {
     // 登录页面不需要检查登录状态
@@ -265,24 +270,24 @@ export default function NewLayout({
   return (
     <UserInfoProvider>
       <DataSourceProvider>
-      <div style={{ display: 'flex', flexDirection: 'row', minHeight: '100vh' }}>
-        {/* Sidebar */}
-        <aside
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            flexShrink: 0,
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            height: '100vh',
-            transition: 'width 300ms ease-in-out',
-            width: sidebarCollapsed ? 72 : 260,
-            backgroundColor: 'rgb(var(--theme-bg-secondary))',
-            borderRightColor: 'rgb(var(--theme-border))',
-            zIndex: 40,
-          }}
-        >
+        <div style={{ display: 'flex', flexDirection: 'row', minHeight: '100vh' }}>
+          {/* Sidebar */}
+          <aside
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              flexShrink: 0,
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              height: '100vh',
+              transition: 'width 300ms ease-in-out',
+              width: sidebarCollapsed ? 72 : 260,
+              backgroundColor: 'rgb(var(--theme-bg-secondary))',
+              borderRightColor: 'rgb(var(--theme-border))',
+              zIndex: 40,
+            }}
+          >
             {/* Logo + 收起/展开按钮 */}
             <div className="flex items-center justify-between px-4 py-4 h-[60px] box-border" style={{ flexShrink: 0 }}>
               <div
@@ -317,141 +322,141 @@ export default function NewLayout({
               </button>
             </div>
 
-          <nav className="px-3" style={{ flex: 1, overflowY: 'auto' }}>
-            <div className="space-y-1">
-              <SideLink lng={lng} href="/overview" label="概览" icon={<LayoutDashboard className="w-4 h-4" />} collapsed={sidebarCollapsed} />
-              <SideLink lng={lng} href="/workspaces" label="工作空间" icon={<Database className="w-4 h-4" />} collapsed={sidebarCollapsed} />
-              <SideLink lng={lng} href="/business-terms" label="业务术语" icon={<BookOpen className="w-4 h-4" />} collapsed={sidebarCollapsed} />
-              <SideLink lng={lng} href="/governance" label="数据质检" icon={<Shield className="w-4 h-4" />} collapsed={sidebarCollapsed} />
-              <SideLink lng={lng} href="/monitoring" label="监控中心" icon={<Activity className="w-4 h-4" />} collapsed={sidebarCollapsed} />
-              <SideLink lng={lng} href="/cost-config" label="成本管理" icon={<Coins className="w-4 h-4" />} collapsed={sidebarCollapsed} />
-              {/* <SideLink lng={lng} href="/explore" label="探索" icon={<Search className="w-4 h-4" />} collapsed={sidebarCollapsed} />
-              <SideLink lng={lng} href="/ask" label="智能问数" icon={<MessageSquare className="w-4 h-4" />} collapsed={sidebarCollapsed} /> */}
-            </div>
-          </nav>
+            <nav className="px-3" style={{ flex: 1, overflowY: 'auto' }}>
+              <div className="space-y-1">
+                <SideLink href="/overview" label="概览" icon={<LayoutDashboard className="w-4 h-4" />} collapsed={sidebarCollapsed} />
+                <SideLink href="/workspaces" label="工作空间" icon={<Database className="w-4 h-4" />} collapsed={sidebarCollapsed} />
+                <SideLink href="/business-terms" label="业务术语" icon={<BookOpen className="w-4 h-4" />} collapsed={sidebarCollapsed} />
+                <SideLink href="/governance" label="数据质检" icon={<Shield className="w-4 h-4" />} collapsed={sidebarCollapsed} />
+                <SideLink href="/monitoring" label="监控中心" icon={<Activity className="w-4 h-4" />} collapsed={sidebarCollapsed} />
+                <SideLink href="/cost-config" label="成本管理" icon={<Coins className="w-4 h-4" />} collapsed={sidebarCollapsed} />
+                {/* <SideLink href="/explore" label="探索" icon={<Search className="w-4 h-4" />} collapsed={sidebarCollapsed} />
+              <SideLink href="/ask" label="智能问数" icon={<MessageSquare className="w-4 h-4" />} collapsed={sidebarCollapsed} /> */}
+              </div>
+            </nav>
 
-          <div className="p-3" style={{ borderTopColor: 'rgb(var(--theme-border))', flexShrink: 0 }}>
-            <div className="space-y-2">
-              <Link
-                href={`/${lng}/settings`}
-                className="flex items-center text-sm transition-all duration-200 px-4 py-2.5"
-                style={{ color: 'rgb(var(--theme-text-secondary))' }}
-                title={sidebarCollapsed ? '系统与账户' : undefined}
-              >
-                <Settings className="w-4 h-4 flex-shrink-0" />
-                <span
-                  className="whitespace-nowrap transition-all duration-300 ease-in-out overflow-hidden"
-                  style={{
-                    maxWidth: sidebarCollapsed ? 0 : '200px',
-                    opacity: sidebarCollapsed ? 0 : 1,
-                    marginLeft: sidebarCollapsed ? 0 : '12px',
-                  }}
+            <div className="p-3" style={{ borderTopColor: 'rgb(var(--theme-border))', flexShrink: 0 }}>
+              <div className="space-y-2">
+                <Link
+                  href="/settings"
+                  data-prevent-nprogress={isOnSettingsPage ? "true" : undefined}
+                  className="flex items-center text-sm transition-all duration-200 px-4 py-2.5"
+                  style={{ color: 'rgb(var(--theme-text-secondary))' }}
+                  title={sidebarCollapsed ? '系统与账户' : undefined}
                 >
+                  <Settings className="w-4 h-4 flex-shrink-0" />
+                  <span
+                    className="whitespace-nowrap transition-all duration-300 ease-in-out overflow-hidden"
+                    style={{
+                      maxWidth: sidebarCollapsed ? 0 : '200px',
+                      opacity: sidebarCollapsed ? 0 : 1,
+                      marginLeft: sidebarCollapsed ? 0 : '12px',
+                    }}
+                  >
                   系统与账户
                 </span>
-              </Link>
-              <button
-                onClick={() => setShowHelp(true)}
-                className="w-full flex items-center text-sm transition-all duration-200 px-4 py-2.5"
-                style={{ color: 'rgb(var(--theme-text-secondary))' }}
-                title={sidebarCollapsed ? '帮助' : undefined}
-              >
-                <HelpCircle className="w-4 h-4 flex-shrink-0" />
-                <span
-                  className="whitespace-nowrap transition-all duration-300 ease-in-out overflow-hidden"
-                  style={{
-                    maxWidth: sidebarCollapsed ? 0 : '200px',
-                    opacity: sidebarCollapsed ? 0 : 1,
-                    marginLeft: sidebarCollapsed ? 0 : '12px',
-                  }}
+                </Link>
+                <button
+                  onClick={() => setShowHelp(true)}
+                  className="w-full flex items-center text-sm transition-all duration-200 px-4 py-2.5"
+                  style={{ color: 'rgb(var(--theme-text-secondary))' }}
+                  title={sidebarCollapsed ? '帮助' : undefined}
                 >
+                  <HelpCircle className="w-4 h-4 flex-shrink-0" />
+                  <span
+                    className="whitespace-nowrap transition-all duration-300 ease-in-out overflow-hidden"
+                    style={{
+                      maxWidth: sidebarCollapsed ? 0 : '200px',
+                      opacity: sidebarCollapsed ? 0 : 1,
+                      marginLeft: sidebarCollapsed ? 0 : '12px',
+                    }}
+                  >
                   帮助
                 </span>
-              </button>
+                </button>
+              </div>
             </div>
-          </div>
 
-        </aside>
+          </aside>
 
-        {/* Main - 内容区宽度不变，仅随侧边栏收缩整体左移 */}
-        <main
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            flex: 1,
-            minWidth: 0,
-            marginLeft: sidebarCollapsed ? 72 : 260,
-            transition: 'margin-left 300ms ease-in-out',
-            background: 'linear-gradient(to bottom, rgb(var(--theme-bg-secondary)), rgb(var(--theme-bg)))',
-          }}
-        >
-          <div className="mx-auto w-full max-w-[1060px] xl:max-w-[1340px] 2xl:max-w-[1540px] px-6 lg:px-10 xl:px-20 py-4 lg:py-6" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            <div className="flex items-center justify-end gap-2" style={{ flexShrink: 0 }}>
-              <button
-                onClick={() => setShowChangelog(true)}
-                className="relative grid h-9 w-9 place-items-center rounded-xl transition-colors"
-                style={{ color: 'rgb(var(--theme-text-secondary))' }}
-                aria-label="通知与公告"
-                title="通知与公告"
-              >
-                <Bell className="w-5 h-5" />
-                {hasUnreadChangelog && (
-                  <span className="absolute right-1 top-1 bg-red-500" style={{ width: 8, height: 8, borderRadius: '50%' }} />
-                )}
-              </button>
-              <button
-                onClick={handleLogout}
-                disabled={loggingOut}
-                className="grid h-9 w-9 place-items-center rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ color: 'rgb(var(--theme-text-secondary))' }}
-                aria-label="退出登录"
-                title={loggingOut ? '正在退出...' : '退出登录'}
-              >
-                {loggingOut ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <LogOut className="w-5 h-5" />
-                )}
-              </button>
+          {/* Main - 内容区宽度不变，仅随侧边栏收缩整体左移 */}
+          <main
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              flex: 1,
+              minWidth: 0,
+              marginLeft: sidebarCollapsed ? 72 : 260,
+              transition: 'margin-left 300ms ease-in-out',
+              background: 'linear-gradient(to bottom, rgb(var(--theme-bg-secondary)), rgb(var(--theme-bg)))',
+            }}
+          >
+            <div className="mx-auto w-full max-w-[1060px] xl:max-w-[1340px] 2xl:max-w-[1540px] px-6 lg:px-10 xl:px-20 py-4 lg:py-6" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              <div className="flex items-center justify-end gap-2" style={{ flexShrink: 0 }}>
+                <button
+                  onClick={() => setShowChangelog(true)}
+                  className="relative grid h-9 w-9 place-items-center rounded-xl transition-colors"
+                  style={{ color: 'rgb(var(--theme-text-secondary))' }}
+                  aria-label="通知与公告"
+                  title="通知与公告"
+                >
+                  <Bell className="w-5 h-5" />
+                  {hasUnreadChangelog && (
+                    <span className="absolute right-1 top-1 bg-red-500" style={{ width: 8, height: 8, borderRadius: '50%' }} />
+                  )}
+                </button>
+                <button
+                  onClick={handleLogout}
+                  disabled={loggingOut}
+                  className="grid h-9 w-9 place-items-center rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ color: 'rgb(var(--theme-text-secondary))' }}
+                  aria-label="退出登录"
+                  title={loggingOut ? '正在退出...' : '退出登录'}
+                >
+                  {loggingOut ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <LogOut className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+              <div style={{ flex: 1, minHeight: 0, marginTop: 8 }}>
+                {children}
+              </div>
             </div>
-            <div style={{ flex: 1, minHeight: 0, marginTop: 8 }}>
-              {children}
-            </div>
-          </div>
-        </main>
-      </div>
+          </main>
+        </div>
 
-      {/* 版本更新日志弹窗（通知公告） */}
-      <ChangelogModal
-        visible={showChangelog}
-        onClose={() => setShowChangelog(false)}
-        changelogList={changelogList}
-        loading={changelogLoading}
-        onOpen={markChangelogAsRead}
-      />
+        {/* 版本更新日志弹窗（通知公告） */}
+        <ChangelogModal
+          visible={showChangelog}
+          onClose={() => setShowChangelog(false)}
+          changelogList={changelogList}
+          loading={changelogLoading}
+          onOpen={markChangelogAsRead}
+        />
 
-      {/* 帮助文档弹窗 */}
-      <HelpModal visible={showHelp} onClose={() => setShowHelp(false)} />
-    </DataSourceProvider>
+        {/* 帮助文档弹窗 */}
+        <HelpModal visible={showHelp} onClose={() => setShowHelp(false)} />
+      </DataSourceProvider>
     </UserInfoProvider>
   );
 }
 
 function SideLink({
-  lng,
-  href,
-  label,
-  icon,
-  collapsed,
-}: {
-  lng: string;
+                    href,
+                    label,
+                    icon,
+                    collapsed,
+                  }: {
   href: string;
   label: string;
   icon?: React.ReactNode;
   collapsed?: boolean;
 }) {
   const pathname = usePathname();
-  const fullHref = `/${lng}${href}`;
+  // 不再添加语言前缀，路由保持干净
+  const fullHref = href;
   const active =
     pathname === fullHref || pathname?.startsWith(fullHref + "/");
 
@@ -459,6 +464,7 @@ function SideLink({
     <Link
       href={fullHref}
       title={collapsed ? label : undefined}
+      data-prevent-nprogress={active ? "true" : undefined}
       className={[
         "flex items-center text-sm transition-all duration-200 px-4 py-3",
         active

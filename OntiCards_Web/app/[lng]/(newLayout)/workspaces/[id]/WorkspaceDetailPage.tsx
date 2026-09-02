@@ -1203,6 +1203,7 @@ function DataCardDetailModal({
 const WorkspaceDetailPage = () => {
   const params = useParams()
   const searchParams = useSearchParams()
+  const lng = (params?.lng as string) || 'zh-CN'
   const { refreshDataSources } = useDataSources()
   const [activeTab, setActiveTab] = useState('overview')
   const [loading, setLoading] = useState(true)
@@ -2293,7 +2294,7 @@ const WorkspaceDetailPage = () => {
   if (error || !workspace) {
     return (
       <div className="space-y-4">
-        <Link href="/workspaces"
+        <Link href={`/${lng}/workspaces`}
               className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-indigo-600"
         >
           <ChevronLeft className="w-4 h-4" /> 工作空间
@@ -2301,7 +2302,7 @@ const WorkspaceDetailPage = () => {
         <div className="bg-white rounded-[20px] border border-slate-200 p-12 text-center">
           <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
           <p className="text-slate-700">{error || '未找到该工作空间'}</p>
-          <Link href="/workspaces" className="mt-4 inline-block text-indigo-600 hover:underline">返回列表</Link>
+          <Link href={`/${lng}/workspaces`} className="mt-4 inline-block text-indigo-600 hover:underline">返回列表</Link>
         </div>
       </div>
     )
@@ -2313,7 +2314,7 @@ const WorkspaceDetailPage = () => {
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-sm">
           <Link
-            href="/workspaces"
+            href={`/${lng}/workspaces`}
             className="text-slate-500 hover:text-indigo-600 transition-colors flex items-center gap-1"
           >
             <ChevronLeft className="w-4 h-4" />
@@ -2709,137 +2710,137 @@ const WorkspaceDetailPage = () => {
                 </div>
               ) : (
                 <>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm table-fixed">
-                    <thead>
-                    <tr
-                      className="bg-slate-50 dark:bg-slate-700/80 border-b border-slate-100 dark:border-slate-600 text-left"
-                    >
-                      <th className="p-4 font-semibold text-slate-500 dark:text-slate-300 w-[50px]">#</th>
-                      <th className="p-4 font-semibold text-slate-500 dark:text-slate-300 w-[200px]">表名</th>
-                      <th className="p-4 font-semibold text-slate-500 dark:text-slate-300 w-[80px]">类型</th>
-                      <th className="p-4 font-semibold text-slate-500 dark:text-slate-300 w-[90px]">字段数</th>
-                      <th className="p-4 font-semibold text-slate-500 dark:text-slate-300">描述</th>
-                      <th className="p-4 font-semibold text-slate-500 dark:text-slate-300 w-[160px]">状态</th>
-                      <th className="p-4 font-semibold text-slate-500 dark:text-slate-300 text-right w-[110px]">操作</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {filteredSchemas.slice((schemasPage - 1) * SCHEMAS_PAGE_SIZE, schemasPage * SCHEMAS_PAGE_SIZE).map((s: SchemaItem, idx: number) => (
-                      <tr key={s.id}
-                          className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group"
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm table-fixed">
+                      <thead>
+                      <tr
+                        className="bg-slate-50 dark:bg-slate-700/80 border-b border-slate-100 dark:border-slate-600 text-left"
                       >
-                        <td className="p-4 text-slate-400 dark:text-slate-500 font-mono text-xs">{(schemasPage - 1) * SCHEMAS_PAGE_SIZE + idx + 1}</td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="p-1.5 bg-slate-100 dark:bg-slate-600 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/40 transition-colors flex-shrink-0"
-                              style={{ borderRadius: '50%' }}
-                            >
-                              <Table className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors" />
+                        <th className="p-4 font-semibold text-slate-500 dark:text-slate-300 w-[50px]">#</th>
+                        <th className="p-4 font-semibold text-slate-500 dark:text-slate-300 w-[200px]">表名</th>
+                        <th className="p-4 font-semibold text-slate-500 dark:text-slate-300 w-[80px]">类型</th>
+                        <th className="p-4 font-semibold text-slate-500 dark:text-slate-300 w-[90px]">字段数</th>
+                        <th className="p-4 font-semibold text-slate-500 dark:text-slate-300">描述</th>
+                        <th className="p-4 font-semibold text-slate-500 dark:text-slate-300 w-[160px]">状态</th>
+                        <th className="p-4 font-semibold text-slate-500 dark:text-slate-300 text-right w-[110px]">操作</th>
+                      </tr>
+                      </thead>
+                      <tbody>
+                      {filteredSchemas.slice((schemasPage - 1) * SCHEMAS_PAGE_SIZE, schemasPage * SCHEMAS_PAGE_SIZE).map((s: SchemaItem, idx: number) => (
+                        <tr key={s.id}
+                            className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group"
+                        >
+                          <td className="p-4 text-slate-400 dark:text-slate-500 font-mono text-xs">{(schemasPage - 1) * SCHEMAS_PAGE_SIZE + idx + 1}</td>
+                          <td className="p-4">
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="p-1.5 bg-slate-100 dark:bg-slate-600 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/40 transition-colors flex-shrink-0"
+                                style={{ borderRadius: '50%' }}
+                              >
+                                <Table className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors" />
+                              </div>
+                              <span
+                                className="font-mono font-semibold text-slate-700 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors"
+                              >{s.table_name}</span>
                             </div>
-                            <span
-                              className="font-mono font-semibold text-slate-700 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors"
-                            >{s.table_name}</span>
-                          </div>
-                        </td>
-                        <td className="p-4">
+                          </td>
+                          <td className="p-4">
                           <span
                             className={`inline-flex items-center px-3 py-1.5 text-xs font-medium ${s.is_view ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400' : 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'}`}
                             style={{ borderRadius: '9999px' }}
                           >
                             {s.is_view ? '视图' : '表'}
                           </span>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-700 dark:text-slate-200">{s.schema_text?.columns?.length ?? 0}</span>
-                            <span className="text-xs text-slate-400 dark:text-slate-500">字段</span>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          {s.schema_text?.description ? (
-                            <span
-                              className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed"
-                              title={s.schema_text.description}
-                            >
+                          </td>
+                          <td className="p-4">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-700 dark:text-slate-200">{s.schema_text?.columns?.length ?? 0}</span>
+                              <span className="text-xs text-slate-400 dark:text-slate-500">字段</span>
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            {s.schema_text?.description ? (
+                              <span
+                                className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed"
+                                title={s.schema_text.description}
+                              >
                               {s.schema_text.description}
                             </span>
-                          ) : (
-                            <span className="text-slate-300 dark:text-slate-600 italic text-sm">暂无描述</span>
-                          )}
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-2">
+                            ) : (
+                              <span className="text-slate-300 dark:text-slate-600 italic text-sm">暂无描述</span>
+                            )}
+                          </td>
+                          <td className="p-4">
+                            <div className="flex items-center gap-2">
                             <span
                               className={`inline-flex items-center px-2.5 py-1 text-xs font-medium ${s.is_filled ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500'}`}
                               style={{ borderRadius: '9999px' }}
                             >
                               {s.is_filled ? '部分数据AI填充' : '未填充'}
                             </span>
-                          </div>
-                        </td>
-                        <td className="p-4 text-right">
-                          <button
-                            onClick={() => setSelectedSchema(s)}
-                            className="text-sm font-medium px-4 py-2 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 dark:hover:bg-indigo-600 hover:text-white dark:hover:text-white transition-all duration-200 whitespace-nowrap"
-                            style={{ borderRadius: '20px' }}
-                          >
-                            查看详情
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    </tbody>
-                  </table>
-                </div>
-                {filteredSchemas.length > SCHEMAS_PAGE_SIZE && (
-                  <div className="flex justify-center pt-2 pb-5 px-5 border-t" style={{ borderColor: 'rgb(var(--theme-border))' }}>
-                    <div className="flex items-center gap-3 px-2">
-                      <button
-                        type="button"
-                        disabled={schemasPage <= 1}
-                        onClick={() => setSchemasPage(p => p - 1)}
-                        className="flex items-center gap-1.5 px-5 py-2 text-sm font-medium transition-all hover:opacity-80 active:scale-95"
-                        style={{
-                          color: schemasPage <= 1 ? 'rgb(var(--theme-text-disabled))' : 'rgb(var(--theme-text-primary))',
-                          backgroundColor: schemasPage <= 1 ? 'transparent' : 'rgb(var(--theme-bg-secondary))',
-                          borderRadius: '9999px',
-                          border: 'none'
-                        }}
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                        <span>上一页</span>
-                      </button>
-                      <span
-                        className="text-sm font-bold px-4 py-2"
-                        style={{
-                          color: 'rgb(var(--theme-text))',
-                          backgroundColor: 'rgb(var(--theme-bg-secondary))',
-                          borderRadius: '9999px',
-                          border: '1px solid rgb(var(--theme-border))'
-                        }}
-                      >
+                            </div>
+                          </td>
+                          <td className="p-4 text-right">
+                            <button
+                              onClick={() => setSelectedSchema(s)}
+                              className="text-sm font-medium px-4 py-2 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 dark:hover:bg-indigo-600 hover:text-white dark:hover:text-white transition-all duration-200 whitespace-nowrap"
+                              style={{ borderRadius: '20px' }}
+                            >
+                              查看详情
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {filteredSchemas.length > SCHEMAS_PAGE_SIZE && (
+                    <div className="flex justify-center pt-2 pb-5 px-5 border-t" style={{ borderColor: 'rgb(var(--theme-border))' }}>
+                      <div className="flex items-center gap-3 px-2">
+                        <button
+                          type="button"
+                          disabled={schemasPage <= 1}
+                          onClick={() => setSchemasPage(p => p - 1)}
+                          className="flex items-center gap-1.5 px-5 py-2 text-sm font-medium transition-all hover:opacity-80 active:scale-95"
+                          style={{
+                            color: schemasPage <= 1 ? 'rgb(var(--theme-text-disabled))' : 'rgb(var(--theme-text-primary))',
+                            backgroundColor: schemasPage <= 1 ? 'transparent' : 'rgb(var(--theme-bg-secondary))',
+                            borderRadius: '9999px',
+                            border: 'none'
+                          }}
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                          <span>上一页</span>
+                        </button>
+                        <span
+                          className="text-sm font-bold px-4 py-2"
+                          style={{
+                            color: 'rgb(var(--theme-text))',
+                            backgroundColor: 'rgb(var(--theme-bg-secondary))',
+                            borderRadius: '9999px',
+                            border: '1px solid rgb(var(--theme-border))'
+                          }}
+                        >
                         {schemasPage} / {Math.ceil(filteredSchemas.length / SCHEMAS_PAGE_SIZE)}
                       </span>
-                      <button
-                        type="button"
-                        disabled={schemasPage >= Math.ceil(filteredSchemas.length / SCHEMAS_PAGE_SIZE)}
-                        onClick={() => setSchemasPage(p => p + 1)}
-                        className="flex items-center gap-1.5 px-5 py-2 text-sm font-medium transition-all hover:opacity-80 active:scale-95"
-                        style={{
-                          color: schemasPage >= Math.ceil(filteredSchemas.length / SCHEMAS_PAGE_SIZE) ? 'rgb(var(--theme-text-disabled))' : 'rgb(var(--theme-text-primary))',
-                          backgroundColor: schemasPage >= Math.ceil(filteredSchemas.length / SCHEMAS_PAGE_SIZE) ? 'transparent' : 'rgb(var(--theme-bg-secondary))',
-                          borderRadius: '9999px',
-                          border: 'none'
-                        }}
-                      >
-                        <span>下一页</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
+                        <button
+                          type="button"
+                          disabled={schemasPage >= Math.ceil(filteredSchemas.length / SCHEMAS_PAGE_SIZE)}
+                          onClick={() => setSchemasPage(p => p + 1)}
+                          className="flex items-center gap-1.5 px-5 py-2 text-sm font-medium transition-all hover:opacity-80 active:scale-95"
+                          style={{
+                            color: schemasPage >= Math.ceil(filteredSchemas.length / SCHEMAS_PAGE_SIZE) ? 'rgb(var(--theme-text-disabled))' : 'rgb(var(--theme-text-primary))',
+                            backgroundColor: schemasPage >= Math.ceil(filteredSchemas.length / SCHEMAS_PAGE_SIZE) ? 'transparent' : 'rgb(var(--theme-bg-secondary))',
+                            borderRadius: '9999px',
+                            border: 'none'
+                          }}
+                        >
+                          <span>下一页</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
                 </>
               )}
             </div>
@@ -5175,7 +5176,7 @@ const WorkspaceDetailPage = () => {
                           <div className="min-w-0">
                             <p className="text-xs leading-none mb-0.5" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>关系卡片</p>
                             <p className="text-lg font-bold leading-tight tabular-nums"
-                            style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}
+                               style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}
                             >{relationshipCards.length}</p>
                           </div>
                         </div>
@@ -5202,7 +5203,7 @@ const WorkspaceDetailPage = () => {
                           <div className="min-w-0">
                             <p className="text-xs leading-none mb-0.5" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>表关系</p>
                             <p className="text-lg font-bold leading-tight tabular-nums"
-                            style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}
+                               style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}
                             >{tableRelationships.length}</p>
                           </div>
                         </div>
@@ -5229,7 +5230,7 @@ const WorkspaceDetailPage = () => {
                           <div className="min-w-0">
                             <p className="text-xs leading-none mb-0.5" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>图谱节点</p>
                             <p className="text-lg font-bold leading-tight tabular-nums"
-                            style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}
+                               style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}
                             >{graphData.nodes.length}</p>
                           </div>
                         </div>
@@ -5256,7 +5257,7 @@ const WorkspaceDetailPage = () => {
                           <div className="min-w-0">
                             <p className="text-xs leading-none mb-0.5" style={{ color: isDark ? '#94a3b8' : '#64748b' }}>图谱边</p>
                             <p className="text-lg font-bold leading-tight tabular-nums"
-                            style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}
+                               style={{ color: isDark ? '#f1f5f9' : '#1e293b' }}
                             >{graphData.edges.length}</p>
                           </div>
                         </div>

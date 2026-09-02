@@ -1,8 +1,11 @@
 import Link from 'next/link'
 
-const Home = async () => {
+const Home = async ({ params }: { params: Promise<{ lng: string }> }) => {
+  const { lng } = await params
   return (
-    <Link href='/home'>🚀</Link>
+    <div>
+      <Link href={`/${lng}/overview`}>🚀</Link>
+    </div>
   )
 }
 

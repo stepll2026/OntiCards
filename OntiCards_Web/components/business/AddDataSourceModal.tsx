@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useParams } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next-nprogress-bar';
 import { App } from 'antd';
@@ -48,7 +49,7 @@ const AddDataSourceModal: React.FC<AddDataSourceModalProps> = ({ isOpen, onClose
   const [selectedDbType, setSelectedDbType] = useState<DatabaseType>('mysql');
   const [connectionMode, setConnectionMode] = useState<string>('host');
   const [showPassword, setShowPassword] = useState(false);
-  
+
   const [formData, setFormData] = useState<DataSourceConfig>({
     connect_name: '',
     dbType: 'mysql'
@@ -79,6 +80,10 @@ const AddDataSourceModal: React.FC<AddDataSourceModalProps> = ({ isOpen, onClose
 
   // 验证错误
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+
+  // 路由参数中的语言代码，默认 zh-CN
+  const params = useParams<{ lng?: string }>();
+  const lng = params?.lng ?? 'zh-CN';
 
   // 取消功能相关状态
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -116,7 +121,7 @@ const AddDataSourceModal: React.FC<AddDataSourceModalProps> = ({ isOpen, onClose
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
       }
-      
+
       savingCancelledRef.current = true;
       extractResolvedRef.current = false;
 
@@ -141,7 +146,7 @@ const AddDataSourceModal: React.FC<AddDataSourceModalProps> = ({ isOpen, onClose
 
   // 过滤后的表列表
   const filteredTables = tableList.filter(table => {
-    const matchSearch = tableSearchKeyword === '' || 
+    const matchSearch = tableSearchKeyword === '' ||
       table.name.toLowerCase().includes(tableSearchKeyword.toLowerCase());
     const matchType = tableTypeFilter === 'all' || table.type === tableTypeFilter;
     return matchSearch && matchType;
@@ -178,7 +183,7 @@ const AddDataSourceModal: React.FC<AddDataSourceModalProps> = ({ isOpen, onClose
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
-    
+
     if (!formData.connect_name?.trim()) {
       errors.connect_name = '请输入数据源名称';
     }
@@ -188,7 +193,7 @@ const AddDataSourceModal: React.FC<AddDataSourceModalProps> = ({ isOpen, onClose
       if (!formData.sqlite_path?.trim()) {
         errors.sqlite_path = '请输入SQLite文件路径';
       }
-    } 
+    }
     // SQLite 内存模式 - 不需要额外字段
     else if (selectedDbType === 'sqlite' && connectionMode === 'memory') {
       // 无需验证
@@ -288,7 +293,7 @@ const AddDataSourceModal: React.FC<AddDataSourceModalProps> = ({ isOpen, onClose
   const handleFetchTableList = async () => {
     setIsLoadingTables(true);
     setShowTableSelector(true);
-    
+
     try {
       const res = await listTables(formData);
       if (res.code === 200 && res.result) {
@@ -319,7 +324,7 @@ const AddDataSourceModal: React.FC<AddDataSourceModalProps> = ({ isOpen, onClose
 
   // 切换单个表的选中状态
   const handleToggleTable = (tableName: string) => {
-    setSelectedTables(prev => 
+    setSelectedTables(prev =>
       prev.includes(tableName)
         ? prev.filter(t => t !== tableName)
         : [...prev, tableName]
@@ -612,7 +617,7 @@ const AddDataSourceModal: React.FC<AddDataSourceModalProps> = ({ isOpen, onClose
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
-    
+
     // 重置状态
     setStep('form');
     setSavingSteps([]);
@@ -643,13 +648,13 @@ const AddDataSourceModal: React.FC<AddDataSourceModalProps> = ({ isOpen, onClose
           >
             {step === 'success' ? '添加成功' : '添加数据源'}
           </h2>
-          <button 
+          <button
             onClick={() => {
               if (step === 'saving') {
                 handleCancelSaving();
               }
               onClose();
-            }} 
+            }}
             className="p-2 hover:bg-slate-100 rounded-[10px] transition-colors"
           >
             <X className="w-5 h-5 text-slate-400" />
@@ -678,7 +683,7 @@ const AddDataSourceModal: React.FC<AddDataSourceModalProps> = ({ isOpen, onClose
                     </div>
                     <button
                       type="button"
-                      onClick={() => router.push('/settings?tab=model')}
+                      onClick={() => router.push(`/${lng}/settings?tab=model`)}
                       className="flex-shrink-0 text-blue-600 hover:text-blue-700 transition-colors"
                       title="前往模型配置"
                     >
@@ -1033,7 +1038,7 @@ const AddDataSourceModal: React.FC<AddDataSourceModalProps> = ({ isOpen, onClose
                             type="text"
                             value={connectionMode === 'service_name' ? (formData.service_name || '') : (formData.sid || '')}
                             onChange={(e) => handleFormChange(
-                              connectionMode === 'service_name' ? 'service_name' : 'sid', 
+                              connectionMode === 'service_name' ? 'service_name' : 'sid',
                               e.target.value
                             )}
                             placeholder={connectionMode === 'service_name' ? '例如：ORCL' : '例如：ORCL'}
@@ -1113,8 +1118,8 @@ const AddDataSourceModal: React.FC<AddDataSourceModalProps> = ({ isOpen, onClose
               {/* 数据异常值检测开关 - 暂时屏蔽，功能将移至其他模块
               <div
                 className={`group relative flex items-center justify-between py-3 px-4 rounded-[12px] border transition-all duration-200 cursor-pointer hover:shadow-sm ${
-                  formData.is_audit 
-                    ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 hover:border-green-300' 
+                  formData.is_audit
+                    ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 hover:border-green-300'
                     : 'bg-white border-slate-300 hover:border-slate-400 hover:bg-slate-50 shadow-sm'
                 }`}
                 onClick={() => handleFormChange('is_audit', !formData.is_audit)}
@@ -1133,8 +1138,8 @@ const AddDataSourceModal: React.FC<AddDataSourceModalProps> = ({ isOpen, onClose
                   </div>
                 </div>
                 <div className={`p-2 rounded-lg transition-all duration-300 ${
-                  formData.is_audit 
-                    ? 'text-green-500' 
+                  formData.is_audit
+                    ? 'text-green-500'
                     : 'text-slate-400'
                 }`}>
                   {formData.is_audit ? (
@@ -1149,8 +1154,8 @@ const AddDataSourceModal: React.FC<AddDataSourceModalProps> = ({ isOpen, onClose
               {/* 测试连接结果 */}
               {testResult && (
                 <div className={`p-4 rounded-[12px] border ${
-                  testResult.success 
-                    ? 'bg-green-50 border-green-200' 
+                  testResult.success
+                    ? 'bg-green-50 border-green-200'
                     : 'bg-red-50 border-red-200'
                 }`}>
                   <div className="flex items-center gap-2">
@@ -1317,8 +1322,8 @@ const AddDataSourceModal: React.FC<AddDataSourceModalProps> = ({ isOpen, onClose
                             background: item.status === 'completed'
                               ? 'linear-gradient(135deg, #34d399 0%, #10b981 100%)'
                               : item.status === 'processing'
-                              ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'
-                              : '#f1f5f9',
+                                ? 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'
+                                : '#f1f5f9',
                             boxShadow: item.status !== 'pending' ? '0 4px 12px rgba(0, 0, 0, 0.15)' : 'none'
                           }}>
                             {item.status === 'completed' ? (

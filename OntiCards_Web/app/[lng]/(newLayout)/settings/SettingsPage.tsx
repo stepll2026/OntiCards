@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useSearchParams, usePathname } from 'next/navigation';
+import { useSearchParams, usePathname, useParams } from 'next/navigation';
 import { useRouter } from 'next-nprogress-bar';
 import {
   Settings,
@@ -82,11 +82,14 @@ const pickEmailFromUser = (u: any): string => {
   return typeof v === 'string' ? String(v).trim() : '';
 };
 
-const SettingsPage = () => {
+const SettingsPage = ({ lng }: { lng?: string }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const { userInfo, loading: userLoading } = useUserInfo();
+  // 兼容通过 params.lng 传入和直接使用 useParams 两种方式
+  const params = useParams<{ lng?: string }>();
+  const resolvedLng = lng ?? params?.lng ?? 'zh-CN';
 
   const [activeTab, setActiveTab] = useState('account');
   const [currentUserId, setCurrentUserId] = useState<string>('');
@@ -187,7 +190,7 @@ const SettingsPage = () => {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, marginTop: 16, overflow: 'hidden' }}>
-        {activeTab === 'account' && <AccountTab userInfo={currentUserInfo} userId={currentUserId} />}
+        {activeTab === 'account' && <AccountTab userInfo={currentUserInfo} userId={currentUserId} lng={resolvedLng} />}
         {activeTab === 'api-keys' && <ApiKeysTab userId={currentUserId} />}
         {activeTab === 'model' && <ModelConfigTab />}
         {activeTab === 'users' && <UsersTab currentUserId={currentUserId} />}
@@ -491,26 +494,26 @@ const UsersTab = ({ currentUserId }: { currentUserId: string }) => {
             <div className="flex-1 min-h-0 overflow-y-auto users-table-container">
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
-                  <tr>
-                    <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500">用户名</th>
-                    <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500">昵称</th>
-                    <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500">角色</th>
-                    <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500">状态</th>
-                    <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500">最后登录</th>
-                    <th className="text-right px-6 py-4 text-xs font-semibold text-slate-500">操作</th>
-                  </tr>
+                <tr>
+                  <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500">用户名</th>
+                  <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500">昵称</th>
+                  <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500">角色</th>
+                  <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500">状态</th>
+                  <th className="text-left px-6 py-4 text-xs font-semibold text-slate-500">最后登录</th>
+                  <th className="text-right px-6 py-4 text-xs font-semibold text-slate-500">操作</th>
+                </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {paginatedUsers.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
-                        {searchQuery ? '未找到匹配的用户' : '暂无用户数据'}
-                      </td>
-                    </tr>
-                  ) : (
-                    paginatedUsers.map(user => {
-                      const rowEmail = pickEmailFromUser(user);
-                      return (
+                {paginatedUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                      {searchQuery ? '未找到匹配的用户' : '暂无用户数据'}
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedUsers.map(user => {
+                    const rowEmail = pickEmailFromUser(user);
+                    return (
                       <tr key={user.id} className="hover:bg-slate-50/50">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
@@ -554,27 +557,27 @@ const UsersTab = ({ currentUserId }: { currentUserId: string }) => {
                             style={
                               user.role === 'admin'
                                 ? {
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    padding: '4px 10px',
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    borderRadius: 9999,
-                                    backgroundColor: '#f3e8ff',
-                                    color: '#7c3aed',
-                                    border: '1px solid #ddd6fe',
-                                  }
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  padding: '4px 10px',
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  borderRadius: 9999,
+                                  backgroundColor: '#f3e8ff',
+                                  color: '#7c3aed',
+                                  border: '1px solid #ddd6fe',
+                                }
                                 : {
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    padding: '4px 10px',
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    borderRadius: 9999,
-                                    backgroundColor: '#eff6ff',
-                                    color: '#2563eb',
-                                    border: '1px solid #bfdbfe',
-                                  }
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  padding: '4px 10px',
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  borderRadius: 9999,
+                                  backgroundColor: '#eff6ff',
+                                  color: '#2563eb',
+                                  border: '1px solid #bfdbfe',
+                                }
                             }
                           >
                             {user.role === 'admin' ? '管理员' : '普通用户'}
@@ -585,27 +588,27 @@ const UsersTab = ({ currentUserId }: { currentUserId: string }) => {
                             style={
                               user.status === 'normal'
                                 ? {
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    padding: '4px 10px',
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    borderRadius: 9999,
-                                    backgroundColor: '#ecfdf5',
-                                    color: '#059669',
-                                    border: '1px solid #a7f3d0',
-                                  }
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  padding: '4px 10px',
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  borderRadius: 9999,
+                                  backgroundColor: '#ecfdf5',
+                                  color: '#059669',
+                                  border: '1px solid #a7f3d0',
+                                }
                                 : {
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    padding: '4px 10px',
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    borderRadius: 9999,
-                                    backgroundColor: '#fef2f2',
-                                    color: '#dc2626',
-                                    border: '1px solid #fecaca',
-                                  }
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  padding: '4px 10px',
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  borderRadius: 9999,
+                                  backgroundColor: '#fef2f2',
+                                  color: '#dc2626',
+                                  border: '1px solid #fecaca',
+                                }
                             }
                           >
                             {user.status === 'normal' ? '正常' : '禁用'}
@@ -640,9 +643,9 @@ const UsersTab = ({ currentUserId }: { currentUserId: string }) => {
                           </div>
                         </td>
                       </tr>
-                      );
-                    })
-                  )}
+                    );
+                  })
+                )}
                 </tbody>
               </table>
             </div>
@@ -1078,7 +1081,7 @@ const UsersTab = ({ currentUserId }: { currentUserId: string }) => {
 };
 
 // 账户设置
-const AccountTab = ({ userInfo, userId }: { userInfo: any; userId: string }) => {
+const AccountTab = ({ userInfo, userId, lng }: { userInfo: any; userId: string; lng?: string }) => {
   const { message: messageApi } = App.useApp();
   const { refreshUserInfo } = useUserInfo();
   const [loading, setLoading] = useState(true);
@@ -1141,8 +1144,8 @@ const AccountTab = ({ userInfo, userId }: { userInfo: any; userId: string }) => 
         resetGlobalUserInfo();
         messageApi.success('密码已修改，请重新登录');
         setTimeout(() => {
-          const lng = window.location.pathname.split('/')[1] || 'zh';
-          window.location.href = `/${lng}/login`;
+          const resolvedLng = lng ?? 'zh-CN';
+          window.location.href = `/${resolvedLng}/login`;
         }, 800);
         return;
       }
@@ -2138,8 +2141,8 @@ const SystemTab = () => {
                       : ''
                   }`}
                   {...(theme === option.value
-                    ? { style: { borderRadius: '8px', borderColor: 'rgb(var(--theme-primary))', backgroundColor: 'rgba(var(--theme-primary), 0.1)', color: 'rgb(var(--theme-primary))' } }
-                    : { style: { borderRadius: '8px', borderColor: 'rgb(var(--theme-border))', color: 'rgb(var(--theme-text-secondary))' } }
+                      ? { style: { borderRadius: '8px', borderColor: 'rgb(var(--theme-primary))', backgroundColor: 'rgba(var(--theme-primary), 0.1)', color: 'rgb(var(--theme-primary))' } }
+                      : { style: { borderRadius: '8px', borderColor: 'rgb(var(--theme-border))', color: 'rgb(var(--theme-text-secondary))' } }
                   )}
                 >
                   {option.icon}
