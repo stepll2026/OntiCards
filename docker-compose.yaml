@@ -1,0 +1,160 @@
+services:
+  # API and Web wait for this health check before their containers are created.
+  onticards-db:
+    image: postgres:15-alpine
+    environment:
+      # The bundled init.sql assumes the initial superuser is postgres.
+      POSTGRES_USER: "${DB_USERNAME:-postgres}"
+      # Local default only. Override DB_PASSWORD through an untracked root .env for production.
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-onticards_dev}"
+      POSTGRES_DB: "${DB_DATABASE:-prod-ontiCards}"
+      PGDATA: /var/lib/postgresql/data/pgdata
+      TZ: "${TZ:-Asia/Shanghai}"
+    volumes:
+      - ./volumes/postgresql/data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - onticards
+
+  # Version 1.36.x matches the repository's weaviate-client==4.20.4 dependency.
+  onticards-weaviate:
+    image: cr.weaviate.io/semitechnologies/weaviate:1.36.0
+    command:
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --scheme
+      - http
+    environment:
+      QUERY_DEFAULTS_LIMIT: "25"
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      ENABLE_API_BASED_MODULES: "true"
+      CLUSTER_HOSTNAME: node1
+      GRPC_PORT: "50051"
+      TZ: "${TZ:-Asia/Shanghai}"
+    volumes:
+      - ./volumes/weaviate/data:/var/lib/weaviate
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/v1/.well-known/ready >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - onticards
+
+  onticards_api:
+    build:
+      context: ./OntiCards_Api
+      dockerfile: Dockerfile
+    image: onticards-api:local
+    # Compose v2: build from the source context whenever this service is brought up.
+    pull_policy: build
+    env_file:
+      - path: ./.env.prod
+        required: true
+      # This file is deliberately optional so a clean clone can start immediately.
+      - path: ./.env
+        required: false
+    environment:
+      # The entrypoint materializes the final container environment as /onticards_api/.env.
+      COMPOSE_MANAGED_ENV: "1"
+      PORT: "9103"
+      # Docker DNS must take precedence over a developer's old local-IP configuration.
+      DB_HOST: onticards-db
+      DB_PORT: "5432"
+      WEAVIATE_URL: http://onticards-weaviate:8080
+      GRPC_PORT: "50051"
+      GOVERNANCE_EXPORT_PATH: /data/governance/reports
+    volumes:
+      - ./volumes/governance/reports:/data/governance/reports
+    depends_on:
+      onticards-db:
+        condition: service_healthy
+      onticards-weaviate:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9103/healthz >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
+    restart: unless-stopped
+    networks:
+      - onticards
+
+  # Web does not query the data services directly; these dependencies implement the requested startup order.
+  onticards_web:
+    build:
+      context: ./OntiCards_Web
+      dockerfile: Dockerfile
+    image: onticards-web:local
+    pull_policy: build
+    environment:
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+      DEPLOY_ENV: "${DEPLOY_ENV:-PRODUCTION}"
+      TZ: "${TZ:-Asia/Shanghai}"
+    depends_on:
+      onticards-db:
+        condition: service_healthy
+      onticards-weaviate:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          node -e "require('http').get('http://127.0.0.1:3000/zh-CN',
+          r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error',
+          () => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - onticards
+
+  # This is the only service exposed to the host. It starts after API and Web are healthy.
+  onticards_nginx:
+    image: nginx:1.27-alpine
+    environment:
+      # The official nginx image renders this variable into the mounted template at startup.
+      NGINX_SERVER_NAME: "${NGINX_SERVER_NAME:-_}"
+      # Protect native Nginx variables ($host, $scheme, etc.) from envsubst.
+      NGINX_ENVSUBST_FILTER: "^NGINX_SERVER_NAME$"
+    ports:
+      # Keep 9107 as the zero-configuration default; override NGINX_HOST_PORT
+      # in an untracked .env when the host already uses that port.
+      - "${NGINX_HOST_PORT:-9107}:9107"
+    volumes:
+      - ./nginx/onticards.conf:/etc/nginx/templates/default.conf.template:ro
+    depends_on:
+      onticards_api:
+        condition: service_healthy
+      onticards_web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9107/ >/dev/null 2>&1 && wget -qO- http://127.0.0.1:9107/console/api/healthz >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - onticards
+
+networks:
+  onticards:
+    # `name` prevents Compose from adding a project-name prefix and creates it when absent.
+    name: onticards
+    driver: bridge

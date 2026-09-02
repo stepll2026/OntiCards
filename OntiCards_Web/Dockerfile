@@ -38,7 +38,6 @@ WORKDIR /onticards_web
 # 设置环境变量
 ENV NODE_ENV=production
 ENV DEPLOY_ENV=PRODUCTION
-ENV CONSOLE_API_URL=https://impluto.ai
 ENV PORT=3000
 ENV TZ=Asia/Shanghai
 

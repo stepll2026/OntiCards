@@ -1,11 +1,10 @@
-#!/bin/bash
+#!/bin/sh
 
 set -e
 
-export NEXT_PUBLIC_DEPLOY_ENV=${DEPLOY_ENV}
-export NEXT_PUBLIC_API_PREFIX=${CONSOLE_API_URL}/console/api
-export NEXT_BACKEND_DOMAIN=${CONSOLE_API_URL}
-export NEXT_PUBLIC_FILE_PREFIX=${CONSOLE_API_URL}/aiw_chain_file
+export NEXT_PUBLIC_DEPLOY_ENV="${DEPLOY_ENV:-PRODUCTION}"
+export NEXT_PUBLIC_API_PREFIX="/console/api"
+export NEXT_BACKEND_DOMAIN=""
+export NEXT_PUBLIC_FILE_PREFIX="/console/api/aiw_chain_file"
 
-
-node ./server.js
+exec node ./server.js

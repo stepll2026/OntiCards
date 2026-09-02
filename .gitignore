@@ -14,7 +14,9 @@ desktop.ini
 # ==============================
 # Environment / Secrets
 # ==============================
-# .env 用于本地开发，允许提交
+# .env 是本机覆盖文件，不能提交。
+# .env.prod 提供可直接启动的开发默认值；生产环境请在未提交的 .env 中覆盖。
+.env
 # .env.prod 用于生产部署模板，允许提交
 
 # 忽略其他环境配置文件
@@ -34,6 +36,14 @@ desktop.ini
 # ==============================
 *.log
 logs/
+
+# ==============================
+# Docker Compose bind-mounted runtime data
+# ==============================
+# The parent folders contain README files; generated database/vector/export data stays local.
+/volumes/postgresql/data/
+/volumes/weaviate/data/
+/volumes/governance/reports/
 
 # ==============================
 # AI / Local development tools

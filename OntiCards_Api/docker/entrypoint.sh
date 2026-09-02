@@ -12,8 +12,16 @@ set -e
 # 只有 worker 出现异常时才会被宿主 OOM Killer 杀。
 # ============================================================
 
-# 加载 .env 文件
-if [ -f /onticards_api/.env ]; then
+# Compose 模式下，把最终进程环境同步为运行时 .env：
+# - env_file 的默认值、用户 .env 覆盖值以及 Compose 强制的 Docker DNS 都会写入；
+# - dotenv/environs 读取文件时与进程环境保持一致；
+# - 文件仅存在于容器内，并限制为容器所有者可读。
+if [ "${COMPOSE_MANAGED_ENV:-0}" = "1" ]; then
+  (
+    umask 077
+    python -c 'import json, os; from pathlib import Path; Path("/onticards_api/.env").write_text("".join(f"{key}={json.dumps(value, ensure_ascii=False)}\n" for key, value in sorted(os.environ.items())), encoding="utf-8")'
+  )
+elif [ -f /onticards_api/.env ]; then
   set -a
   . /onticards_api/.env
   set +a
@@ -29,7 +37,7 @@ fi
 # max_requests: 最大请求数（超过后重启worker，防止内存泄漏）
 # max_requests_jitter: 最大请求抖动值
 
-gunicorn \
+exec gunicorn \
   --config gunicorn.py \
   --workers ${GUNICORN_WORKERS:-2} \
   --worker-class ${GUNICORN_WORKER_CLASS:-gthread} \

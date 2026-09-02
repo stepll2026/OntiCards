@@ -170,10 +170,6 @@ COPY . /onticards_api
 # 达梦动态库已复制到 /opt/dmdbms，删除应用目录中的重复副本
 RUN rm -rf /onticards_api/docker/dm8/client
 
-# 复制环境变量文件
-COPY .env.prod /onticards_api/.env
-RUN sed -i 's/\r//' /onticards_api/.env
-
 # 复制入口脚本
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN sed -i 's/\r//' /entrypoint.sh \

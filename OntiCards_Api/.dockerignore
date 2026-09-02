@@ -1,0 +1,14 @@
+# Runtime environment files must be supplied by Compose, never baked into an image layer.
+.env
+.env.*
+.env.copy
+
+# Source-control and local Python artifacts.
+.git
+.gitignore
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+logs/
+*.log

@@ -106,9 +106,8 @@ type ResponseError = {
   status: number
 }
 
-export const urlPrefix = 'http://localhost:9103/console/api'             // 本地环境（后端本地启动）
-// export const urlPrefix = 'http://项目线上ip地址:端口/console/api'           //线上环境:IP+端口
-// export const urlPrefix = 'https://xxxx.xxxx.com.cn/console/api'   //线上环境:域名
+// 浏览器始终请求当前站点；Nginx 将此路径转发到 Docker 网络中的 API 服务。
+export const urlPrefix = '/console/api'
 
 const baseFetch = <T>(
   url: string,
