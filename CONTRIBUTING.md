@@ -117,7 +117,7 @@ git push origin feature/your-feature-name
 
 如果您有任何问题，欢迎通过以下方式联系我们：
 
-- GitHub Issues：https://github.com/your-org/onticards/issues
+- GitHub Issues：https://github.com/stepll2026/OntiCards/issues
 - 提交 Issue 时请选择合适的模板
 
 ---
