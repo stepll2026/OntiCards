@@ -131,7 +131,7 @@ services:
       # The official nginx image renders this variable into the mounted template at startup.
       NGINX_SERVER_NAME: "${NGINX_SERVER_NAME:-_}"
       # Protect native Nginx variables ($host, $scheme, etc.) from envsubst.
-      NGINX_ENVSUBST_FILTER: "^NGINX_SERVER_NAME$"
+      NGINX_ENVSUBST_FILTER: "^NGINX_SERVER_NAME$$"
     ports:
       # Keep 9107 as the zero-configuration default; override NGINX_HOST_PORT
       # in an untracked .env when the host already uses that port.
