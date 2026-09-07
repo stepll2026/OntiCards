@@ -1,178 +1,225 @@
-🌐 語言切換：
-[简体中文](README.md) | **繁體中文(香港)** | [English](README_en.md)
-
 # OntiCards
 
-![OntiCards — 企業級 AI 數據中樞](onticards-banner.jpg)
+**企業級 AI 數據中樞 | 讓企業數據庫可被 AI 讀懂、可被業務即用**
 
-> **企業級 AI 數據中樞** ｜ 讓企業的數據「會說話、聽得懂、可治理」
+[简体中文](README.md) | **繁體中文(香港)** | [English](README_en.md)
 
-[![Version](https://img.shields.io/badge/version-2.4.0-blue)](https://github.com/stepll2026/OntiCards/releases)
-[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-green)](./LICENSE)
-[![Docs](https://img.shields.io/badge/docs-%E4%B8%AD%E6%96%87%E6%96%87%E6%A1%A3-8A2BE2)](https://www.step2.com.cn/docs/zh-cn/)
-[![Docker Compose](https://img.shields.io/badge/deploy-Docker%20Compose%20ready-2496ED)](https://www.step2.com.cn/docs/zh-cn/deployment.html)
+**開源免費 · 私有化部署 · 全鏈路數據智能化治理**
 
-## 你是否正在為這些事情頭痛？
+**項目地址**：[https://github.com/stepll2026/OntiCards/releases](https://github.com/stepll2026/OntiCards/releases)
 
-- 業務同事想要一個數字，先提需求、再排隊、等數據團隊寫 SQL，一星期過去了報表還沒有影
-- 系統裡躺著幾百上千張表，沒有人說得清每張表是做甚麼的、欄位是甚麼意思——想問數據，得先找到「當年建表的那個人」
-- 數據散落在 MySQL、Oracle 和各個業務系統裡，跨庫取數靠匯出 Excel 人手拼接，拼完兩個部門的數字還對不上
-- 數據質素全靠運氣，報表錯了沒有人知道，直到老闆在會議上指出來
-- 不知道誰在甚麼時間查了甚麼數據，敏感資訊近乎裸奔，審計來了拿不出任何紀錄
+**官方文件**：[https://www.step2.com.cn/docs/zh-cn/](https://www.step2.com.cn/docs/zh-cn/)
 
-這些問題的根源是同一個：**數據能力被鎖在少數會寫 SQL 的人手裡，而數據本身說不清、找不著、信不過、管不住。**
+**開源協議**：[AGPL-3.0](./LICENSE)
 
-## OntiCards 是甚麼
+## 💡 前言：企業AI落地的核心瓶頸，從來不是大模型
 
-OntiCards 是一個開源的企業級 AI 數據中樞（AI Data Hub），連接你現有的業務數據庫，讓數據從「只有會寫 SQL 的人才能用」，變成**每個懂業務的人都能直接查詢、質檢、管理、審計的資產**：
+絕大多數企業推進AI數碼化落地時，都會陷入同一個困境：**大模型好用，但企業自有數據用不起來**。
 
-- **不用寫 SQL**：用日常業務語言提問，系統自動完成多步推理、數據庫方言適配與 SQL 安全校驗，業務人員即可自助取數
-- **每張表都有說明書**：AI 自動生成智能數據卡片——欄位畫像、敏感欄位三層識別、業務術語與表關係盤點，數據第一次講得清自己是甚麼
-- **一次提問，跨庫取數**：跨多個數據庫自動對齊與合併結果，不用再匯出 Excel 人手拼接
-- **數據質素有人盯著**：14 種質檢規則類型、AI 自然語言建規則、質素評分與報告匯出，出問題先看報告，而不是先捱罵
-- **企業級安全與審計**：數據源隔離、敏感資訊脫敏、全程查詢審計留痕、API-Key 整合與 JWT-SSO 單一登入，私有化部署，數據不出內網
+數據分散在MySQL、Oracle、國產數據庫、各類業務系統中，無統一台賬、無業務釋義、無質量管控；技術團隊疲於寫臨時SQL、對接數據源、處理數據報錯；業務團隊取數依賴研發排期，跨部門數據核對耗時數天；同時敏感數據外洩、AI濫用、無審計追溯等安全風險層層疊加。
 
-> 📌 開源版完全免費、支援私有化自托管；多租戶、行列級權限等企業能力以商業服務形式提供，見文末[商業服務](#商業服務)。
+**數據，本該是企業AI的核心資產，卻成了落地最大成本與阻礙。**
 
-## 核心能力一覽
+你需要的不是更強大的大模型，而是一座**連接業務數據庫與AI應用的中間樞紐**——讓數據可識別、可查詢、可治理、可安全復用。
 
-- **多源數據接入**：支援 MySQL、PostgreSQL、Oracle、SQL Server、SQLite、Trino，以及達夢、人大金倉、OceanBase 等國產數據庫，共 9 類數據源
-- **智能數據理解**：每張表自動生成「智能數據卡片」業務說明書，含欄位畫像、敏感欄位識別、業務術語庫與 AI 表關係盤點
-- **自然語言查詢**：NL2SQL 多步推理、多數據庫方言適配、業務術語自動展開、SQL 安全校驗
-- **跨源融合查詢**：一次提問跨多個數據庫，自動對齊與合併結果，打破數據孤島
-- **數據質檢**：14 種質檢規則類型、AI 自然語言建規則、質素評分與質檢報告匯出
-- **企業級平台能力**：數據源隔離、敏感資訊脫敏、查詢審計、API-Key 整合、JWT-SSO 單一登入、查詢監控與成本統計
+**OntiCards 正是為此而生**：一站式開源企業級AI數據中樞，零侵入對接存量數據庫，AI自動理解數據語義，支援自然語言自助取數、跨源融合、智能質檢、權限審計，**接上即可用，大幅降低企業數據AI化落地門檻**。
 
-## 快速開始
+## ✨ 核心價值：解決企業數據AI化四大核心痛點
+
+- **解決數據孤島**：兼容9類主流及國產數據庫，單平台統一接入、統一管理多源異構數據
+
+- **解決AI讀不懂數據**：AI自動生成智能數據卡片，結構化梳理表用途、欄位含義、敏感標識、業務關係，讓大模型精準理解企業私有數據
+
+- **解決取數效率低**：摒棄人手寫SQL、跨部門對接，業務自然語言即可自助查數，多步推理、跨庫融合一鍵實現
+
+- **解決落地不安全、無規範**：內置數據脫敏、權限隔離、操作審計、SSO單一登入，兼顧智能化與企業級安全合規
+
+## 🚀 真實落地案例：龍頭企業驗證的生產級能力
+
+OntiCards 並非實驗性demo，已在**汽車、金融、政企、製造、教育、地產**等多行業頭部企業生產環境穩定落地，適配真實複雜業務場景：
+
+- **汽車行業（年銷百萬輛級車企）**：重構營銷取數模式，自然語言對話式查數，取代5天跨部門人手匯總，覆蓋14個業務BI看板，查詢準確率超85%，應答率超90%
+
+- **金融行業（6000億級城市商業銀行）**：統一收攏全行制度與業務數據，構建企業知識與數據問答入口，AI產出效率為人手專家4倍，實現業務秒級自助答疑取數
+
+- **政企交通（6000km+省屬交通集團）**：監控數據智能化解析，8類異常事件、7類設備故障AI精準識別，準確率≥85%，智能體響應時長＜5秒，實現從「人手盯屏」到「AI主動預警」
+
+- **高端製造（PCB龍頭企業）**：多模態AI自動抽取訂單圖紙結構化參數，實現「圖紙進、數據出」，取代人手錄入核對，大幅降低錯漏率與人力成本
+
+- **地產法務**：AI智能合約審查，單份合約審核從40分鐘壓縮至4分鐘，自動識別風險條款、分級預警、結構化批註
+
+更多行業解決方案：[https://www.step2.com.cn/zh-cn/solutions](https://www.step2.com.cn/zh-cn/solutions)
+
+## 🔥 核心能力全景
+
+### 1. 多源全兼容數據接入
+
+零侵入接入主流開源、商業及國產數據庫，全面適配企業國產化改造需求：
+
+- 開源庫：MySQL 5.7+、PostgreSQL 10+、SQLite 3.x
+
+- 商業庫：Oracle 11g+、SQL Server 2012+
+
+- 國產庫：達夢DMDB V8、人大金倉、OceanBase（MySQL租戶）
+
+- 大數據引擎：Trino
+
+### 2. AI 智能數據理解（核心特色）
+
+自動完成全域數據資產盤點，把晦澀的數據庫元數據，轉化為業務可讀、AI可識別的數據資產：
+
+- 智能數據卡片：自動生成每張數據表的業務說明書，包含表用途、欄位釋義、枚舉規則、適用場景
+
+- 智能識別：自動標記敏感欄位、梳理表間關聯關係、完成全域數據畫像
+
+- 業務術語庫：自訂行業指標與業務口徑，統一全公司數據語言，消除理解偏差
+
+- 欄位註釋增強：支援Excel字典批量匯入，精準修正AI自動解析誤差
+
+### 3. 自然語言智能問數（NL2SQL）
+
+- 零SQL門檻：業務自然語言提問，自動適配多數據庫方言、生成可執行安全SQL
+
+- 複雜推理：支援多步拆解、嵌套查詢、聚合統計，適配複雜業務分析場景
+
+- 跨源融合：一次提問聯動多庫數據，自動對齊欄位、合併結果，徹底打破數據孤島
+
+- 安全校驗：自動攔截高危DML/DDL語句，僅保留唯讀查詢，保障數據庫安全
+
+### 4. 全自動化數據質檢
+
+內置14種通用質檢規則，支援AI智能建模+人手自訂規則，構建閉環數據治理體系：
+
+- 覆蓋維度：有效性、唯一性、一致性、完整性、值域合規、日期合規等
+
+- 能力輸出：自動質檢、質素評分、問題溯源、批量整改、標準化報告匯出
+
+- 適配場景：日常數據巡檢、上線校驗、數據對賬、常態化治理
+
+### 5. 企業級安全與整合能力
+
+完全適配生產環境私有化部署需求，滿足企業合規、權限管控、系統整合要求：
+
+- 安全管控：數據脫敏、行列級權限隔離、查詢審計、操作日誌追溯
+
+- 登入整合：支援JWT-SSO單一登入、多帳戶權限管理
+
+- 開放整合：API-Key開放介面，可無縫對接AI智能體、RPA、BI平台、自研業務系統
+
+- 運維監控：查詢流量監控、Token成本統計、服務狀態預警、日誌排查
+
+## 💻 快速部署（3步一鍵啟動）
 
 ### 環境要求
 
-| 項目 | 要求 |
-| --- | --- |
-| 作業系統 | Linux x86_64（推薦 Ubuntu 22.04/24.04） |
-| Docker | Docker Engine + Docker Compose 外掛 **v2.24.0+** |
-| 最低配置 | 2 核 CPU / 4 GB 記憶體 |
-| 瀏覽器 | 現代桌面瀏覽器（Chrome / Edge） |
+| 項目 | 最低配置 | 推薦配置 |
+| --- | --- | --- |
+| 系統 | Linux x86_64 | Ubuntu 22.04/24.04 |
+| CPU/記憶體 | 2核4G | 4核8G及以上 |
+| 磁碟 | 20G | 50G及以上 |
+| 運行環境 | Docker 20.10+、Docker Compose 2.0+ | 最新穩定版 |
 
-### 三步啟動
+### 部署命令
 
 ```bash
-# 1. 克隆仓库
+# 1. 克隆项目
 git clone https://github.com/stepll2026/OntiCards.git
 cd OntiCards
 
-# 2. 配置环境变量（.env.example 提供可直接启动的开发默认值）
+# 2. 初始化环境变量
 cp .env.example .env
 chmod 600 .env
-#    生产环境请至少修改：DB_PASSWORD、SECRET_KEY、SSO_SECRET_KEY、
-#    CONNECT_INFO_MASTER_KEY、PUBLIC_BASE_URL、ALLOWED_ORIGINS
 
-# 3. 校验配置并一键启动（首次会构建 API 与 Web 镜像）
+# 3. 校验配置并一键启动
 docker compose config -q
 docker compose up -d --build
 
-# 访问（Nginx :9107 为唯一对外入口，数据库/向量库/API/Web 均在内网）
-open http://your-ip:9107
+# 访问地址
+http://your-ip:9107
 ```
 
-> 📖 完整部署說明（含國內鏡像加速、離線部署、端口變更、升級流程）見官方文件：[部署指南](https://www.step2.com.cn/docs/zh-cn/deployment.html)
+⚠️ **生產環境必改**：數據庫密碼、密鑰、SSO密鑰、域名白名單等核心配置
 
-### 5 分鐘體驗流程
+完整部署、離線部署、版本升級、HTTPS配置：[部署指南](https://www.step2.com.cn/docs/zh-cn/deployment.html)
 
-1. 登入系統，設定大模型（支援通義千問、DeepSeek、智譜 AI、GPT、Claude 等）
-2. 新增業務數據源
-3. 等待自動生成**智能數據卡片**，補充業務術語與表關係盤點
-4. 用自然語言提問，自助查詢數據
-5. 體驗數據質檢、查詢歷史、監控面板與 API 整合
+## ⚡ 5分鐘快速上手流程
 
-詳細操作步驟見官方文件：[用戶手冊](https://www.step2.com.cn/docs/zh-cn/user-guide.html)
+1. 登入系統，配置LLM大模型（兼容GPT、Claude、通義千問、DeepSeek、智譜、本地Ollama模型）
 
-## 支援數據源
+2. 新增業務數據源，系統自動拉取元數據、生成智能數據卡片
 
-| 數據庫 | 版本 | 備註 |
-| --- | --- | --- |
-| MySQL | 5.7+ | 主流開源數據庫 |
-| PostgreSQL | 10+ | 兼容人大金倉 |
-| Oracle | 11g+ | 商業數據庫 |
-| SQL Server | 2012+ | 微軟數據庫 |
-| SQLite | 3.x | 輕量測試 |
-| Trino | Latest | OLAP 引擎 |
-| 達夢 DMDB | V8 | 國產數據庫 |
-| KingBase（人大金倉） | 最新版 | 國產數據庫 |
-| OceanBase | MySQL 租戶 | 分散式國產數據庫 |
+3. （可選）上載業務字典、建立術語庫、執行全域/定向數據盤點，優化數據理解精度
 
-## 適用場景
+4. 自然語言自助取數、配置質檢規則、查看監控報表、對接第三方系統
 
-- **業務營運**：自助取數、日常監控、異常排查
-- **數據分析師**：臨時查詢、跨庫數據整合、快速驗證分析假設
-- **數據治理專員**：設定質檢規則、輸出數據質素報告、統一業務術語
-- **管理層**：多數據源匯總對比分析
-- **IT 與數據團隊**：數據源管理、權限管控、查詢審計監控
-- **第三方系統整合**：透過 API-Key 對接智能體、RPA、BI 平台（支援 [SSO-JWT 整合](https://www.step2.com.cn/docs/zh-cn/sso-jwt.html)）
+完整操作教程：[用戶手冊](https://www.step2.com.cn/docs/zh-cn/user-guide.html)
 
-## 技術棧
+## 👥 適用角色與場景
 
-### 前端
+- **技術負責人/架構師**：快速搭建企業數據AI化底座，統一數據接入、治理、安全規範，降低AI落地成本
 
-| 分類 | 技術 | 說明 |
-| --- | --- | --- |
-| 核心框架 | Next.js 14 · React 18 · TypeScript 5 | 全棧框架 + SSR |
-| UI 元件 | Ant Design 5 · Tailwind CSS 3 · Sass/SCSS | 企業級元件 + 主題切換 |
-| 數據可視化 | Recharts · D3.js | 圖表與圖形 |
-| 國際化 | i18next · next-i18n-router | 多語言 + 路由切換 |
-| Markdown | react-markdown · remark-gfm · KaTeX | 文件渲染、公式、程式碼高亮 |
+- **研發/數據工程師**：減少重複SQL編寫、跨庫聯調、數據核對工作，提升開發與運維效率
 
-### 後端
+- **數據分析師**：自助完成臨時查詢、跨源分析，聚焦業務洞察而非數據取數
 
-| 分類 | 技術 | 說明 |
-| --- | --- | --- |
-| 核心框架 | Flask 2.3.3 · Flask-RESTful · Gunicorn | RESTful API + WSGI |
-| 主數據庫 | PostgreSQL 10+ · SQLAlchemy 2.0 | 元數據與業務數據儲存 |
-| 向量數據庫 | Weaviate 1.36.0 | 語義向量儲存與檢索 |
-| AI / LLM | 通義千問 · DeepSeek · 智譜 AI · GPT · Claude · Azure OpenAI | 支援 Embedding / Rerank |
-| 定時任務 | APScheduler | 定時盤點與質檢調度 |
-| 數據處理 | pandas · numpy · openpyxl · python-docx | 數據處理 + 報告生成 |
-| 安全 | cryptography · PyJWT · passlib/bcrypt | AES 加密 + JWT + 密碼雜湊 |
+- **數據治理專員**：標準化完成數據盤點、質檢、術語統一、質素報告輸出
 
-## 文件中心
+- **業務/管理層**：零技術門檻自助取數，實時獲取業務數據、支撐經營決策
 
-全部文件已遷移至官方網站文件中心，請瀏覽：**[https://www.step2.com.cn/docs/zh-cn/](https://www.step2.com.cn/docs/zh-cn/)**
+- **AI應用開發**：作為AI智能體、RPA、BI的統一數據入口，安全賦能上層AI應用
 
-| 文件 | 連結 |
-| --- | --- |
-| 部署指南 | [deployment](https://www.step2.com.cn/docs/zh-cn/deployment.html) |
-| 用戶手冊 | [user-guide](https://www.step2.com.cn/docs/zh-cn/user-guide.html) |
-| API 介面參考 | [api-reference](https://www.step2.com.cn/docs/zh-cn/api-reference.html) |
-| SSO-JWT 整合 | [sso-jwt](https://www.step2.com.cn/docs/zh-cn/sso-jwt.html) |
-| FAQ | [faq](https://www.step2.com.cn/docs/zh-cn/faq.html) |
-| 問題排查指南 | [troubleshooting](https://www.step2.com.cn/docs/zh-cn/troubleshooting.html) |
-| 更新日誌 | [changelog](https://www.step2.com.cn/docs/zh-cn/changelog.html) |
+## 🛠️ 技術棧
 
-## 參與貢獻
+**前端**：Next.js 14、React 18、TypeScript 5、Ant Design 5、Tailwind CSS、Recharts、i18n國際化
 
-歡迎提交 Issue、Feature Request 和 Pull Request！
-請先閱讀：[貢獻指南](./CONTRIBUTING.md)
+**後端**：Flask、SQLAlchemy、PostgreSQL、Weaviate向量數據庫、APScheduler定時任務、pandas數據處理
 
-## License
+**AI能力**：兼容主流公有大模型、本地私有化模型，支援Embedding語義檢索、Rerank重排序、多步推理
 
-OntiCards 開源版基於 **[AGPL-3.0](./LICENSE)** 協議開源。
+## 📚 官方文件合集
 
-> 簡單理解：如果你基於本項目修改並對外提供網絡服務，需要公開修改後的源碼。商業授權需求請參考下方[商業服務](#商業服務)。
+- [部署指南](https://www.step2.com.cn/docs/zh-cn/deployment.html)：環境配置、一鍵部署、生產優化、版本升級
 
-## 商業服務
+- [用戶手冊](https://www.step2.com.cn/docs/zh-cn/user-guide.html)：全功能操作、數據源管理、數據治理、智能問數
 
-OntiCards 開源版可免費部署使用。如需以下能力，歡迎聯絡我們：
+- [API介面文件](https://www.step2.com.cn/docs/zh-cn/api-reference.html)：第三方系統整合、介面調用規範
 
-- 多租戶版本、行列級權限
-- 企業版數據治理增強、數據校驗對賬
-- 定製開發與私有化實施服務
-- 專業技術支援
+- [SSO-JWT整合](https://www.step2.com.cn/docs/zh-cn/sso-jwt.html)：企業單一登入對接方案
 
-## 聯絡我們
+- [問題排查指南](https://www.step2.com.cn/docs/zh-cn/troubleshooting.html)：啟動報錯、模型調用、數據庫連接異常解決
 
-- **GitHub Issues**：[stepll2026/OntiCards/issues](https://github.com/stepll2026/OntiCards/issues) — 提交 Bug 與需求反饋
-- **產品官網**：[https://www.step2.com.cn](https://www.step2.com.cn) — 產品介紹、解決方案與文件中心
+- [常見問題FAQ](https://www.step2.com.cn/docs/zh-cn/faq.html)：高頻使用問題解答
 
----
+## 🤝 參與貢獻
 
-**OntiCards** — 讓企業的數據「會說話、聽得懂、可治理」
+歡迎各位開發者提交 **Issue、Feature Request、Pull Request**，共同迭代優化項目！
+
+貢獻規範：詳見 `./CONTRIBUTING.md`
+
+## 📄 開源協議
+
+OntiCards 開源版基於**AGPL-3.0** 協議開源。基於本項目修改後對外提供網絡服務，需開源修改後的程式碼；商業私有化部署、定製開發、多租戶企業版能力，可聯絡官方獲取商業授權。
+
+## 💼 商業服務
+
+開源版**永久免費**，可直接私有化部署用於生產環境。如需以下企業級能力，可諮詢官方定製服務：
+
+- **行業專屬本體定製**：按需定製各行業專屬數據本體、業務術語體系與知識圖譜，適配製造、汽車、金融、政企等垂直行業業務口徑，落地專屬智能化數據模型
+
+- **企業級權限架構定製**：支援私有化多租戶架構搭建，提供精細化行列級、欄位級數據權限管控，適配大型集團組織架構與數據隔離合規要求
+
+- **高階數據治理服務**：提供智能化數據對賬、批量數據異常修復、自訂治理規則搭建服務，落地標準化、可溯源的企業數據治理體系
+
+- **私有化落地實施服務**：提供專屬私有化部署、環境適配、版本升級、故障兜底運維，全程技術護航保障系統穩定生產運行
+
+- **定製開發與專屬顧問**：按需迭代個性化功能、適配企業現有業務系統，配備專屬技術顧問，提供一對一需求對接與技術支撐
+
+## 📞 聯絡我們
+
+- 問題反饋 & 功能建議：[GitHub Issues](https://github.com/stepll2026/OntiCards/issues)
+
+- 產品官網 & 行業方案：[https://www.step2.com.cn](https://www.step2.com.cn)
+
+**OntiCards — 讓每一家企業的私有數據，都能安全、高效、低成本接入AI時代**
+
+> （註：部分內容可能由 AI 生成）

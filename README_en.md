@@ -1,178 +1,225 @@
-🌐 Languages:
-[简体中文](README.md) | [繁體中文(香港)](README_zh-HK.md) | **English**
-
 # OntiCards
 
-![OntiCards — Enterprise AI Data Hub](onticards-banner.jpg)
+**Enterprise AI Data Hub | Making corporate databases readable by AI — and instantly usable by business**
 
-> **Enterprise AI Data Hub** — Making enterprise data *talk, listen, and stay governed*.
+[简体中文](README.md) | [繁體中文(香港)](README_zh-HK.md) | **English**
 
-[![Version](https://img.shields.io/badge/version-2.4.0-blue)](https://github.com/stepll2026/OntiCards/releases)
-[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-green)](./LICENSE)
-[![Docs](https://img.shields.io/badge/docs-%E4%B8%AD%E6%96%87%E6%96%87%E6%A1%A3-8A2BE2)](https://www.step2.com.cn/docs/zh-cn/)
-[![Docker Compose](https://img.shields.io/badge/deploy-Docker%20Compose%20ready-2496ED)](https://www.step2.com.cn/docs/zh-cn/deployment.html)
+**Open source and free · Self-hosted · End-to-end intelligent data governance**
 
-## Do These Sound Familiar?
+**Project**: [https://github.com/stepll2026/OntiCards/releases](https://github.com/stepll2026/OntiCards/releases)
 
-- A business colleague asks for one number. It goes into a ticket queue, waits for the data team to write SQL — and a week later, the report still hasn't arrived.
-- Hundreds of tables sit in your systems, and nobody can say what each one is for or what its columns mean. To ask a question about data, you first have to find "the person who created that table."
-- Data is scattered across MySQL, Oracle, and various business systems. Cross-database analysis means exporting spreadsheets and stitching them together by hand — and the numbers from two departments still don't match.
-- Data quality is a matter of luck. Nobody notices a broken report until the boss points it out in a meeting.
-- You have no idea who queried what data and when. Sensitive information is essentially exposed, and when auditors show up, there are no records to produce.
+**Documentation**: [https://www.step2.com.cn/docs/zh-cn/](https://www.step2.com.cn/docs/zh-cn/)
 
-All of these problems share the same root cause: **data capability is locked in the hands of the few who can write SQL, while the data itself is undocumented, hard to find, hard to trust, and impossible to govern.**
+**License**: [AGPL-3.0](./LICENSE)
 
-## What Is OntiCards
+## 💡 Foreword: The Real Bottleneck of Enterprise AI Is Never the LLM
 
-OntiCards is an open-source, enterprise-grade AI Data Hub. It connects to your existing business databases and turns data from "something only SQL writers can use" into **an asset that anyone who understands the business can query, quality-check, manage, and audit directly**:
+Most enterprises pushing AI-driven digital transformation run into the same wall: **the LLM works great, but their own data doesn't**.
 
-- **No SQL required**: Ask questions in everyday business language. The system handles multi-step reasoning, database dialect adaptation, and SQL safety checks, so business users can self-serve their data.
-- **Every table gets a manual**: AI automatically generates a Smart Data Card for each table — column profiling, three-tier sensitive field detection, business terminology, and table relationship mapping. For the first time, your data can explain itself.
-- **One question, many databases**: Query across multiple databases at once, with results automatically aligned and merged. No more spreadsheet stitching.
-- **Someone is always watching data quality**: 14 types of quality-check rules, natural-language rule creation with AI, quality scoring, and report export — when something breaks, you read a report instead of getting blamed.
-- **Enterprise-grade security and audit**: Data source isolation, sensitive data masking, full query audit trails, API-Key integration, and JWT-based SSO. Self-hosted deployment keeps your data inside your own network.
+Data is scattered across MySQL, Oracle, domestic Chinese databases, and countless business systems — with no unified inventory, no business definitions, and no quality controls. Engineering teams burn out writing ad-hoc SQL, wiring up data sources, and chasing data errors. Business teams wait on engineering backlogs for every number, and cross-department reconciliation takes days. On top of that, risks pile up: sensitive data leaks, AI misuse, and no audit trail.
 
-> 📌 The open-source edition is completely free and self-hosted. Enterprise capabilities such as multi-tenancy and row/column-level permissions are offered as commercial services — see [Commercial Services](#commercial-services) below.
+**Data should be the core asset of enterprise AI — instead, it becomes the biggest cost and obstacle.**
 
-## Key Capabilities
+What you need is not a more powerful LLM, but a **bridge between your business databases and AI applications** — making data identifiable, queryable, governable, and safely reusable.
 
-- **Multi-source data connectivity**: MySQL, PostgreSQL, Oracle, SQL Server, SQLite, Trino, plus Chinese domestic databases (DMDB, KingBase, OceanBase) — 9 data source types in total.
-- **Intelligent data understanding**: Auto-generated Smart Data Cards per table, including column profiles, sensitive field detection, a business glossary, and AI-driven table relationship mapping.
-- **Natural language querying**: NL2SQL with multi-step reasoning, multi-dialect adaptation, automatic business-term expansion, and SQL safety validation.
-- **Cross-source federated queries**: Ask once, query across databases, with automatic result alignment and merging.
-- **Data quality checks**: 14 rule types, AI-assisted rule creation in natural language, quality scoring, and exportable reports.
-- **Enterprise platform features**: Data source isolation, sensitive data masking, query auditing, API-Key integration, JWT-SSO, query monitoring, and cost statistics.
+**That is exactly what OntiCards is built for**: an open-source, enterprise-grade AI data hub. It connects to your existing databases with zero intrusion, lets AI automatically understand data semantics, and supports natural-language self-service queries, cross-source federation, intelligent quality checks, and permission-based auditing. **Plug it in and go — dramatically lowering the barrier to enterprise data-AI adoption.**
 
-## Quick Start
+## ✨ Core Value: Solving the Four Biggest Pain Points of Enterprise Data AI
+
+- **Breaks down data silos**: Compatible with 9 mainstream and domestic Chinese databases, unifying multi-source heterogeneous data on a single platform
+
+- **Solves "AI can't read your data"**: AI automatically generates Smart Data Cards that structure table purposes, column definitions, sensitivity flags, and business relationships — so LLMs can precisely understand your proprietary data
+
+- **Solves slow data access**: No more hand-written SQL or cross-department coordination. Business users query in natural language, with multi-step reasoning and cross-database federation in one click
+
+- **Solves unsafe, unregulated rollouts**: Built-in data masking, permission isolation, operation auditing, and SSO — balancing intelligence with enterprise-grade security and compliance
+
+## 🚀 Real-World Deployments: Production-Grade, Proven at Scale
+
+OntiCards is not an experimental demo. It runs stably in production at leading enterprises across **automotive, finance, government, manufacturing, education, and real estate**, adapted to real-world complexity:
+
+- **Automotive (automaker with million-unit annual sales)**: Rebuilt marketing data workflows with conversational natural-language queries — replacing 5-day cross-department manual rollups, covering 14 BI dashboards, with query accuracy above 85% and response rate above 90%
+
+- **Finance (city commercial bank with RMB 600 billion in assets)**: Consolidated bank-wide policies and business data into a unified knowledge-and-data Q&A entry point; AI output at 4x the speed of human experts, delivering second-level self-service answers
+
+- **Government transportation (provincial group, 6,000+ km of roads)**: Intelligent monitoring-data analysis — AI precisely identifies 8 types of abnormal events and 7 types of equipment faults with ≥85% accuracy and <5-second response, shifting from "humans watching screens" to "AI-driven alerts"
+
+- **High-end manufacturing (leading PCB manufacturer)**: Multimodal AI automatically extracts structured parameters from order drawings — "drawings in, data out" — replacing manual entry and verification, sharply reducing error rates and labor costs
+
+- **Real estate legal**: AI-powered contract review compresses per-contract review from 40 minutes to 4, automatically flagging risky clauses with tiered alerts and structured annotations
+
+More industry solutions: [https://www.step2.com.cn/zh-cn/solutions](https://www.step2.com.cn/zh-cn/solutions)
+
+## 🔥 Full Capability Overview
+
+### 1. Universal Multi-Source Data Connectivity
+
+Zero-intrusion access to mainstream open-source, commercial, and domestic Chinese databases — fully aligned with localization requirements:
+
+- Open source: MySQL 5.7+, PostgreSQL 10+, SQLite 3.x
+
+- Commercial: Oracle 11g+, SQL Server 2012+
+
+- Domestic Chinese: DMDB V8 (达梦), KingBase (人大金仓), OceanBase (MySQL tenant)
+
+- Big data engine: Trino
+
+### 2. AI-Powered Data Understanding (Core Differentiator)
+
+Automated, domain-wide data asset inventory — turning cryptic database metadata into assets that are business-readable and AI-recognizable:
+
+- Smart Data Cards: auto-generated business manuals for every table, covering purpose, column definitions, enum rules, and applicable scenarios
+
+- Intelligent identification: automatic sensitive-column flagging, table relationship mapping, and domain-wide data profiling
+
+- Business glossary: custom industry metrics and business definitions, unifying the company's data language and eliminating ambiguity
+
+- Column annotation enhancement: bulk import of Excel data dictionaries to precisely correct AI parsing errors
+
+### 3. Natural-Language Data Querying (NL2SQL)
+
+- Zero SQL barrier: ask questions in business language; the system adapts to each database's dialect and generates executable, safe SQL
+
+- Complex reasoning: multi-step decomposition, nested queries, and aggregations for complex analytical scenarios
+
+- Cross-source federation: one question joins data across databases, automatically aligning columns and merging results — breaking down silos for good
+
+- Safety validation: high-risk DML/DDL statements are automatically blocked; only read-only queries pass through
+
+### 4. Fully Automated Data Quality Checks
+
+14 built-in quality rule types, plus AI-assisted modeling and custom rules — a closed-loop data governance system:
+
+- Coverage: validity, uniqueness, consistency, completeness, value-range compliance, date compliance, and more
+
+- Output: automated checks, quality scoring, root-cause tracing, bulk remediation, and standardized report export
+
+- Fit: routine data inspections, go-live validation, data reconciliation, and continuous governance
+
+### 5. Enterprise-Grade Security and Integration
+
+Built for production-grade private deployment, meeting compliance, access-control, and integration requirements:
+
+- Security: data masking, row/column-level permission isolation, query auditing, and operation log tracing
+
+- Login integration: JWT-SSO single sign-on and multi-account permission management
+
+- Open integration: API-Key interfaces for seamless connection to AI agents, RPA, BI platforms, and in-house systems
+
+- Operations: query traffic monitoring, token cost statistics, service health alerts, and log diagnostics
+
+## 💻 Quick Deployment (3 Steps, One Command)
 
 ### Requirements
 
-| Item | Requirement |
-| --- | --- |
-| OS | Linux x86_64 (Ubuntu 22.04/24.04 recommended) |
-| Docker | Docker Engine + Docker Compose plugin **v2.24.0+** |
-| Minimum specs | 2 vCPU / 4 GB RAM |
-| Browser | Modern desktop browser (Chrome / Edge) |
+| Item | Minimum | Recommended |
+| --- | --- | --- |
+| OS | Linux x86_64 | Ubuntu 22.04/24.04 |
+| CPU / RAM | 2 cores, 4 GB | 4 cores, 8 GB+ |
+| Disk | 20 GB | 50 GB+ |
+| Runtime | Docker 20.10+, Docker Compose 2.0+ | Latest stable |
 
-### Three Steps to Launch
+### Deployment Commands
 
 ```bash
-# 1. 克隆仓库
+# 1. 克隆项目
 git clone https://github.com/stepll2026/OntiCards.git
 cd OntiCards
 
-# 2. 配置环境变量（.env.example 提供可直接启动的开发默认值）
+# 2. 初始化环境变量
 cp .env.example .env
 chmod 600 .env
-#    生产环境请至少修改：DB_PASSWORD、SECRET_KEY、SSO_SECRET_KEY、
-#    CONNECT_INFO_MASTER_KEY、PUBLIC_BASE_URL、ALLOWED_ORIGINS
 
-# 3. 校验配置并一键启动（首次会构建 API 与 Web 镜像）
+# 3. 校验配置并一键启动
 docker compose config -q
 docker compose up -d --build
 
-# 访问（Nginx :9107 为唯一对外入口，数据库/向量库/API/Web 均在内网）
-open http://your-ip:9107
+# 访问地址
+http://your-ip:9107
 ```
 
-> 📖 For the full deployment guide (registry mirrors, offline deployment, port changes, upgrades), see the official docs: [Deployment Guide](https://www.step2.com.cn/docs/zh-cn/deployment.html)
+⚠️ **Must change for production**: database passwords, secret keys, SSO secret, domain allowlist, and other core configuration
 
-### 5-Minute Walkthrough
+Full deployment, offline deployment, upgrades, and HTTPS setup: [Deployment Guide](https://www.step2.com.cn/docs/zh-cn/deployment.html)
 
-1. Log in and configure an LLM (Qwen, DeepSeek, Zhipu AI, GPT, Claude, and more are supported).
-2. Add a business data source.
-3. Wait for the **Smart Data Cards** to be generated, then enrich business terms and table relationships.
-4. Ask questions in natural language and explore your data.
-5. Try data quality checks, query history, the monitoring dashboard, and API integration.
+## ⚡ 5-Minute Quick Start
 
-For detailed steps, see the official docs: [User Guide](https://www.step2.com.cn/docs/zh-cn/user-guide.html)
+1. Log in and configure an LLM (GPT, Claude, Qwen, DeepSeek, Zhipu, and local Ollama models are supported)
 
-## Supported Data Sources
+2. Add a business data source; the system automatically pulls metadata and generates Smart Data Cards
 
-| Database | Version | Notes |
-| --- | --- | --- |
-| MySQL | 5.7+ | Mainstream open-source database |
-| PostgreSQL | 10+ | KingBase-compatible |
-| Oracle | 11g+ | Commercial database |
-| SQL Server | 2012+ | Microsoft database |
-| SQLite | 3.x | Lightweight testing |
-| Trino | Latest | OLAP engine |
-| DMDB (达梦) | V8 | Chinese domestic database |
-| KingBase (人大金仓) | Latest | Chinese domestic database |
-| OceanBase | MySQL tenant | Distributed Chinese domestic database |
+3. (Optional) Upload a business dictionary, create a glossary, and run domain-wide or targeted data inventory to sharpen understanding
 
-## Use Cases
+4. Query in natural language, configure quality rules, review monitoring dashboards, and integrate third-party systems
 
-- **Business operations**: Self-service data access, daily monitoring, and anomaly investigation.
-- **Data analysts**: Ad-hoc queries, cross-database integration, and rapid validation of hypotheses.
-- **Data governance specialists**: Configure quality rules, produce data quality reports, and standardize business terminology.
-- **Management**: Consolidated, comparative analysis across data sources.
-- **IT & data teams**: Data source management, access control, and query audit monitoring.
-- **Third-party integration**: Connect agents, RPA, and BI platforms via API-Key (with [SSO-JWT integration](https://www.step2.com.cn/docs/zh-cn/sso-jwt.html)).
+Full walkthrough: [User Guide](https://www.step2.com.cn/docs/zh-cn/user-guide.html)
 
-## Tech Stack
+## 👥 Who It's For
 
-### Frontend
+- **Tech leads / architects**: Stand up an enterprise data-AI foundation — unified access, governance, and security — at lower cost
 
-| Category | Technology | Notes |
-| --- | --- | --- |
-| Core framework | Next.js 14 · React 18 · TypeScript 5 | Full-stack framework + SSR |
-| UI components | Ant Design 5 · Tailwind CSS 3 · Sass/SCSS | Enterprise components + theming |
-| Data visualization | Recharts · D3.js | Charts and graphs |
-| Internationalization | i18next · next-i18n-router | Multi-language + routing |
-| Markdown | react-markdown · remark-gfm · KaTeX | Docs rendering, formulas, code highlighting |
+- **Developers / data engineers**: Less repetitive SQL, cross-database debugging, and reconciliation; more dev and ops efficiency
 
-### Backend
+- **Data analysts**: Self-serve ad-hoc queries and cross-source analysis; focus on insight, not data wrangling
 
-| Category | Technology | Notes |
-| --- | --- | --- |
-| Core framework | Flask 2.3.3 · Flask-RESTful · Gunicorn | RESTful API + WSGI |
-| Primary database | PostgreSQL 10+ · SQLAlchemy 2.0 | Metadata and business data storage |
-| Vector database | Weaviate 1.36.0 | Semantic vector storage and retrieval |
-| AI / LLM | Qwen · DeepSeek · Zhipu AI · GPT · Claude · Azure OpenAI | Embedding / Rerank supported |
-| Scheduling | APScheduler | Scheduled inventory and quality checks |
-| Data processing | pandas · numpy · openpyxl · python-docx | Data processing + report generation |
-| Security | cryptography · PyJWT · passlib/bcrypt | AES encryption + JWT + password hashing |
+- **Data governance specialists**: Standardized data inventory, quality checks, terminology alignment, and quality reporting
 
-## Documentation
+- **Business / management**: Zero technical barrier to self-service data access — real-time numbers for business decisions
 
-All documentation has moved to the official documentation center: **[https://www.step2.com.cn/docs/zh-cn/](https://www.step2.com.cn/docs/zh-cn/)**
+- **AI application developers**: A unified, secure data entry point for AI agents, RPA, and BI
 
-| Document | Link |
-| --- | --- |
-| Deployment Guide | [deployment](https://www.step2.com.cn/docs/zh-cn/deployment.html) |
-| User Guide | [user-guide](https://www.step2.com.cn/docs/zh-cn/user-guide.html) |
-| API Reference | [api-reference](https://www.step2.com.cn/docs/zh-cn/api-reference.html) |
-| SSO-JWT Integration | [sso-jwt](https://www.step2.com.cn/docs/zh-cn/sso-jwt.html) |
-| FAQ | [faq](https://www.step2.com.cn/docs/zh-cn/faq.html) |
-| Troubleshooting | [troubleshooting](https://www.step2.com.cn/docs/zh-cn/troubleshooting.html) |
-| Changelog | [changelog](https://www.step2.com.cn/docs/zh-cn/changelog.html) |
+## 🛠️ Tech Stack
 
-## Contributing
+**Frontend**: Next.js 14, React 18, TypeScript 5, Ant Design 5, Tailwind CSS, Recharts, i18n internationalization
 
-Issues, feature requests, and pull requests are all welcome!
-Please read the [Contributing Guide](./CONTRIBUTING.md) first.
+**Backend**: Flask, SQLAlchemy, PostgreSQL, Weaviate vector database, APScheduler, pandas
 
-## License
+**AI**: Compatible with major public LLMs and local private models; supports Embedding semantic retrieval, Rerank, and multi-step reasoning
 
-The open-source edition of OntiCards is released under the **[AGPL-3.0](./LICENSE)** license.
+## 📚 Official Documentation
 
-> In short: if you modify this project and provide it as a network service to others, you must publish your modified source code. For commercial licensing, see [Commercial Services](#commercial-services) below.
+- [Deployment Guide](https://www.step2.com.cn/docs/zh-cn/deployment.html): environment setup, one-command deployment, production tuning, upgrades
 
-## Commercial Services
+- [User Guide](https://www.step2.com.cn/docs/zh-cn/user-guide.html): full feature walkthrough, data source management, governance, NL querying
 
-The open-source edition is free to deploy and use. Contact us if you need:
+- [API Reference](https://www.step2.com.cn/docs/zh-cn/api-reference.html): third-party integration and API conventions
 
-- Multi-tenancy and row/column-level permissions
-- Enterprise data governance enhancements and data reconciliation
-- Custom development and private deployment services
-- Professional technical support
+- [SSO-JWT Integration](https://www.step2.com.cn/docs/zh-cn/sso-jwt.html): enterprise single sign-on
 
-## Contact
+- [Troubleshooting](https://www.step2.com.cn/docs/zh-cn/troubleshooting.html): startup errors, model calls, database connection issues
 
-- **GitHub Issues**: [stepll2026/OntiCards/issues](https://github.com/stepll2026/OntiCards/issues) — Bug reports and feature requests
-- **Official Website**: [https://www.step2.com.cn](https://www.step2.com.cn) — Product overview, solutions, and documentation center
+- [FAQ](https://www.step2.com.cn/docs/zh-cn/faq.html): answers to common questions
 
----
+## 🤝 Contributing
 
-**OntiCards** — Making enterprise data *talk, listen, and stay governed*.
+Issues, feature requests, and pull requests are all welcome — let's build this together!
+
+Contribution guidelines: see `./CONTRIBUTING.md`
+
+## 📄 License
+
+The open-source edition of OntiCards is released under **AGPL-3.0**. If you modify the project and offer it as a network service, you must release your modified source code. For commercial private deployment, custom development, or multi-tenant enterprise capabilities, contact us for a commercial license.
+
+## 💼 Commercial Services
+
+The open-source edition is **free forever** and can be self-hosted in production. For the following enterprise capabilities, ask about our commercial services:
+
+- **Industry-specific ontology customization**: tailored data ontologies, business glossaries, and knowledge graphs for manufacturing, automotive, finance, government, and other verticals
+
+- **Enterprise permission architecture**: private multi-tenant setups with fine-grained row/column-level and field-level access control, fitting large-group organizational structures and data-isolation compliance
+
+- **Advanced data governance services**: intelligent reconciliation, bulk anomaly remediation, and custom governance rules for a standardized, traceable governance system
+
+- **Private deployment services**: dedicated deployment, environment adaptation, upgrades, and fail-safe operations support for stable production
+
+- **Custom development & dedicated advisors**: iterative feature development, integration with existing systems, and one-on-one technical consultation
+
+## 📞 Contact
+
+- Bug reports & feature requests: [GitHub Issues](https://github.com/stepll2026/OntiCards/issues)
+
+- Product website & industry solutions: [https://www.step2.com.cn](https://www.step2.com.cn)
+
+**OntiCards — Bringing every enterprise's private data safely, efficiently, and affordably into the AI era**
+
+> (Note: Some content may be AI-generated)

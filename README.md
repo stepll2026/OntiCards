@@ -1,178 +1,225 @@
-🌐 语言切换：
-**简体中文** | [繁體中文(香港)](README_zh-HK.md) | [English](README_en.md)
-
 # OntiCards
 
-![OntiCards — 企业级 AI 数据中枢](onticards-banner.jpg)
+**企业级 AI 数据中枢 | 让企业数据库可被 AI 读懂、可被业务即用**
 
-> **企业级 AI 数据中枢** ｜ 让企业的数据「会说话、能听懂、可治理」
+**简体中文** | [繁體中文(香港)](README_zh-HK.md) | [English](README_en.md)
 
-[![Version](https://img.shields.io/badge/version-2.4.0-blue)](https://github.com/stepll2026/OntiCards/releases)
-[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-green)](./LICENSE)
-[![Docs](https://img.shields.io/badge/docs-%E4%B8%AD%E6%96%87%E6%96%87%E6%A1%A3-8A2BE2)](https://www.step2.com.cn/docs/zh-cn/)
-[![Docker Compose](https://img.shields.io/badge/deploy-Docker%20Compose%20ready-2496ED)](https://www.step2.com.cn/docs/zh-cn/deployment.html)
+**开源免费 · 私有化部署 · 全链路数据智能化治理**
 
-## 你是否正在为这些事情头痛？
+**项目地址**：[https://github.com/stepll2026/OntiCards/releases](https://github.com/stepll2026/OntiCards/releases)
 
-- 业务同事想要一个数字，先提需求、再排队、等数据团队写 SQL，一周过去报表还没影
-- 系统里躺着几百上千张表，没人说得清每张表是干什么的、字段是什么意思——想问数据，得先找到"当年建表的那个人"
-- 数据散落在 MySQL、Oracle 和各个业务系统里，跨库取数靠导出 Excel 手工拼接，拼完两个部门的数字还对不上
-- 数据质量全靠运气，报表错了没人知道，直到老板在会上指出来
-- 不知道谁在什么时间查了什么数据，敏感信息近乎裸奔，审计来了拿不出任何记录
+**官方文档**：[https://www.step2.com.cn/docs/zh-cn/](https://www.step2.com.cn/docs/zh-cn/)
 
-这些问题的根源是同一个：**数据能力被锁在少数会写 SQL 的人手里，而数据本身说不清、找不着、信不过、管不住。**
+**开源协议**：[AGPL-3.0](./LICENSE)
 
-## OntiCards 是什么
+## 💡 前言：企业AI落地的核心卡点，从来不是大模型
 
-OntiCards 是一个开源的企业级 AI 数据中枢（AI Data Hub），连接你现有的业务数据库，让数据从"只有会写 SQL 的人才能用"，变成**每个懂业务的人都能直接查询、质检、管理、审计的资产**：
+绝大多数企业推进AI数字化落地时，都会陷入同一个困境：**大模型好用，但企业自有数据用不起来**。
 
-- **不用写 SQL**：用日常业务语言提问，系统自动完成多步推理、数据库方言适配与 SQL 安全校验，业务人员即可自助取数
-- **每张表都有说明书**：AI 自动生成智能数据卡片——字段画像、敏感字段三层识别、业务术语与表关系盘点，数据第一次讲得清自己是什么
-- **一次提问，跨库取数**：跨多个数据库自动对齐与合并结果，不用再导出 Excel 手工拼接
-- **数据质量有人盯着**：14 种质检规则类型、AI 自然语言建规则、质量评分与报告导出，出问题先看报告，而不是先挨骂
-- **企业级安全与审计**：数据源隔离、敏感信息脱敏、全程查询审计留痕、API-Key 集成与 JWT-SSO 单点登录，私有化部署，数据不出内网
+数据分散在MySQL、Oracle、国产数据库、各类业务系统中，无统一台账、无业务释义、无质量管控；技术团队疲于写临时SQL、对接数据源、处理数据报错；业务团队取数依赖研发排期，跨部门数据核对耗时数天；同时敏感数据泄露、AI滥用、无审计追溯等安全风险层层叠加。
 
-> 📌 开源版完全免费、支持私有化自托管；多租户、行列级权限等企业能力以商业服务形式提供，见文末[商业服务](#商业服务)。
+**数据，本该是企业AI的核心资产，却成了落地最大成本与阻碍。**
 
-## 核心能力一览
+你需要的不是更强大的大模型，而是一座**连接业务数据库与AI应用的中间枢纽**——让数据可识别、可查询、可治理、可安全复用。
 
-- **多源数据接入**：支持 MySQL、PostgreSQL、Oracle、SQL Server、SQLite、Trino，以及达梦、人大金仓、OceanBase 等国产数据库，共 9 类数据源
-- **智能数据理解**：每张表自动生成「智能数据卡片」业务说明书，含字段画像、敏感字段识别、业务术语库与 AI 表关系盘点
-- **自然语言查询**：NL2SQL 多步推理、多数据库方言适配、业务术语自动展开、SQL 安全校验
-- **跨源融合查询**：一次提问跨多个数据库，自动对齐与合并结果，打破数据孤岛
-- **数据质检**：14 种质检规则类型、AI 自然语言建规则、质量评分与质检报告导出
-- **企业级平台能力**：数据源隔离、敏感信息脱敏、查询审计、API-Key 集成、JWT-SSO 单点登录、查询监控与成本统计
+**OntiCards 正是为此而生**：一站式开源企业级AI数据中枢，零侵入对接存量数据库，AI自动理解数据语义，支持自然语言自助取数、跨源融合、智能质检、权限审计，**连上即可用，大幅降低企业数据AI化落地门槛**。
 
-## 快速开始
+## ✨ 核心价值：解决企业数据AI化四大核心痛点
+
+- **解决数据孤岛**：兼容9类主流及国产数据库，单平台统一接入、统一管理多源异构数据
+
+- **解决AI读不懂数据**：AI自动生成智能数据卡片，结构化梳理表用途、字段含义、敏感标识、业务关系，让大模型精准理解企业私有数据
+
+- **解决取数效率低**：抛弃人工写SQL、跨部门对接，业务自然语言即可自助查数，多步推理、跨库融合一键实现
+
+- **解决落地不安全、无规范**：内置数据脱敏、权限隔离、操作审计、SSO单点登录，兼顾智能化与企业级安全合规
+
+## 🚀 真实落地案例：大厂验证的生产级能力
+
+OntiCards 并非实验性demo，已在**汽车、金融、政企、制造、教育、地产**等多行业头部企业生产环境稳定落地，适配真实复杂业务场景：
+
+- **汽车行业（年销百万辆级车企）**：重构营销取数模式，自然语言对话式查数，替代5天跨部门人工汇总，覆盖14个业务BI看板，查询准确率超85%，应答率超90%
+
+- **金融行业（6000亿级城商行）**：统一收拢全行制度与业务数据，构建企业知识与数据问答入口，AI产出效率为人工专家4倍，实现业务秒级自助答疑取数
+
+- **政企交通（6000km+省属交通集团）**：监控数据智能化解析，8类异常事件、7类设备故障AI精准识别，准确率≥85%，智能体响应时长＜5秒，实现从“人工盯屏”到“AI主动预警”
+
+- **高端制造（PCB龙头企业）**：多模态AI自动抽取订单图纸结构化参数，实现“图纸进、数据出”，替代人工录入核对，大幅降低错漏率与人力成本
+
+- **地产法务**：AI智能合同审查，单份合同审核从40分钟压缩至4分钟，自动识别风险条款、分级预警、结构化批注
+
+更多行业解决方案：[https://www.step2.com.cn/zh-cn/solutions](https://www.step2.com.cn/zh-cn/solutions)
+
+## 🔥 核心能力全景
+
+### 1. 多源全兼容数据接入
+
+零侵入接入主流开源、商业及国产数据库，全面适配企业国产化改造需求：
+
+- 开源库：MySQL 5.7+、PostgreSQL 10+、SQLite 3.x
+
+- 商业库：Oracle 11g+、SQL Server 2012+
+
+- 国产库：达梦DMDB V8、人大金仓、OceanBase（MySQL租户）
+
+- 大数据引擎：Trino
+
+### 2. AI 智能数据理解（核心特色）
+
+自动完成全域数据资产盘点，把晦涩的数据库元数据，转化为业务可读、AI可识别的数据资产：
+
+- 智能数据卡片：自动生成每张数据表的业务说明书，包含表用途、字段释义、枚举规则、适用场景
+
+- 智能识别：自动标记敏感字段、梳理表间关联关系、完成全域数据画像
+
+- 业务术语库：自定义行业指标与业务口径，统一全公司数据语言，消除理解偏差
+
+- 字段注释增强：支持Excel字典批量导入，精准修正AI自动解析误差
+
+### 3. 自然语言智能问数（NL2SQL）
+
+- 零SQL门槛：业务自然语言提问，自动适配多数据库方言、生成可执行安全SQL
+
+- 复杂推理：支持多步拆解、嵌套查询、聚合统计，适配复杂业务分析场景
+
+- 跨源融合：一次提问联动多库数据，自动对齐字段、合并结果，彻底打破数据孤岛
+
+- 安全校验：自动拦截高危DML/DDL语句，仅保留只读查询，保障数据库安全
+
+### 4. 全自动化数据质检
+
+内置14种通用质检规则，支持AI智能建模+人工自定义规则，构建闭环数据治理体系：
+
+- 覆盖维度：有效性、唯一性、一致性、完整性、值域合规、日期合规等
+
+- 能力输出：自动质检、质量评分、问题溯源、批量整改、标准化报告导出
+
+- 适配场景：日常数据巡检、上线校验、数据对账、常态化治理
+
+### 5. 企业级安全与集成能力
+
+完全适配生产环境私有化部署需求，满足企业合规、权限管控、系统集成要求：
+
+- 安全管控：数据脱敏、行列级权限隔离、查询审计、操作日志追溯
+
+- 登录集成：支持JWT-SSO单点登录、多账号权限管理
+
+- 开放集成：API-Key开放接口，可无缝对接AI智能体、RPA、BI平台、自研业务系统
+
+- 运维监控：查询流量监控、Token成本统计、服务状态预警、日志排查
+
+## 💻 快速部署（3步一键启动）
 
 ### 环境要求
 
-| 项目 | 要求 |
-| --- | --- |
-| 操作系统 | Linux x86_64（推荐 Ubuntu 22.04/24.04） |
-| Docker | Docker Engine + Docker Compose 插件 **v2.24.0+** |
-| 最低配置 | 2 核 CPU / 4 GB 内存 |
-| 浏览器 | 现代桌面浏览器（Chrome / Edge） |
+| 项目 | 最低配置 | 推荐配置 |
+| --- | --- | --- |
+| 系统 | Linux x86_64 | Ubuntu 22.04/24.04 |
+| CPU/内存 | 2核4G | 4核8G及以上 |
+| 磁盘 | 20G | 50G及以上 |
+| 运行环境 | Docker 20.10+、Docker Compose 2.0+ | 最新稳定版 |
 
-### 三步启动
+### 部署命令
 
 ```bash
-# 1. 克隆仓库
+# 1. 克隆项目
 git clone https://github.com/stepll2026/OntiCards.git
 cd OntiCards
 
-# 2. 配置环境变量（.env.example 提供可直接启动的开发默认值）
+# 2. 初始化环境变量
 cp .env.example .env
 chmod 600 .env
-#    生产环境请至少修改：DB_PASSWORD、SECRET_KEY、SSO_SECRET_KEY、
-#    CONNECT_INFO_MASTER_KEY、PUBLIC_BASE_URL、ALLOWED_ORIGINS
 
-# 3. 校验配置并一键启动（首次会构建 API 与 Web 镜像）
+# 3. 校验配置并一键启动
 docker compose config -q
 docker compose up -d --build
 
-# 访问（Nginx :9107 为唯一对外入口，数据库/向量库/API/Web 均在内网）
-open http://your-ip:9107
+# 访问地址
+http://your-ip:9107
 ```
 
-> 📖 完整部署说明（含国内镜像加速、离线部署、端口变更、升级流程）见官方文档：[部署指南](https://www.step2.com.cn/docs/zh-cn/deployment.html)
+⚠️ **生产环境必改**：数据库密码、密钥、SSO密钥、域名白名单等核心配置
 
-### 5 分钟体验流程
+完整部署、离线部署、版本升级、HTTPS配置：[部署指南](https://www.step2.com.cn/docs/zh-cn/deployment.html)
 
-1. 登录系统，配置大模型（支持通义千问、DeepSeek、智谱 AI、GPT、Claude 等）
-2. 添加业务数据源
-3. 等待自动生成**智能数据卡片**，补充业务术语与表关系盘点
-4. 用自然语言提问，自助查询数据
-5. 体验数据质检、查询历史、监控面板与 API 集成
+## ⚡ 5分钟快速上手流程
 
-详细操作步骤见官方文档：[用户手册](https://www.step2.com.cn/docs/zh-cn/user-guide.html)
+1. 登录系统，配置LLM大模型（兼容GPT、Claude、通义千问、DeepSeek、智谱、本地Ollama模型）
 
-## 支持数据源
+2. 添加业务数据源，系统自动拉取元数据、生成智能数据卡片
 
-| 数据库 | 版本 | 备注 |
-| --- | --- | --- |
-| MySQL | 5.7+ | 主流开源数据库 |
-| PostgreSQL | 10+ | 兼容人大金仓 |
-| Oracle | 11g+ | 商业数据库 |
-| SQL Server | 2012+ | 微软数据库 |
-| SQLite | 3.x | 轻量测试 |
-| Trino | Latest | OLAP 引擎 |
-| 达梦 DMDB | V8 | 国产数据库 |
-| KingBase（人大金仓） | 最新版 | 国产数据库 |
-| OceanBase | MySQL 租户 | 分布式国产数据库 |
+3. （可选）上传业务字典、创建术语库、执行全域/定向数据盘点，优化数据理解精度
 
-## 适用场景
+4. 自然语言自助取数、配置质检规则、查看监控报表、对接第三方系统
 
-- **业务运营**：自助取数、日常监控、异常排查
-- **数据分析师**：临时查询、跨库数据整合、快速验证分析假设
-- **数据治理专员**：配置质检规则、输出数据质量报告、统一业务术语
-- **管理层**：多数据源汇总对比分析
-- **IT 与数据团队**：数据源管理、权限管控、查询审计监控
-- **第三方系统集成**：通过 API-Key 对接智能体、RPA、BI 平台（支持 [SSO-JWT 集成](https://www.step2.com.cn/docs/zh-cn/sso-jwt.html)）
+完整操作教程：[用户手册](https://www.step2.com.cn/docs/zh-cn/user-guide.html)
 
-## 技术栈
+## 👥 适用角色与场景
 
-### 前端
+- **技术负责人/架构师**：快速搭建企业数据AI化底座，统一数据接入、治理、安全规范，降低AI落地成本
 
-| 分类 | 技术 | 说明 |
-| --- | --- | --- |
-| 核心框架 | Next.js 14 · React 18 · TypeScript 5 | 全栈框架 + SSR |
-| UI 组件 | Ant Design 5 · Tailwind CSS 3 · Sass/SCSS | 企业级组件 + 主题切换 |
-| 数据可视化 | Recharts · D3.js | 图表与图形 |
-| 国际化 | i18next · next-i18n-router | 多语言 + 路由切换 |
-| Markdown | react-markdown · remark-gfm · KaTeX | 文档渲染、公式、代码高亮 |
+- **研发/数据工程师**：减少重复SQL编写、跨库联调、数据核对工作，提升开发与运维效率
 
-### 后端
+- **数据分析师**：自助完成临时查询、跨源分析，聚焦业务洞察而非数据取数
 
-| 分类 | 技术 | 说明 |
-| --- | --- | --- |
-| 核心框架 | Flask 2.3.3 · Flask-RESTful · Gunicorn | RESTful API + WSGI |
-| 主数据库 | PostgreSQL 10+ · SQLAlchemy 2.0 | 元数据与业务数据存储 |
-| 向量库 | Weaviate 1.36.0 | 语义向量存储与检索 |
-| AI / LLM | 通义千问 · DeepSeek · 智谱 AI · GPT · Claude · Azure OpenAI | 支持 Embedding / Rerank |
-| 定时任务 | APScheduler | 定时盘点与质检调度 |
-| 数据处理 | pandas · numpy · openpyxl · python-docx | 数据处理 + 报告生成 |
-| 安全 | cryptography · PyJWT · passlib/bcrypt | AES 加密 + JWT + 密码哈希 |
+- **数据治理专员**：标准化完成数据盘点、质检、术语统一、质量报告输出
 
-## 文档中心
+- **业务/管理层**：零技术门槛自助取数，实时获取业务数据、支撑经营决策
 
-全部文档已迁移至官方网站文档中心，请访问：**[https://www.step2.com.cn/docs/zh-cn/](https://www.step2.com.cn/docs/zh-cn/)**
+- **AI应用开发**：作为AI智能体、RPA、BI的统一数据入口，安全赋能上层AI应用
 
-| 文档 | 链接 |
-| --- | --- |
-| 部署指南 | [deployment](https://www.step2.com.cn/docs/zh-cn/deployment.html) |
-| 用户手册 | [user-guide](https://www.step2.com.cn/docs/zh-cn/user-guide.html) |
-| API 接口参考 | [api-reference](https://www.step2.com.cn/docs/zh-cn/api-reference.html) |
-| SSO-JWT 集成 | [sso-jwt](https://www.step2.com.cn/docs/zh-cn/sso-jwt.html) |
-| FAQ | [faq](https://www.step2.com.cn/docs/zh-cn/faq.html) |
-| 问题排查指南 | [troubleshooting](https://www.step2.com.cn/docs/zh-cn/troubleshooting.html) |
-| 更新日志 | [changelog](https://www.step2.com.cn/docs/zh-cn/changelog.html) |
+## 🛠️ 技术栈
 
-## 参与贡献
+**前端**：Next.js 14、React 18、TypeScript 5、Ant Design 5、Tailwind CSS、Recharts、i18n国际化
 
-欢迎提交 Issue、Feature Request 和 Pull Request！
-请先阅读：[贡献指南](./CONTRIBUTING.md)
+**后端**：Flask、SQLAlchemy、PostgreSQL、Weaviate向量库、APScheduler定时任务、pandas数据处理
 
-## License
+**AI能力**：兼容主流公有大模型、本地私有化模型，支持Embedding语义检索、Rerank重排序、多步推理
 
-OntiCards 开源版基于 **[AGPL-3.0](./LICENSE)** 协议开源。
+## 📚 官方文档合集
 
-> 简单理解：如果你基于本项目修改并对外提供网络服务，需要公开修改后的源代码。商业授权需求请参考下方[商业服务](#商业服务)。
+- [部署指南](https://www.step2.com.cn/docs/zh-cn/deployment.html)：环境配置、一键部署、生产优化、版本升级
 
-## 商业服务
+- [用户手册](https://www.step2.com.cn/docs/zh-cn/user-guide.html)：全功能操作、数据源管理、数据治理、智能问数
 
-OntiCards 开源版可免费部署使用。如需以下能力，欢迎联系我们：
+- [API接口文档](https://www.step2.com.cn/docs/zh-cn/api-reference.html)：第三方系统集成、接口调用规范
 
-- 多租户版本、行列级权限
-- 企业版数据治理增强、数据校验对账
-- 定制开发与私有化实施服务
-- 专业技术支持
+- [SSO-JWT集成](https://www.step2.com.cn/docs/zh-cn/sso-jwt.html)：企业单点登录对接方案
 
-## 联系我们
+- [问题排查指南](https://www.step2.com.cn/docs/zh-cn/troubleshooting.html)：启动报错、模型调用、数据库连接异常解决
 
-- **GitHub Issues**：[stepll2026/OntiCards/issues](https://github.com/stepll2026/OntiCards/issues) — 提交 Bug 与需求反馈
-- **产品官网**：[https://www.step2.com.cn](https://www.step2.com.cn) — 产品介绍、解决方案与文档中心
+- [常见问题FAQ](https://www.step2.com.cn/docs/zh-cn/faq.html)：高频使用问题解答
 
----
+## 🤝 参与贡献
 
-**OntiCards** — 让企业的数据「会说话、能听懂、可治理」
+欢迎各位开发者提交 **Issue、Feature Request、Pull Request**，共同迭代优化项目！
+
+贡献规范：详见 `./CONTRIBUTING.md`
+
+## 📄 开源协议
+
+OntiCards 开源版基于**AGPL-3.0** 协议开源。基于本项目修改后对外提供网络服务，需开源修改后的代码；商业私有化部署、定制开发、多租户企业版能力，可联系官方获取商业授权。
+
+## 💼 商业服务
+
+开源版**永久免费**，可直接私有化部署用于生产环境。如需以下企业级能力，可咨询官方定制服务：
+
+- **行业专属本体定制**：按需定制各行业专属数据本体、业务术语体系与知识图谱，适配制造、汽车、金融、政企等垂直行业业务口径，落地专属智能化数据模型
+
+- **企业级权限架构定制**：支持私有化多租户架构搭建，提供精细化行列级、字段级数据权限管控，适配大型集团组织架构与数据隔离合规要求
+
+- **高阶数据治理服务**：提供智能化数据对账、批量数据异常修复、自定义治理规则搭建服务，落地标准化、可溯源的企业数据治理体系
+
+- **私有化落地实施服务**：提供专属私有化部署、环境适配、版本升级、故障兜底运维，全程技术护航保障系统稳定生产运行
+
+- **定制开发与专属顾问**：按需迭代个性化功能、适配企业现有业务系统，配备专属技术顾问，提供一对一需求对接与技术支撑
+
+## 📞 联系我们
+
+- 问题反馈 & 功能建议：[GitHub Issues](https://github.com/stepll2026/OntiCards/issues)
+
+- 产品官网 & 行业方案：[https://www.step2.com.cn](https://www.step2.com.cn)
+
+**OntiCards — 让每一家企业的私有数据，都能安全、高效、低成本接入AI时代**
+
+> （注：部分内容可能由 AI 生成）
