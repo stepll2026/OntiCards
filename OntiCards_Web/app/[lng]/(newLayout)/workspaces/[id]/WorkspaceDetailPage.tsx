@@ -621,7 +621,17 @@ function DataCardDetailModal({
   const [editedCardData, setEditedCardData] = useState<any>(null)
 
   const cardData = parseCardData(card.card_data)
-  const rawCardData = typeof card.card_data === 'string' ? JSON.parse(card.card_data) : card.card_data
+  // 使用与 parseCardData 一致的解析逻辑，确保即使 JSON 格式损坏也不会崩溃
+  let rawCardData: any = undefined;
+  if (typeof card.card_data === 'string') {
+    try {
+      rawCardData = JSON.parse(card.card_data);
+    } catch {
+      rawCardData = null;
+    }
+  } else {
+    rawCardData = card.card_data;
+  }
   const jsonString = JSON.stringify(rawCardData, null, 2)
 
   // 初始化编辑数据

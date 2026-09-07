@@ -264,22 +264,24 @@ const RelationCard = ({ card, onClick }: { card: any; onClick: () => void }) => 
 
 // 关系详情弹框 - 每个字段对独立显示，带表名
 const RelationDetailModal = ({ card, allRelationships, open, onClose }: { card: any; allRelationships: any[]; open: boolean; onClose: () => void }) => {
-  if (!card) return null
-  const { DocInfo, TableInfo, Statistics, Relationships, JoinSummary, FusionHints } = card
-  const sourceTable = DocInfo.table_name
-
-  // 展开每个 join_field 为独立的卡片，并匹配对应的完整关系信息（包含 reasoning 和 join_suggestion）
-  const getFullRelationForField = (localField: string, remoteField: string, targetTable: string) => {
-    if (!allRelationships?.length) return null
-    return allRelationships.find((r) =>
-      r.from_table === sourceTable &&
-      r.to_table === targetTable &&
-      r.from_column === localField
-    )
-  }
-
-  // 构建每个字段对的详情 - 按目标表分组
+  // useMemo 必须在所有 hooks 之后、条件 return 之前调用 —— 不能在条件 return 之后调用 hooks
+  // hook 内部对 card 做空值守卫，确保条件 return 和 JSX 渲染的逻辑不变
+  // Dependencies: Relationships 是从 card 派生的，因此只依赖 card 即可
+  // （不能在依赖里写 Relationships，因为它在下方第 307 行才声明 —— TDZ 错误）
   const groupedFieldPairs = useMemo(() => {
+    if (!card) return []
+    const { Relationships } = card
+    const sourceTable = card.DocInfo.table_name
+
+    const getFullRelationForField = (localField: string, remoteField: string, targetTable: string) => {
+      if (!allRelationships?.length) return null
+      return allRelationships.find((r) =>
+        r.from_table === sourceTable &&
+        r.to_table === targetTable &&
+        r.from_column === localField
+      )
+    }
+
     const groups: Record<string, any[]> = {}
     Relationships?.forEach((rel: any) => {
       const targetTable = rel.related_table
@@ -294,7 +296,6 @@ const RelationDetailModal = ({ card, allRelationships, open, onClose }: { card: 
           cardinality: rel.cardinality,
           evidence: rel.evidence,
           businessRelation: rel.business_relation,
-          // 优先使用 fullRel 中的 join_suggestion，否则使用 rel 中的
           joinSuggestion: fullRel?.join_suggestion || rel.join_suggestion,
           fusionSuggestion: rel.fusion_suggestion,
           reasoning: fullRel?.reasoning || rel.reasoning,
@@ -302,7 +303,12 @@ const RelationDetailModal = ({ card, allRelationships, open, onClose }: { card: 
       })
     })
     return Object.entries(groups).map(([targetTable, pairs]) => ({ targetTable, pairs }))
-  }, [Relationships, allRelationships, sourceTable])
+  }, [card, allRelationships])
+
+  if (!card) return null
+  const { DocInfo, TableInfo, Statistics, JoinSummary, FusionHints } = card
+  const Relationships = card.Relationships
+  const sourceTable = DocInfo.table_name
 
   return (
     <Modal
@@ -538,22 +544,22 @@ const ExpandedRowDetail = ({ record }: { record: any }) => {
             <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid rgb(var(--theme-border))' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                 <thead>
-                  <tr style={{ backgroundColor: 'rgba(var(--theme-primary), 0.06)' }}>
-                    {Object.keys(record.raw_result).map((key) => (
-                      <th key={key} style={{ padding: '8px 14px', textAlign: 'left', fontWeight: 600, color: 'rgb(var(--theme-text))', borderBottom: '1px solid rgb(var(--theme-border))', whiteSpace: 'nowrap' }}>
-                        {key === 'total_count' ? '总记录数' : key === 'failed_count' ? '失败数' : key}
-                      </th>
-                    ))}
-                  </tr>
+                <tr style={{ backgroundColor: 'rgba(var(--theme-primary), 0.06)' }}>
+                  {Object.keys(record.raw_result).map((key) => (
+                    <th key={key} style={{ padding: '8px 14px', textAlign: 'left', fontWeight: 600, color: 'rgb(var(--theme-text))', borderBottom: '1px solid rgb(var(--theme-border))', whiteSpace: 'nowrap' }}>
+                      {key === 'total_count' ? '总记录数' : key === 'failed_count' ? '失败数' : key}
+                    </th>
+                  ))}
+                </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    {Object.values(record.raw_result).map((val: any, idx: number) => (
-                      <td key={idx} style={{ padding: '8px 14px', color: 'rgb(var(--theme-text))', borderBottom: '1px solid rgb(var(--theme-border))', fontWeight: 500 }}>
-                        {typeof val === 'number' ? formatNumber(val) : String(val ?? '-')}
-                      </td>
-                    ))}
-                  </tr>
+                <tr>
+                  {Object.values(record.raw_result).map((val: any, idx: number) => (
+                    <td key={idx} style={{ padding: '8px 14px', color: 'rgb(var(--theme-text))', borderBottom: '1px solid rgb(var(--theme-border))', fontWeight: 500 }}>
+                      {typeof val === 'number' ? formatNumber(val) : String(val ?? '-')}
+                    </td>
+                  ))}
+                </tr>
                 </tbody>
               </table>
             </div>
@@ -631,22 +637,22 @@ const ExpandedRowDetail = ({ record }: { record: any }) => {
                         <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid rgba(245, 34, 45, 0.12)', backgroundColor: 'rgb(var(--theme-bg))' }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                             <thead>
-                              <tr style={{ backgroundColor: 'rgba(245, 34, 45, 0.05)' }}>
-                                <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'rgb(var(--theme-text))', borderBottom: '1px solid rgba(245, 34, 45, 0.1)', whiteSpace: 'nowrap', width: '40%' }}>字段</th>
-                                <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'rgb(var(--theme-text))', borderBottom: '1px solid rgba(245, 34, 45, 0.1)', whiteSpace: 'nowrap', width: '60%' }}>条件</th>
-                              </tr>
+                            <tr style={{ backgroundColor: 'rgba(245, 34, 45, 0.05)' }}>
+                              <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'rgb(var(--theme-text))', borderBottom: '1px solid rgba(245, 34, 45, 0.1)', whiteSpace: 'nowrap', width: '40%' }}>字段</th>
+                              <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'rgb(var(--theme-text))', borderBottom: '1px solid rgba(245, 34, 45, 0.1)', whiteSpace: 'nowrap', width: '60%' }}>条件</th>
+                            </tr>
                             </thead>
                             <tbody>
-                              {sample.violated_conditions.map((vc: any, vcIdx: number) => (
-                                <tr key={vcIdx} style={{ backgroundColor: vcIdx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.02)' }}>
-                                  <td style={{ padding: '8px 12px', borderBottom: '1px solid rgba(245, 34, 45, 0.06)' }}>
-                                    <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', backgroundColor: 'rgba(24, 144, 255, 0.08)', borderRadius: 4, fontFamily: 'monospace', color: 'rgb(var(--theme-text))' }}>{vc.column}</span>
-                                  </td>
-                                  <td style={{ padding: '8px 12px', borderBottom: '1px solid rgba(245, 34, 45, 0.06)' }}>
-                                    <span style={{ fontSize: 12, color: '#cf1322', fontFamily: 'monospace', fontWeight: 500, wordBreak: 'break-all' }}>{vc.condition}</span>
-                                  </td>
-                                </tr>
-                              ))}
+                            {sample.violated_conditions.map((vc: any, vcIdx: number) => (
+                              <tr key={vcIdx} style={{ backgroundColor: vcIdx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.02)' }}>
+                                <td style={{ padding: '8px 12px', borderBottom: '1px solid rgba(245, 34, 45, 0.06)' }}>
+                                  <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', backgroundColor: 'rgba(24, 144, 255, 0.08)', borderRadius: 4, fontFamily: 'monospace', color: 'rgb(var(--theme-text))' }}>{vc.column}</span>
+                                </td>
+                                <td style={{ padding: '8px 12px', borderBottom: '1px solid rgba(245, 34, 45, 0.06)' }}>
+                                  <span style={{ fontSize: 12, color: '#cf1322', fontFamily: 'monospace', fontWeight: 500, wordBreak: 'break-all' }}>{vc.condition}</span>
+                                </td>
+                              </tr>
+                            ))}
                             </tbody>
                           </table>
                         </div>
@@ -664,22 +670,22 @@ const ExpandedRowDetail = ({ record }: { record: any }) => {
                           <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid rgba(245, 34, 45, 0.12)', backgroundColor: 'rgb(var(--theme-bg))' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                               <thead>
-                                <tr style={{ backgroundColor: 'rgba(245, 34, 45, 0.05)' }}>
-                                  <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'rgb(var(--theme-text))', borderBottom: '1px solid rgba(245, 34, 45, 0.1)', whiteSpace: 'nowrap', width: 40 }}>#</th>
-                                  {Object.keys(sample.sample_value[0]).map((col) => (
-                                    <th key={col} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'rgb(var(--theme-text))', borderBottom: '1px solid rgba(245, 34, 45, 0.1)', whiteSpace: 'nowrap' }}>{col}</th>
-                                  ))}
-                                </tr>
+                              <tr style={{ backgroundColor: 'rgba(245, 34, 45, 0.05)' }}>
+                                <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'rgb(var(--theme-text))', borderBottom: '1px solid rgba(245, 34, 45, 0.1)', whiteSpace: 'nowrap', width: 40 }}>#</th>
+                                {Object.keys(sample.sample_value[0]).map((col) => (
+                                  <th key={col} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: 'rgb(var(--theme-text))', borderBottom: '1px solid rgba(245, 34, 45, 0.1)', whiteSpace: 'nowrap' }}>{col}</th>
+                                ))}
+                              </tr>
                               </thead>
                               <tbody>
-                                {sample.sample_value.map((row: any, rowIdx: number) => (
-                                  <tr key={rowIdx} style={{ backgroundColor: rowIdx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.02)' }}>
-                                    <td style={{ padding: '8px 12px', color: 'rgb(var(--theme-text-muted))', borderBottom: '1px solid rgba(245, 34, 45, 0.06)' }}>{rowIdx + 1}</td>
-                                    {Object.values(row).map((val: any, colIdx: number) => (
-                                      <td key={colIdx} style={{ padding: '8px 12px', color: '#cf1322', borderBottom: '1px solid rgba(245, 34, 45, 0.06)', wordBreak: 'break-all', maxWidth: 150 }}>{typeof val === 'object' ? JSON.stringify(val) : String(val ?? '-')}</td>
-                                    ))}
-                                  </tr>
-                                ))}
+                              {sample.sample_value.map((row: any, rowIdx: number) => (
+                                <tr key={rowIdx} style={{ backgroundColor: rowIdx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.02)' }}>
+                                  <td style={{ padding: '8px 12px', color: 'rgb(var(--theme-text-muted))', borderBottom: '1px solid rgba(245, 34, 45, 0.06)' }}>{rowIdx + 1}</td>
+                                  {Object.values(row).map((val: any, colIdx: number) => (
+                                    <td key={colIdx} style={{ padding: '8px 12px', color: '#cf1322', borderBottom: '1px solid rgba(245, 34, 45, 0.06)', wordBreak: 'break-all', maxWidth: 150 }}>{typeof val === 'object' ? JSON.stringify(val) : String(val ?? '-')}</td>
+                                  ))}
+                                </tr>
+                              ))}
                               </tbody>
                             </table>
                           </div>
