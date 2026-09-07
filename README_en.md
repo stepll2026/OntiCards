@@ -127,19 +127,19 @@ Built for production-grade private deployment, meeting compliance, access-contro
 ### Deployment Commands
 
 ```bash
-# 1. 克隆项目
+# 1. Clone the repository
 git clone https://github.com/stepll2026/OntiCards.git
 cd OntiCards
 
-# 2. 初始化环境变量
+# 2. Initialize environment variables
 cp .env.example .env
 chmod 600 .env
 
-# 3. 校验配置并一键启动
+# 3. Validate the configuration and start everything with one command
 docker compose config -q
 docker compose up -d --build
 
-# 访问地址
+# Access URL
 http://your-ip:9107
 ```
 
