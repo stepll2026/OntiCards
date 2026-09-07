@@ -22,10 +22,9 @@ from weaviate.connect import ConnectionParams
 
 
 # ========= 配置区：按你环境修改 =========
-# DATABASE_URL = "postgresql+psycopg2://postgres:master_pz123@8.134.183.233:55432/dev-db-connector"
-DATABASE_URL = "postgresql+psycopg2://postgres:master_pz123@8.134.183.233:55432/init_test"
+DATABASE_URL = "postgresql+psycopg2://username:password@db_ip:db_port/database"
 
-WEAVIATE_URL = "http://8.134.183.233:8088"
+WEAVIATE_URL = "http://weaviate_ip:port"
 WEAVIATE_GRPC_PORT = 50051
 
 USERS_TABLE = "users"

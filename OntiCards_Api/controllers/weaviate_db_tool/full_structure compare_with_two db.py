@@ -6,22 +6,23 @@ import sys
 
 # =============================
 # 1️⃣ 修改这里的数据库连接信息
+# 全量对边两个数据库中的所有表的结构、索引、唯一性约束等是否一致
 # =============================
 
 DB1 = {
-    "host": "8.134.183.233",
-    "port": 55432,
-    "database": "init_test",
-    "user": "postgres",
-    "password": "master_pz123"
+    "host": "db1_ip",
+    "port": 55432,  # db1_port
+    "database": "db1_database",
+    "user": "db1_username",
+    "password": "db1_password"
 }
 
 DB2 = {
-    "host": "8.134.183.233",
-    "port": 55432,
-    "database": "prod-ontiCards",
-    "user": "postgres",
-    "password": "master_pz123"
+    "host": "db2_ip",
+    "port": 55432,  # db2_port
+    "database": "db2_database",
+    "user": "db2_username",
+    "password": "db2_password"
 }
 
 SCHEMAS = ["public"]  # 支持多个 schema 对比，如 ["public","app"]

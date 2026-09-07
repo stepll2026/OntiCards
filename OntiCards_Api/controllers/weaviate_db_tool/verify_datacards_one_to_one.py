@@ -6,7 +6,7 @@
 @Usage:
     python scripts/verify_datacards_one_to_one.py
 
-@Author: 韩小豪
+@Author: 韩小豪 849631113@qq.com
 @Create: 2026-08-26
 """
 
