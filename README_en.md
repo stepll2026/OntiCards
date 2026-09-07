@@ -2,6 +2,11 @@
 
 **Enterprise AI Data Hub | Making corporate databases readable by AI — and instantly usable by business**
 
+[![Version](https://img.shields.io/badge/version-2.4.0-blue)](https://github.com/stepll2026/OntiCards/releases)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-green)](./LICENSE)
+[![Docs](https://img.shields.io/badge/docs-%E4%B8%AD%E6%96%87%E6%96%87%E6%A1%A3-8A2BE2)](https://www.step2.com.cn/docs/zh-cn/)
+[![Docker Compose](https://img.shields.io/badge/deploy-Docker%20Compose%20ready-2496ED)](https://www.step2.com.cn/docs/zh-cn/deployment.html)
+
 [简体中文](README.md) | [繁體中文(香港)](README_zh-HK.md) | **English**
 
 **Open source and free · Self-hosted · End-to-end intelligent data governance**

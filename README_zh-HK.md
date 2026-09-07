@@ -2,6 +2,11 @@
 
 **企業級 AI 數據中樞 | 讓企業數據庫可被 AI 讀懂、可被業務即用**
 
+[![Version](https://img.shields.io/badge/version-2.4.0-blue)](https://github.com/stepll2026/OntiCards/releases)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-green)](./LICENSE)
+[![Docs](https://img.shields.io/badge/docs-%E4%B8%AD%E6%96%87%E6%96%87%E6%A1%A3-8A2BE2)](https://www.step2.com.cn/docs/zh-cn/)
+[![Docker Compose](https://img.shields.io/badge/deploy-Docker%20Compose%20ready-2496ED)](https://www.step2.com.cn/docs/zh-cn/deployment.html)
+
 [简体中文](README.md) | **繁體中文(香港)** | [English](README_en.md)
 
 **開源免費 · 私有化部署 · 全鏈路數據智能化治理**
