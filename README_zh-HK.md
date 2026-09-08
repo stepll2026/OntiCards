@@ -226,5 +226,3 @@ OntiCards 開源版基於**AGPL-3.0** 協議開源。基於本項目修改後對
 - 產品官網 & 行業方案：[https://www.step2.com.cn](https://www.step2.com.cn)
 
 **OntiCards — 讓每一家企業的私有數據，都能安全、高效、低成本接入AI時代**
-
-> （註：部分內容可能由 AI 生成）
