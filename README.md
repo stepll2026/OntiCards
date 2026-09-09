@@ -4,8 +4,8 @@
 
 [![Version](https://img.shields.io/badge/version-2.4.0-blue)](https://github.com/stepll2026/OntiCards/releases)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-green)](./LICENSE)
-[![Docs](https://img.shields.io/badge/docs-%E4%B8%AD%E6%96%87%E6%96%87%E6%A1%A3-8A2BE2)](https://www.step2.com.cn/docs/zh-cn/)
-[![Docker Compose](https://img.shields.io/badge/deploy-Docker%20Compose%20ready-2496ED)](https://www.step2.com.cn/docs/zh-cn/deployment.html)
+[![Docs](https://img.shields.io/badge/docs-%E4%B8%AD%E6%96%87%E6%96%87%E6%A1%A3-8A2BE2)](http://www.onticards.com/docs/zh-cn/)
+[![Docker Compose](https://img.shields.io/badge/deploy-Docker%20Compose%20ready-2496ED)](http://www.onticards.com/docs/zh-cn/deployment.html)
 
 **简体中文** | [繁體中文(香港)](README_zh-HK.md) | [English](README_en.md)
 
@@ -13,7 +13,7 @@
 
 **项目地址**：[https://github.com/stepll2026/OntiCards/releases](https://github.com/stepll2026/OntiCards/releases)
 
-**官方文档**：[https://www.step2.com.cn/docs/zh-cn/](https://www.step2.com.cn/docs/zh-cn/)
+**官方文档**：[http://www.onticards.com/docs/zh-cn/](http://www.onticards.com/docs/zh-cn/)
 
 **开源协议**：[AGPL-3.0](./LICENSE)
 
@@ -53,7 +53,7 @@ OntiCards 并非实验性demo，已在**汽车、金融、政企、制造、教�
 
 - **地产法务**：AI智能合同审查，单份合同审核从40分钟压缩至4分钟，自动识别风险条款、分级预警、结构化批注
 
-更多行业解决方案：[https://www.step2.com.cn/zh-cn/solutions](https://www.step2.com.cn/zh-cn/solutions)
+更多行业解决方案：[http://www.onticards.com/zh-cn/solutions](http://www.onticards.com/zh-cn/solutions)
 
 ## 🔥 核心能力全景
 
@@ -145,7 +145,7 @@ http://your-ip:9107
 
 ⚠️ **生产环境必改**：数据库密码、密钥、SSO密钥、域名白名单等核心配置
 
-完整部署、离线部署、版本升级、HTTPS配置：[部署指南](https://www.step2.com.cn/docs/zh-cn/deployment.html)
+完整部署、离线部署、版本升级、HTTPS配置：[部署指南](http://www.onticards.com/docs/zh-cn/deployment.html)
 
 ## ⚡ 5分钟快速上手流程
 
@@ -157,7 +157,7 @@ http://your-ip:9107
 
 4. 自然语言自助取数、配置质检规则、查看监控报表、对接第三方系统
 
-完整操作教程：[用户手册](https://www.step2.com.cn/docs/zh-cn/user-guide.html)
+完整操作教程：[用户手册](http://www.onticards.com/docs/zh-cn/user-guide.html)
 
 ## 👥 适用角色与场景
 
@@ -183,17 +183,17 @@ http://your-ip:9107
 
 ## 📚 官方文档合集
 
-- [部署指南](https://www.step2.com.cn/docs/zh-cn/deployment.html)：环境配置、一键部署、生产优化、版本升级
+- [部署指南](http://www.onticards.com/docs/zh-cn/deployment.html)：环境配置、一键部署、生产优化、版本升级
 
-- [用户手册](https://www.step2.com.cn/docs/zh-cn/user-guide.html)：全功能操作、数据源管理、数据治理、智能问数
+- [用户手册](http://www.onticards.com/docs/zh-cn/user-guide.html)：全功能操作、数据源管理、数据治理、智能问数
 
-- [API接口文档](https://www.step2.com.cn/docs/zh-cn/api-reference.html)：第三方系统集成、接口调用规范
+- [API接口文档](http://www.onticards.com/docs/zh-cn/api-reference.html)：第三方系统集成、接口调用规范
 
-- [SSO-JWT集成](https://www.step2.com.cn/docs/zh-cn/sso-jwt.html)：企业单点登录对接方案
+- [SSO-JWT集成](http://www.onticards.com/docs/zh-cn/sso-jwt.html)：企业单点登录对接方案
 
-- [问题排查指南](https://www.step2.com.cn/docs/zh-cn/troubleshooting.html)：启动报错、模型调用、数据库连接异常解决
+- [问题排查指南](http://www.onticards.com/docs/zh-cn/troubleshooting.html)：启动报错、模型调用、数据库连接异常解决
 
-- [常见问题FAQ](https://www.step2.com.cn/docs/zh-cn/faq.html)：高频使用问题解答
+- [常见问题FAQ](http://www.onticards.com/docs/zh-cn/faq.html)：高频使用问题解答
 
 ## 🤝 参与贡献
 
@@ -223,7 +223,7 @@ OntiCards 开源版基于**AGPL-3.0** 协议开源。基于本项目修改后对
 
 - 问题反馈 & 功能建议：[GitHub Issues](https://github.com/stepll2026/OntiCards/issues)
 
-- 产品官网 & 行业方案：[https://www.step2.com.cn](https://www.step2.com.cn)
+- 产品官网 & 行业方案：[http://www.onticards.com](http://www.onticards.com)
 
 **OntiCards — 让每一家企业的私有数据，都能安全、高效、低成本接入AI时代**
 

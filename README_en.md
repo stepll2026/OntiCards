@@ -4,8 +4,8 @@
 
 [![Version](https://img.shields.io/badge/version-2.4.0-blue)](https://github.com/stepll2026/OntiCards/releases)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-green)](./LICENSE)
-[![Docs](https://img.shields.io/badge/docs-%E4%B8%AD%E6%96%87%E6%96%87%E6%A1%A3-8A2BE2)](https://www.step2.com.cn/docs/zh-cn/)
-[![Docker Compose](https://img.shields.io/badge/deploy-Docker%20Compose%20ready-2496ED)](https://www.step2.com.cn/docs/zh-cn/deployment.html)
+[![Docs](https://img.shields.io/badge/docs-%E4%B8%AD%E6%96%87%E6%96%87%E6%A1%A3-8A2BE2)](http://www.onticards.com/docs/zh-cn/)
+[![Docker Compose](https://img.shields.io/badge/deploy-Docker%20Compose%20ready-2496ED)](http://www.onticards.com/docs/zh-cn/deployment.html)
 
 [简体中文](README.md) | [繁體中文(香港)](README_zh-HK.md) | **English**
 
@@ -13,7 +13,7 @@
 
 **Project**: [https://github.com/stepll2026/OntiCards/releases](https://github.com/stepll2026/OntiCards/releases)
 
-**Documentation**: [https://www.step2.com.cn/docs/zh-cn/](https://www.step2.com.cn/docs/zh-cn/)
+**Documentation**: [http://www.onticards.com/docs/zh-cn/](http://www.onticards.com/docs/zh-cn/)
 
 **License**: [AGPL-3.0](./LICENSE)
 
@@ -53,7 +53,7 @@ OntiCards is not an experimental demo. It runs stably in production at leading e
 
 - **Real estate legal**: AI-powered contract review compresses per-contract review from 40 minutes to 4, automatically flagging risky clauses with tiered alerts and structured annotations
 
-More industry solutions: [https://www.step2.com.cn/zh-cn/solutions](https://www.step2.com.cn/zh-cn/solutions)
+More industry solutions: [http://www.onticards.com/zh-cn/solutions](http://www.onticards.com/zh-cn/solutions)
 
 ## 🔥 Full Capability Overview
 
@@ -145,7 +145,7 @@ http://your-ip:9107
 
 ⚠️ **Must change for production**: database passwords, secret keys, SSO secret, domain allowlist, and other core configuration
 
-Full deployment, offline deployment, upgrades, and HTTPS setup: [Deployment Guide](https://www.step2.com.cn/docs/zh-cn/deployment.html)
+Full deployment, offline deployment, upgrades, and HTTPS setup: [Deployment Guide](http://www.onticards.com/docs/zh-cn/deployment.html)
 
 ## ⚡ 5-Minute Quick Start
 
@@ -157,7 +157,7 @@ Full deployment, offline deployment, upgrades, and HTTPS setup: [Deployment Guid
 
 4. Query in natural language, configure quality rules, review monitoring dashboards, and integrate third-party systems
 
-Full walkthrough: [User Guide](https://www.step2.com.cn/docs/zh-cn/user-guide.html)
+Full walkthrough: [User Guide](http://www.onticards.com/docs/zh-cn/user-guide.html)
 
 ## 👥 Who It's For
 
@@ -183,17 +183,17 @@ Full walkthrough: [User Guide](https://www.step2.com.cn/docs/zh-cn/user-guide.ht
 
 ## 📚 Official Documentation
 
-- [Deployment Guide](https://www.step2.com.cn/docs/zh-cn/deployment.html): environment setup, one-command deployment, production tuning, upgrades
+- [Deployment Guide](http://www.onticards.com/docs/zh-cn/deployment.html): environment setup, one-command deployment, production tuning, upgrades
 
-- [User Guide](https://www.step2.com.cn/docs/zh-cn/user-guide.html): full feature walkthrough, data source management, governance, NL querying
+- [User Guide](http://www.onticards.com/docs/zh-cn/user-guide.html): full feature walkthrough, data source management, governance, NL querying
 
-- [API Reference](https://www.step2.com.cn/docs/zh-cn/api-reference.html): third-party integration and API conventions
+- [API Reference](http://www.onticards.com/docs/zh-cn/api-reference.html): third-party integration and API conventions
 
-- [SSO-JWT Integration](https://www.step2.com.cn/docs/zh-cn/sso-jwt.html): enterprise single sign-on
+- [SSO-JWT Integration](http://www.onticards.com/docs/zh-cn/sso-jwt.html): enterprise single sign-on
 
-- [Troubleshooting](https://www.step2.com.cn/docs/zh-cn/troubleshooting.html): startup errors, model calls, database connection issues
+- [Troubleshooting](http://www.onticards.com/docs/zh-cn/troubleshooting.html): startup errors, model calls, database connection issues
 
-- [FAQ](https://www.step2.com.cn/docs/zh-cn/faq.html): answers to common questions
+- [FAQ](http://www.onticards.com/docs/zh-cn/faq.html): answers to common questions
 
 ## 🤝 Contributing
 
@@ -223,7 +223,7 @@ The open-source edition is **free forever** and can be self-hosted in production
 
 - Bug reports & feature requests: [GitHub Issues](https://github.com/stepll2026/OntiCards/issues)
 
-- Product website & industry solutions: [https://www.step2.com.cn](https://www.step2.com.cn)
+- Product website & industry solutions: [http://www.onticards.com](http://www.onticards.com)
 
 **OntiCards — Bringing every enterprise's private data safely, efficiently, and affordably into the AI era**
 
