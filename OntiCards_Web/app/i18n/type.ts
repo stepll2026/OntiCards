@@ -1,11 +1,7 @@
-import type chat from '@/public/locales/zh-CN/chat.json'
 import type common from '@/public/locales/zh-CN/common.json'
-import type home from '@/public/locales/zh-CN/home.json'
 
 type resource = {
   common: typeof common
-  home: typeof home
-  chat: typeof chat
 }
 // 定义一个辅助类型，用于获取 resource 中特定键的类型
 type ResourceKeyType<T extends keyof resource> = keyof resource[T]

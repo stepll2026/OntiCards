@@ -226,5 +226,3 @@ The open-source edition is **free forever** and can be self-hosted in production
 - Product website & industry solutions: [http://www.onticards.com](http://www.onticards.com)
 
 **OntiCards — Bringing every enterprise's private data safely, efficiently, and affordably into the AI era**
-
-> (Note: Some content may be AI-generated)
