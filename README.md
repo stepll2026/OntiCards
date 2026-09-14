@@ -61,7 +61,7 @@ OntiCards 并非实验性demo，已在**汽车、金融、政企、制造、教�
 
 零侵入接入主流开源、商业及国产数据库，全面适配企业国产化改造需求：
 
-- 开源库：MySQL 5.7+、PostgreSQL 10+、SQLite 3.x
+- 开源库：MySQL 5.7+、MariaDB 10.3+、PostgreSQL 10+、SQLite 3.x
 
 - 商业库：Oracle 11g+、SQL Server 2012+
 

@@ -30,6 +30,7 @@ interface AddDataSourceModalProps {
 // 数据库类型配置
 const databaseTypes = [
   { value: 'mysql', label: 'MySQL', icon: '🐬' },
+  { value: 'mariadb', label: 'MariaDB', icon: '🦭' },
   { value: 'postgresql', label: 'PostgreSQL', icon: '🐘' },
   { value: 'mssql', label: 'SQL Server', icon: '🏢' },
   { value: 'oracle', label: 'Oracle', icon: '🔶' },

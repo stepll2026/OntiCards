@@ -336,6 +336,8 @@ DEFAULT_DRIVERS = {
     # 达梦数据库 DM：使用官方 dmPython 驱动（依赖达梦客户端动态库 dmPython.cp*-*.so/.pyd），
     # 配合 dmSQLAlchemy 提供 SQLAlchemy 方言注册
     "dm": "dmPython",
+    # MariaDB: wire-compatible with MySQL; uses pymysql driver via mysql+pymysql
+    "mariadb": "pymysql",
 }
 
 # 2) 字段别名映射：把前端各种命名风格统一成内部键
@@ -380,6 +382,8 @@ REQUIRED_RULES = {
     # 达梦 DM：达梦没有 database/service_name/sid 的概念，schema 默认 = 用户名大写。
     # 用户只需要：username / password / host / port（可选 target_schema 切换其他 schema）。
     "dm": [["username", "password", "host", "port"]],
+    # MariaDB: same connection params as MySQL (wire-compatible)
+    "mariadb": [["username", "password", "host", "port", "database"]],
 }
 
 # 清洗需要序列化的数据
@@ -614,6 +618,19 @@ def build_db_url(
     if db_type == "oceanbase":
         return URL.create(
             drivername=f"mysql+{driver}",   # 即 "mysql+pymysql"
+            username=username,
+            password=password,
+            host=host,
+            port=port,
+            database=database,
+            query=query or None
+        )
+
+    # MariaDB: wire-compatible with MySQL 5.5+; use mysql+pymysql driver
+    # (cannot use mariadb+pymysql — SQLAlchemy has no mariadb dialect registered)
+    if db_type == "mariadb":
+        return URL.create(
+            drivername=f"mysql+{driver}",   # i.e. "mysql+pymysql"
             username=username,
             password=password,
             host=host,

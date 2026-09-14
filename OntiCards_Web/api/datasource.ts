@@ -5,7 +5,7 @@ import { request } from './base'
 // ===== 类型定义 =====
 
 // 数据库类型
-export type DatabaseType = 'mysql' | 'postgresql' | 'mssql' | 'oracle' | 'sqlite' | 'trino' | 'kingbase' | 'oceanbase' | 'dm'
+export type DatabaseType = 'mysql' | 'mariadb' | 'postgresql' | 'mssql' | 'oracle' | 'sqlite' | 'trino' | 'kingbase' | 'oceanbase' | 'dm'
 
 // 数据源连接配置
 export interface DataSourceConfig {
