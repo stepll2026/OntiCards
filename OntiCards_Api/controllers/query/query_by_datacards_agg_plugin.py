@@ -22,7 +22,7 @@ from sqlalchemy import text
 from config import get_env
 from controllers.agents.qwen import QwenMaxLatest
 from controllers.agents.qwen.QwenMaxLatest import qian_wen_llm_with_usage
-from controllers.datasource.datasource_tool import get_db_engine, format_response
+from controllers.datasource.datasource_tool import get_db_engine, format_response as _base_format_response
 from controllers.query.sql_join_utils import (
     card_to_table_obj, build_clusters, make_tables_block, make_rels_block,
     map_connect_name_to_connect_info, infer_entity_key_from_cards,
@@ -44,6 +44,20 @@ from controllers.business_term.term_recognizer import (
     process_question,
     get_enabled_library_ids_by_datasource
 )
+
+from controllers.query.query_validation import (
+    DISPLAY_RULES, QueryValidationError, plan_query, ensure_valid_sql,
+    validate_result_rows, finalize_query_payload, response_status, add_usage,
+    unicode_sql, parse_query, UNVERIFIED_FUSION,
+)
+from controllers.query.query_retrieval import recall_requirements, expand_owned_dependencies
+
+
+def format_response(data=None, code=200, msg="操作成功"):
+    finalize_query_payload(data, qian_wen_llm_with_usage)
+    code, msg = response_status(data, code, msg)
+    return _base_format_response(data, code, msg)
+
 
 # === 注册 Flask Blueprint 和 API ===
 query_by_datacards_agg_plugin= Blueprint('query_by_datacards_agg_plugin', __name__)
@@ -718,6 +732,8 @@ def _exec_trino_unified(
         print(f"[trino] 表映射: {table_name} -> {full_table_name} (connect_name: {connect_name})")
         
         trino_table = {
+            "_query_contract": t.get("_query_contract"),
+            "schema": t.get("schema", {}),
             "table_name": full_table_name,  # 使用完整路径
             "alias": f"t{len(trino_tables) + 1}",
             "columns": t.get("columns", []),
@@ -786,14 +802,14 @@ def _exec_trino_unified(
     
     # 4. 调用LLM生成SQL 
     try:
-        response = QwenMaxLatest.qian_wen_llm(prompt, stream_type=False)
-        content = response["choices"][0]["message"]["content"]
+        prompt += DISPLAY_RULES
+        content, llm_usage = qian_wen_llm_with_usage(prompt, stream_type=False)
         
         # 使用系统内置的SQL解析函数
         parsed = _extract_sql_from_llm_text(content)
         
         if parsed["kind"] != "sql":
-            raise ValueError(f"LLM未返回SQL: {parsed.get('text', 'unknown')}")
+            raise QueryValidationError([f"模型未返回可执行 SQL：{parsed.get('text', 'unknown')}"])
         
         sql_text = parsed["text"]
         print(f"[trino] LLM生成SQL: {sql_text}")
@@ -810,6 +826,10 @@ def _exec_trino_unified(
         except Exception as fix_error:
             print(f"[trino] DISTINCT+ORDER BY修复失败: {fix_error}，继续使用原始SQL")
         
+        sql_text, validation_report, validation_usage = ensure_valid_sql(
+            sql_text, "trino", trino_tables, qian_wen_llm_with_usage, prompt)
+        add_usage(llm_usage, validation_usage)
+        result_columns = []
         # 6. 执行SQL
         with engine.connect() as conn:
             data, warnings, sql_exec_ms = run_sql_safe_new(
@@ -818,7 +838,8 @@ def _exec_trino_unified(
                 cluster_tables=trino_tables,
                 db_type="trino",
                 max_rows=1000,
-                allow_semicolon_terminator=True
+                allow_semicolon_terminator=True,
+                columns_out=result_columns
             )
             
             # 7. 构建返回结果
@@ -841,7 +862,11 @@ def _exec_trino_unified(
                 "tables": [{"table_name": t.get("table_name"), "alias": t.get("alias")} for t in trino_tables],
                 "cluster_tables": trino_tables,
                 "sql": sql_text,
-                "target_sql": sql_text,  # 添加target_sql字段保持一致
+                "target_sql": sql_text,
+                "validation": validation_report,
+                "columns": result_columns,
+                "_llm_usage": llm_usage,
+                "_sql_execution_ms": sql_exec_ms,
                 "data": data or [],
                 "rows": data or [],  # 添加rows字段保持一致  
                 "warnings": warnings or [],
@@ -1608,6 +1633,7 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
     print(f"[_exec_cluster] 提示词总长度: {len(prompt)} 字符")
 
     print(f"[_exec_cluster] 开始调用LLM生成SQL...")
+    prompt += DISPLAY_RULES
     content, llm_usage = qian_wen_llm_with_usage(prompt, stream_type=False, model_config_dict=model_config_dict)
     print(f"[_exec_cluster] LLM返回内容长度: {len(content)} 字符")
 
@@ -1751,6 +1777,10 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
 
         print(f"[_exec_cluster][{db_type}] 开始执行SQL...")
         try:
+            final_sql, validation_report, validation_usage = ensure_valid_sql(
+                final_sql, db_type, tables, qian_wen_llm_with_usage, prompt, model_config_dict)
+            add_usage(llm_usage, validation_usage)
+            result_columns = []
             data, warnings, sql_exec_ms = run_sql_safe_new(
                 engine=engine,
                 sql=final_sql,
@@ -1758,7 +1788,8 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                 db_type=db_type,
                 max_rows=1000,
                 allow_semicolon_terminator=True,
-                target_schema=db_name if db_type in ("oracle", "dm") else None
+                target_schema=db_name if db_type in ("oracle", "dm") else None,
+                columns_out=result_columns
             )
             print(f"[_exec_cluster][{db_type}] SQL执行成功，返回 {len(data) if isinstance(data, list) else data} 行数据，耗时 {sql_exec_ms}ms")
             if warnings:
@@ -1770,98 +1801,18 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
             else:
                 print(f"[_exec_cluster][{db_type}] ⚠️ 警告：SQL执行成功但返回空数据列表")
 
-            # 过滤空记录和异常记录：只保留有有效数据的记录
-            def has_valid_data_in_row(row: dict) -> bool:
-                """
-                检查记录是否包含有效且合理的数据
-
-                过滤条件：
-                1. 所有字段都是 None/空字符串 → 无效
-                2. 存在明显异常的字段映射（如 quantity == price 且不是合理值） → 无效
-
-                特殊情况：
-                - 如果记录只有 entity_key 一个字段，且 entity_key 有值，则认为是有效的
-                  （这在跨簇融合场景中是合理的，用于收集满足条件的 ID）
-                - 对于统计查询（如 COUNT、SUM），即使结果为 0 也是有效的
-                  （例如 {"mismatch_count": 0} 是有效结果，不应该被过滤）
-                """
-                # 特殊情况1：如果只有 entity_key 一个字段，且有值，则认为是有效的
-                if len(row) == 1 and entity_key in row and row[entity_key] is not None:
-                    return True
-
-                # 特殊情况2：检查是否是统计查询结果（字段名包含 count/sum/avg/total/num 等）
-                # 这些查询的结果即使为 0 也是有效的
-                stat_keywords = ['count', 'sum', 'avg', 'total', 'num', 'amount', 'quantity', 'ratio', 'rate', 'percentage']
-                is_stat_query = any(
-                    any(keyword in k.lower() for keyword in stat_keywords)
-                    for k in row.keys()
-                )
-
-                # 如果是统计查询，只要有非 None 的值就认为是有效的（即使值为 0）
-                if is_stat_query:
-                    for k, v in row.items():
-                        if k == entity_key:
-                            continue
-                        if v is not None:  # 只要不是 None，就认为是有效的（包括 0）
-                            return True
-                    return False
-
-                # 对于非统计查询，检查是否有非 entity_key 的非空非零字段
-                has_non_empty = False
-                for k, v in row.items():
-                    if k == entity_key:
-                        continue
-                    if v is not None and v != 0 and v != 0.0 and v != "" and v is not False:
-                        has_non_empty = True
-                        break
-
-                if not has_non_empty:
-                    return False
-
-                # 检测异常：如果同时存在 quantity 和 price 字段，且它们的值完全相同（且不是 0 或小的正常值）
-                # 这通常意味着字段映射错误
-                if 'quantity' in row and 'price' in row:
-                    q = row['quantity']
-                    p = row['price']
-                    # 如果两个值都存在且相同
-                    if q is not None and p is not None and q == p:
-                        # 排除一些合理的情况（比如都是 0, 或者很小的正数如 0.01-10.0）
-                        if q != 0 and p != 0:
-                            # 如果值很大（绝对值 > 100）或者是负数，且相同，则认为是异常
-                            if abs(q) > 100 or q < 0:
-                                print(
-                                    f"[agg] 检测到异常记录：product_id={row.get(entity_key)}, quantity={q}, price={p}（字段值相同且异常）")
-                                return False
-
-                return True
-
-            original_count = len(data)
-            # 过滤掉空记录
-            filtered_data = [row for row in data if has_valid_data_in_row(row)]
-            filtered_count = original_count - len(filtered_data)
-
-            # 从过滤后的数据中收集 entity_ids（仅用于多簇融合，单簇场景不使用）
-            eids = list(_collect_entity_ids(filtered_data, entity_key))
-
-            if filtered_count > 0:
-                print(f"[agg] 簇 {db_type} 原始查询结果 {original_count} 条，过滤掉 {filtered_count} 条异常/空记录")
-                warnings = (warnings or [])
-                warnings.append(f"过滤掉 {filtered_count} 条异常/空记录（字段值异常或都是 0/NULL）")
-
-                # 输出生成的 SQL 用于调试
-                print(f"[agg] 簇 {db_type} 生成的 SQL: {sql_text[:200]}...")  # 只输出前 200 字符
-
-            # 注意：entity_ids 仅用于规则融合回退方案，LLM语义融合不依赖此字段
-            if not eids:
-                # 不添加警告，因为LLM语义融合不需要entity_ids
-                print(f"[agg] 簇 {db_type} 未收集到 entity_key '{entity_key}'（LLM语义融合不受影响）")
-            else:
-                print(f"[agg] 簇 {db_type} 收集 entity_key '{entity_key}' 共 {len(eids)} 个（备用融合方案）")
-
-            # 使用过滤后的数据
-            data = filtered_data
+            # 保留数据库返回的所有行，包括合法的 0、NULL 和相等字段值。
+            eids = list(_collect_entity_ids(data, entity_key))
             success = True
             break  # 成功，跳出重试循环
+
+        except QueryValidationError as exc:
+            engine.dispose()
+            return {"db_type": db_type, "connect_info_safe": {"type": db_type, "database": db_name},
+                    "tables": [{"table_name": t.get("table_name")} for t in tables],
+                    "cluster_tables": cluster_tables, "target_sql": final_sql,
+                    "rows": [], "entity_ids": [], "error": str(exc), "note": str(exc),
+                    "validation": exc.report, "warnings": [], "_llm_usage": llm_usage}
 
         except ValueError as ve:
             # SQL安全校验失败
@@ -1937,7 +1888,7 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                         },
                     "tables": [{"table_name": t.get("table_name"), "alias": t.get("alias")} for t in tables],
                     "cluster_tables": cluster_tables,
-                    "target_sql": " ".join(final_sql.split()),
+                    "target_sql": final_sql,
                     "rows": [],
                     "entity_ids": [],
                     "note": user_friendly_msg,
@@ -2018,7 +1969,7 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                         },
                     "tables": [{"table_name": t.get("table_name"), "alias": t.get("alias")} for t in tables],
                     "cluster_tables": cluster_tables,
-                    "target_sql": " ".join(final_sql.split()),
+                    "target_sql": final_sql,
                     "rows": [],
                     "entity_ids": [],
                     "note": user_friendly_msg,
@@ -2042,7 +1993,9 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
         # tables 中可能有复杂对象，只提取表名
         "tables": [{"table_name": t.get("table_name"), "alias": t.get("alias")} for t in tables],
         "cluster_tables": cluster_tables,
-        "target_sql": " ".join(final_sql.split()),
+        "target_sql": final_sql,
+        "validation": validation_report,
+        "columns": result_columns,
         "rows": data,
         "entity_ids": eids,
         "note": "",
@@ -2070,6 +2023,7 @@ def run_sql_safe_new(
     max_rows: int = 1000,
     allow_semicolon_terminator: bool = True,
     target_schema: str | None = None,
+        columns_out: list | None = None,
 ):
     """
     多表白名单 + 安全校验 + 执行。
@@ -2089,8 +2043,8 @@ def run_sql_safe_new(
       - target_schema: Oracle 目标 schema（用于设置 session current_schema）
 
     返回:
-      (data, warnings)
-        - data: list[dict]（SELECT）或 {"rowcount": int}（非返回行）
+      (data, warnings, sql_execution_ms)
+        - data: list[dict]；空结果仍可通过 columns_out 获取列名
         - warnings: list[str]
     失败:
       - 抛出 ValueError（非法/危险/超出白名单）
@@ -2099,7 +2053,8 @@ def run_sql_safe_new(
     warnings: list[str] = []
 
     # ---------- 0) 预处理：去两端空白 ----------
-    raw_sql = _strip_code_fences(sql or "")
+    raw_sql = unicode_sql(_strip_code_fences(sql or ""), db_type)
+    parse_query(raw_sql, db_type)
     sql_stripped = raw_sql.strip()
 
     # ---------- 1) 基础安全防护 ----------
@@ -2368,23 +2323,22 @@ def run_sql_safe_new(
 
         result = conn.execute(text(sql_stripped))
         if result.returns_rows:
-            rows = result.fetchall()
-            keys = result.keys()
-            # 将每行数据转换为字典，并立即序列化特殊类型
+            keys = list(result.keys())
+            if len(set(keys)) != len(keys):
+                raise QueryValidationError(["输出列重名，会覆盖查询结果"])
+            if columns_out is not None:
+                columns_out[:] = keys
+            rows = result.fetchmany(max_rows + 1)
             data = []
             for row in rows[:max_rows]:
                 row_dict = dict(zip(keys, row))
-                # 对每行数据应用序列化处理，确保特殊类型（time, UUID, date等）正确转换
-                serialized_row = _make_json_serializable(row_dict)
-                data.append(serialized_row)
-
+                validate_result_rows([row_dict], keys)
+                data.append(_make_json_serializable(row_dict))
             if len(rows) > max_rows:
-                warnings.append(f"结果行数 {len(rows)} 超过上限 {max_rows}，已截断返回。")
-            sql_exec_ms = int((time_module.time() - sql_exec_start) * 1000)
-            return data, warnings, sql_exec_ms
-        else:
-            sql_exec_ms = int((time_module.time() - sql_exec_start) * 1000)
-            return {"rowcount": result.rowcount}, warnings, sql_exec_ms
+                warnings.append(f"结果超过上限 {max_rows}，已截断；不能视为完整查询结果。")
+            sql_execution_ms = int((time_module.time() - sql_exec_start) * 1000)
+            return data, warnings, sql_execution_ms
+        raise QueryValidationError(["数据库未返回查询结果集"])
 
 def _split_ids_for_db(ids: list, db_type: str, chunk_for_oracle:int=1000, chunk_default:int=1000):
     ids = list(ids or [])
@@ -2518,13 +2472,13 @@ def _log_query_plugin(
     """
     查询日志记录辅助函数（插件版）
     """
+    finalize_query_payload(full_response_result, qian_wen_llm_with_usage)
+    if full_response_result is not None:
+        response_code, response_message = response_status(full_response_result, 200, "success")
+        if response_code != 200:
+            success, error_message, result_count = False, response_message, 0
+        full_response_result["timings"] = dict(metrics)
     try:
-        metrics['total_duration_ms'] = metrics.get('vector_search_ms', 0) + \
-                                        metrics.get('rerank_ms', 0) + \
-                                        metrics.get('llm_gen_sql_ms', 0) + \
-                                        metrics.get('llm_fusion_ms', 0) + \
-                                        metrics.get('sql_execution_ms', 0)
-
         if success:
             QueryLogger.log_success(
                 user_id=user_id,
@@ -2631,10 +2585,9 @@ class QueryByDataCardsAggPlugin(Resource):
         # 先保存原始问题，后续用于日志记录
         original_question = user_question
 
-        # 1) 推断融合策略（AND/OR），用户不输入参数，自动识别
-        t0 = time_module.time()
-        merge_strategy = _infer_strategy(user_question)
-        metrics["llm_gen_sql_ms"] += int((time_module.time() - t0) * 1000)
+        # The selected SQL path supplies the final strategy; no speculative model
+        # call is needed before requirements and data sources are known.
+        merge_strategy = "AUTO"
 
         # 获取可选参数：是否启用重排序（默认启用）
         enable_rerank = body.get("enable_rerank", True)
@@ -2736,12 +2689,26 @@ class QueryByDataCardsAggPlugin(Resource):
         t1 = time_module.time()
         u = User.query.filter_by(id=user_id).first()
         user_class = getattr(u, "weaviate_class_name", None)
-        rs_json = get_data_card_json(
-            user_question,
-            enable_rerank=enable_rerank,
-            class_name=user_class,
-            datasource_id=datasource_filter  # 使用统一的过滤参数（支持单个ID或列表）
-        )
+        try:
+            query_contract = plan_query(original_question, rewritten_question, qian_wen_llm_with_usage)
+            rs_json = recall_requirements(
+                query_contract, get_data_card_json,
+                enable_rerank=enable_rerank,
+                class_name=user_class,
+                datasource_id=datasource_filter  # 使用统一的过滤参数（支持单个ID或列表）
+            )
+            rs_json = expand_owned_dependencies(rs_json, user_id, datasource_filter)
+        except QueryValidationError as exc:
+            QueryLogger.log_error(user_id=user_id, question=original_question, api_key_id=api_key_id,
+                                  error_message=str(exc), total_duration_ms=int((time_module.time() - start_time) * 1000))
+            db.session.commit()
+            return format_response({"validation": exc.report, "final_rows": [], "clusters": []}, 422, str(exc))
+        query_contract["retrieval"] = rs_json.get("retrieval", {})
+        plan_usage = query_contract.get("usage", {})
+        tokens["llm_prompt_tokens"] += plan_usage.get("prompt_tokens", 0)
+        tokens["llm_completion_tokens"] += plan_usage.get("completion_tokens", 0)
+        tokens["total_tokens"] += plan_usage.get("total_tokens", 0)
+        user_question = "原始提问：" + original_question + "\n术语补充解释：" + rewritten_question
         metrics["vector_search_ms"] += int((time_module.time() - t1) * 1000)
         doc_ids = rs_json.get("doc_ids") or []
         card_list = rs_json.get("data_card_results") or []
@@ -2797,7 +2764,9 @@ class QueryByDataCardsAggPlugin(Resource):
                 ds_schema_name = ds_info.schema_name
                 print(f"[DEBUG] 卡片 doc_id={doc_id} 使用 schema_name: {ds_schema_name} (from DatasourceInfo)")
 
-            table_objs.append(card_to_table_obj(schema_row, card, connect_info, ds_schema_name=ds_schema_name))
+            table_obj = card_to_table_obj(schema_row, card, connect_info, ds_schema_name=ds_schema_name)
+            table_obj["_query_contract"] = query_contract
+            table_objs.append(table_obj)
             
             # 收集数据卡片详细信息
             data_cards_info.append({
@@ -2836,6 +2805,7 @@ class QueryByDataCardsAggPlugin(Resource):
         print(f"[DEBUG][CARDS] filtered_out_doc_ids = {filtered_out_doc_ids}")
         print("=" * 80 + "\n")
 
+        query_contract["cluster_count"] = len(build_clusters(table_objs))
         entity_key = infer_entity_key_from_cards(table_objs) # 获取主键
 
         # 补充来源数据源的名称
@@ -2881,12 +2851,21 @@ class QueryByDataCardsAggPlugin(Resource):
                 relationship_data_cache[ds_id] = {"cards": {}, "join_suggestions": [], "missing_tables": table_names}
 
         if not table_objs:
+            _log_query_plugin(
+                user_id=user_id, question=original_question, sql="",
+                source_datasource_ids=source_datasource_ids, source_datasource_names=source_datasource_names,
+                datasource_ids=[], datasource_names=[], table_names=[],
+                metrics={**metrics, "total_duration_ms": int((time_module.time() - start_time) * 1000)},
+                tokens=tokens, quality=quality, result_count=0, merge_strategy=merge_strategy,
+                success=False, error_message="未命中可用数据卡片", api_key_id=api_key_id,
+            )
             return format_response(
                 {
                     "clusters": [],
                     "merge": {"strategy": merge_strategy, "entity_key": entity_key},
                     "final_rows": [],
                     "data_cards": _make_json_serializable(data_cards_info),
+                    "query_contract": query_contract,
                     "term_rewrite": {
                         "enabled": enable_term_rewrite,
                         "matched_count": len(matched_terms),
@@ -2952,6 +2931,13 @@ class QueryByDataCardsAggPlugin(Resource):
                     relationship_data=trino_relationship_data,  # ✅ 修复：传入关系卡片数据
                 )
                 
+                trino_usage = trino_result.get("_llm_usage", {})
+                tokens["llm_prompt_tokens"] += trino_usage.get("prompt_tokens", 0)
+                tokens["llm_completion_tokens"] += trino_usage.get("completion_tokens", 0)
+                tokens["total_tokens"] += trino_usage.get("total_tokens", 0)
+                metrics["llm_gen_sql_ms"] += trino_usage.get("generation_ms", 0)
+                metrics["sql_execution_ms"] += trino_result.get("_sql_execution_ms", 0)
+
                 # 直接返回Trino结果，不需要跨簇融合
                 # 但需要做一次深度清理，移除不可序列化/循环引用字段
                 clean_trino_cluster = {k: v for k, v in trino_result.items() if not k.startswith("_")}
@@ -2962,6 +2948,7 @@ class QueryByDataCardsAggPlugin(Resource):
                     "merge": {"strategy": "TRINO_UNIFIED", "entity_key": entity_key},
                     "final_rows": safe_final_rows,
                     "data_cards": _make_json_serializable(data_cards_info),
+                    "query_contract": query_contract,
                     "term_rewrite": {
                         "enabled": enable_term_rewrite,
                         "matched_count": len(matched_terms),
@@ -3011,6 +2998,20 @@ class QueryByDataCardsAggPlugin(Resource):
 
                 return format_response(payload, 200, "查询成功")
                 
+            except QueryValidationError as exc:
+                payload = {"query_contract": query_contract, "validation": exc.report,
+                           "clusters": [], "final_rows": []}
+                _log_query_plugin(
+                    user_id=user_id, question=original_question, sql="",
+                    source_datasource_ids=source_datasource_ids, source_datasource_names=source_datasource_names,
+                    datasource_ids=datasource_ids, datasource_names=datasource_names, table_names=table_names,
+                    metrics={**metrics, "total_duration_ms": int((time_module.time() - start_time) * 1000)},
+                    tokens=tokens, quality=quality, result_count=0, merge_strategy="TRINO_UNIFIED",
+                    success=False, error_message=str(exc), full_response_result=payload,
+                    api_key_id=api_key_id,
+                )
+                return format_response(payload, 422, str(exc))
+
             except ValueError as ve:
                 # 如果是连接配置问题，回退到传统分簇处理
                 if "未找到真正的Trino连接配置" in str(ve):
@@ -3027,6 +3028,26 @@ class QueryByDataCardsAggPlugin(Resource):
 
         # 3) 分簇（同 db_type + connect_info 的放一起，准备簇内联查）
         clusters = build_clusters(table_objs)
+
+        # Sample-based fusion cannot establish completeness. Stop before spending
+        # time on component queries whose combined answer cannot be verified.
+        if len(clusters) > 1:
+            payload = {
+                "query_contract": query_contract, "clusters": [], "final_rows": [],
+                "data_cards": _make_json_serializable(data_cards_info),
+                "validation": {"status": "unverified", "issues": [UNVERIFIED_FUSION]},
+                "merge": {"strategy": "UNVERIFIED_FUSION", "entity_key": entity_key},
+            }
+            _log_query_plugin(
+                user_id=user_id, question=original_question, sql="",
+                source_datasource_ids=source_datasource_ids, source_datasource_names=source_datasource_names,
+                datasource_ids=datasource_ids, datasource_names=datasource_names, table_names=table_names,
+                metrics={**metrics, "total_duration_ms": int((time_module.time() - start_time) * 1000)},
+                tokens=tokens, quality=quality, result_count=0, merge_strategy="UNVERIFIED_FUSION",
+                success=False, error_message=UNVERIFIED_FUSION, full_response_result=payload,
+                api_key_id=api_key_id,
+            )
+            return format_response(payload, 422, UNVERIFIED_FUSION)
 
         # 4) 簇内生成单条 SQL 并执行（带关系卡片增强，支持并行执行）
         print(f"[agg] 开始簇内执行，共 {len(clusters)} 个簇")
@@ -3304,6 +3325,7 @@ class QueryByDataCardsAggPlugin(Resource):
                 "final_rows": _make_json_serializable(final_rows),
                 "fill_warnings": fill_warnings,
                 "data_cards": _make_json_serializable(data_cards_info),
+                "query_contract": query_contract,
                 "term_rewrite": {
                     "enabled": enable_term_rewrite,
                     "matched_count": len(matched_terms),
@@ -3384,6 +3406,7 @@ class QueryByDataCardsAggPlugin(Resource):
                 "final_rows": _make_json_serializable(single_rows),
                 "fill_warnings": single_warnings,
                 "data_cards": _make_json_serializable(data_cards_info),
+                "query_contract": query_contract,
                 "term_rewrite": {
                     "enabled": enable_term_rewrite,
                     "matched_count": len(matched_terms),
@@ -3783,6 +3806,7 @@ class QueryByDataCardsAggPlugin(Resource):
             "final_rows": _make_json_serializable(final_rows),
             "fill_warnings": fill_warnings,  # 回填阶段的警告信息
             "data_cards": _make_json_serializable(data_cards_info),  # 返回数据卡片信息，用于前端"查看详情"功能
+            "query_contract": query_contract,
             "term_rewrite": {
                 "enabled": enable_term_rewrite,
                 "matched_count": len(matched_terms),

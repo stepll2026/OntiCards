@@ -1312,8 +1312,8 @@ const WorkspaceDetailPage = () => {
   const [askQueryStatus, setAskQueryStatus] = useState<'idle' | 'analyzing' | 'error'>('idle')
   const [askQueryResult, setAskQueryResult] = useState<any>(null)
   const [askError, setAskError] = useState<string | null>(null)
-  const [askQueryStep, setAskQueryStep] = useState(0)
-  const [askProgressPercent, setAskProgressPercent] = useState(0)
+  const [askElapsedSeconds, setAskElapsedSeconds] = useState(0)
+  const [askDiagnostics, setAskDiagnostics] = useState<any>(null)
   const [selectedDataSourceIds, setSelectedDataSourceIds] = useState<string[]>([])
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false)
 
@@ -1349,50 +1349,20 @@ const WorkspaceDetailPage = () => {
   })
   const [loadingGlobalResult, setLoadingGlobalResult] = useState(false)
 
-  // 问数查询进度步骤（用户友好文案）
-  const askQuerySteps = [
-    {
-      id: 1,
-      name: '向量检索',
-      description: '正在基于向量检索召回数据卡片...',
-    },
-    {
-      id: 2,
-      name: '回查数据库',
-      description: '正在回查数据库获取完整卡片内容...',
-    },
-    {
-      id: 3,
-      name: 'AI 分析生成 SQL',
-      description: '正在基于大模型对用户提问做语义分析并生成查询SQL语句...',
-    },
-    {
-      id: 4,
-      name: '执行 SQL 查询',
-      description: '正在连接数据源执行SQL获取结果...',
-    },
-    {
-      id: 5,
-      name: '结果合并',
-      description: '正在进行查询结果融合...',
-    },
-  ]
-
-  // 问数查询进度条动画时间配置（单位：毫秒，可根据需要调整各阶段进度条停留时间）
-  const askProgressStepConfig = [
-    { step: 1, percent: 12, ms: 2400 },
-    { step: 2, percent: 25, ms: 900 },
-    { step: 3, percent: 75, ms: 5000 },
-    { step: 4, percent: 80, ms: 900 },
-    { step: 5, percent: 92, ms: 2100 },
-  ]
-
-  // 问数查询的 AbortController
   const askAbortControllerRef = useRef<AbortController | null>(null)
-  const askProgressIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const askCancelFlagRef = useRef(false)
-  const askTimeoutIdsRef = useRef<NodeJS.Timeout[]>([])
-  const askProgressRef = useRef(0)
+  const askRequestIdRef = useRef(0)
+
+  useEffect(() => {
+    if (askQueryStatus !== 'analyzing') return
+    const started = Date.now()
+    const timer = setInterval(() => setAskElapsedSeconds(Math.floor((Date.now() - started) / 1000)), 1000)
+    return () => clearInterval(timer)
+  }, [askQueryStatus])
+
+  useEffect(() => () => {
+    askRequestIdRef.current++
+    askAbortControllerRef.current?.abort()
+  }, [])
 
   // 获取数据源列表
   const {
@@ -1547,24 +1517,15 @@ const WorkspaceDetailPage = () => {
     if (prevActiveTabRef.current === 'ask' && activeTab !== 'ask') {
       setAskQueryResult(null)
       setAskError(null)
-      setAskQueryStep(0)
-      setAskProgressPercent(0)
-      askProgressRef.current = 0
-      if (askProgressIntervalRef.current) {
-        clearInterval(askProgressIntervalRef.current)
-        askProgressIntervalRef.current = null
-      }
+      askRequestIdRef.current++
+      askAbortControllerRef.current?.abort()
+      askAbortControllerRef.current = null
+      setAskQueryStatus('idle')
+      setAskDiagnostics(null)
+      setAskElapsedSeconds(0)
     }
     prevActiveTabRef.current = activeTab
   }, [activeTab])
-
-  // 更新进度（存整数，避免 63.9999999% 等显示）
-  const updateAskProgress = (value: number) => {
-    const clamped = Math.min(100, Math.max(0, value))
-    const rounded = Math.round(clamped)
-    askProgressRef.current = rounded
-    setAskProgressPercent(rounded)
-  }
 
   // SQL格式化函数
   const formatAskSQL = (sql: string): string => {
@@ -1692,171 +1653,47 @@ const WorkspaceDetailPage = () => {
     setActiveCardIndex(0)
   }
 
-  // 可取消的延迟函数
-  const askCancelableDelay = (ms: number): Promise<void> => {
-    return new Promise((resolve) => {
-      const timeoutId = setTimeout(() => {
-        askTimeoutIdsRef.current = askTimeoutIdsRef.current.filter(id => id !== timeoutId)
-        resolve()
-      }, ms)
-      askTimeoutIdsRef.current.push(timeoutId)
-    })
-  }
-
-  // 平滑更新进度条
-  const askSmoothProgressTo = (targetPercent: number, duration: number) => {
-    if (askProgressIntervalRef.current) {
-      clearInterval(askProgressIntervalRef.current)
-      askProgressIntervalRef.current = null
-    }
-
-    return new Promise<void>((resolve) => {
-      if (duration <= 0) {
-        updateAskProgress(targetPercent)
-        resolve()
-        return
-      }
-
-      const startPercent = askProgressRef.current
-      const difference = targetPercent - startPercent
-      const steps = Math.max(20, Math.floor(duration / 50))
-      const stepSize = difference / steps
-      let currentStep = 0
-      const stepDuration = duration / steps
-
-      askProgressIntervalRef.current = setInterval(() => {
-        if (askCancelFlagRef.current) {
-          if (askProgressIntervalRef.current) {
-            clearInterval(askProgressIntervalRef.current)
-            askProgressIntervalRef.current = null
-          }
-          resolve()
-          return
-        }
-
-        currentStep++
-        if (currentStep >= steps) {
-          updateAskProgress(targetPercent)
-          if (askProgressIntervalRef.current) {
-            clearInterval(askProgressIntervalRef.current)
-            askProgressIntervalRef.current = null
-          }
-          resolve()
-        } else {
-          updateAskProgress(startPercent + stepSize * currentStep)
-        }
-      }, stepDuration)
-    })
-  }
-
-  // 执行问数查询：立即调接口，进度条与请求并行、顺滑动画
   const handleAskQuery = async () => {
     if (!askQuestion.trim()) return
-
-    askCancelFlagRef.current = false
-    askTimeoutIdsRef.current.forEach(id => clearTimeout(id))
-    askTimeoutIdsRef.current = []
-
+    askAbortControllerRef.current?.abort()
+    const requestId = ++askRequestIdRef.current
     setAskQueryStatus('analyzing')
-    setAskQueryStep(1)
-    updateAskProgress(5)
+    setAskElapsedSeconds(0)
     setAskQueryResult(null)
+    setAskDiagnostics(null)
     setAskError(null)
-
-    let controller: AbortController | null = null
-
-    const requestParams: QueryRequest = {
-      query: askQuestion,
-      enable_rerank: true,
-    }
-    if (selectedDataSourceIds.length > 0) {
-      if (selectedDataSourceIds.length === 1) {
-        requestParams.datasource_id = selectedDataSourceIds[0]
-      } else {
-        requestParams.datasource_ids = selectedDataSourceIds
-      }
-    }
-
-    const apiPromise = queryByDatacardsAgg(requestParams, {
-      getAbortController: (ac) => {
-        controller = ac
-        askAbortControllerRef.current = ac
-      },
-    })
-
-    // 进度条顺滑动画：与接口并行，该停顿和慢的地方（如 AI 分析、执行 SQL）更慢
-    const runProgressAnimation = async () => {
-      // 使用可配置的进度条时间设置
-      const steps = askProgressStepConfig
-      for (const {
-        step,
-        percent,
-        ms
-      } of steps) {
-        if (askCancelFlagRef.current) return
-        setAskQueryStep(step)
-        await askSmoothProgressTo(percent, ms)
-      }
-    }
-    runProgressAnimation()
-
+    const requestParams: QueryRequest = { query: askQuestion, enable_rerank: true }
+    if (selectedDataSourceIds.length === 1) requestParams.datasource_id = selectedDataSourceIds[0]
+    else if (selectedDataSourceIds.length > 1) requestParams.datasource_ids = selectedDataSourceIds
     try {
-      const response = await apiPromise
-      if (askCancelFlagRef.current) throw new Error('QueryCancelled')
-
-      await askSmoothProgressTo(100, 400)
-      if (askCancelFlagRef.current) throw new Error('QueryCancelled')
-
-      if (response.code === 200) {
+      const response = await queryByDatacardsAgg(requestParams, {
+        getAbortController: ac => { askAbortControllerRef.current = ac },
+      })
+      if (requestId !== askRequestIdRef.current) return
+      setAskDiagnostics(response.data)
+      const validation = response.data?.validation
+      if (response.code === 200 && validation?.status === 'verified') {
         setAskQueryResult(response)
         setAskQueryStatus('idle')
-        setAskQueryStep(0)
-        updateAskProgress(0)
-        askAbortControllerRef.current = null
-        if (askProgressIntervalRef.current) {
-          clearInterval(askProgressIntervalRef.current)
-          askProgressIntervalRef.current = null
-        }
       } else {
         setAskQueryStatus('error')
-        setAskError(response.msg || '查询失败')
-        setAskQueryStep(0)
-        updateAskProgress(0)
-        askAbortControllerRef.current = null
+        setAskError(validation?.issues?.join('；') || (response.code === 200
+          ? '服务端尚未提供完整性校验，请同步更新 API 服务'
+          : response.msg || '查询失败'))
       }
     } catch (error: any) {
-      console.error('查询失败:', error)
-      if (error.name === 'AbortError' || error.message === 'QueryCancelled') {
-        setAskQueryStatus('idle')
-        setAskError(null)
-      } else {
-        setAskQueryStatus('error')
-        setAskError(error instanceof Error ? error.message : '网络请求失败')
-      }
-      setAskQueryStep(0)
-      updateAskProgress(0)
-      askAbortControllerRef.current = null
-      askTimeoutIdsRef.current.forEach(id => clearTimeout(id))
-      askTimeoutIdsRef.current = []
-      if (askProgressIntervalRef.current) {
-        clearInterval(askProgressIntervalRef.current)
-        askProgressIntervalRef.current = null
-      }
+      if (requestId !== askRequestIdRef.current) return
+      setAskQueryStatus(error.name === 'AbortError' ? 'idle' : 'error')
+      setAskError(error.name === 'AbortError' ? null : (error.message || '网络请求失败'))
+    } finally {
+      if (requestId === askRequestIdRef.current) askAbortControllerRef.current = null
     }
   }
 
-  // 取消问数查询
   const handleCancelAskQuery = () => {
-    askCancelFlagRef.current = true
-    askTimeoutIdsRef.current.forEach(id => clearTimeout(id))
-    askTimeoutIdsRef.current = []
-
-    if (askAbortControllerRef.current) {
-      askAbortControllerRef.current.abort()
-      askAbortControllerRef.current = null
-    }
-
-    setAskQueryStep(0)
+    askRequestIdRef.current++
+    askAbortControllerRef.current?.abort()
+    askAbortControllerRef.current = null
     setAskQueryStatus('idle')
     setAskError(null)
   }
@@ -4291,74 +4128,19 @@ const WorkspaceDetailPage = () => {
                   </div>
                 </div>
 
-                {/* 查询进度：to-list、圆角、无步骤背景、顺滑节奏 */}
-                {askQueryStep > 0 && (
-                  <div className="border p-5 shadow-sm" style={{ borderRadius: '20px', backgroundColor: 'rgb(var(--theme-bg))', borderColor: 'rgb(var(--theme-border))' }}>
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-2">
-                        <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'rgb(var(--theme-primary))' }} />
-                        <span className="text-sm font-semibold" style={{ color: 'rgb(var(--theme-text))' }}>查询进度</span>
-                      </div>
-                      <span className="text-sm font-bold" style={{ color: 'rgb(var(--theme-primary))' }}>{Math.round(askProgressPercent)}%</span>
+                {askQueryStatus === 'analyzing' && (
+                  <div role="status" className="border rounded-2xl p-5" style={{ borderColor: 'rgb(var(--theme-border))' }}>
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>正在查询并核对需求，已等待 {askElapsedSeconds} 秒</span>
                     </div>
-                    <div className="h-2.5 overflow-hidden mb-5" style={{ borderRadius: '999px', backgroundColor: 'rgb(var(--theme-bg-secondary))' }}>
-                      <div
-                        className="h-full transition-all duration-500 ease-out"
-                        style={{
-                          width: `${Math.min(100, Math.round(askProgressPercent))}%`,
-                          borderRadius: '999px',
-                          background: 'linear-gradient(135deg, rgb(var(--theme-primary)), rgb(219, 39, 119))',
-                        }}
-                      />
-                    </div>
-                    <ul className="space-y-1.5">
-                      {askQuerySteps.map((step, i) => (
-                        <li
-                          key={step.id}
-                          className="flex flex-col py-2 px-3 text-sm transition-colors border border-transparent"
-                          style={{
-                            borderRadius: '12px',
-                            backgroundColor: askQueryStep === i + 1 ? 'rgba(var(--theme-primary), 0.08)' : 'transparent',
-                          }}
-                        >
-                          <div className="flex items-center gap-3">
-                            <span
-                              className="w-6 h-6 flex items-center justify-center text-xs font-bold shrink-0"
-                              style={{
-                                borderRadius: '50%',
-                                backgroundColor: askQueryStep > i + 1 ? 'rgba(var(--theme-primary), 0.2)' : askQueryStep === i + 1 ? 'rgb(var(--theme-primary))' : 'rgb(var(--theme-bg-secondary))',
-                                color: askQueryStep > i + 1 ? 'rgb(var(--theme-primary))' : askQueryStep === i + 1 ? '#fff' : 'rgb(var(--theme-text-muted))',
-                              }}
-                            >
-                              {askQueryStep > i + 1 ? '✓' : i + 1}
-                            </span>
-                            <span
-                              className="font-medium"
-                              style={{
-                                color: askQueryStep > i + 1 ? 'rgb(var(--theme-primary))' : askQueryStep === i + 1 ? 'rgb(var(--theme-primary))' : 'rgb(var(--theme-text-muted))',
-                              }}
-                            >
-                              {step.name}
-                            </span>
-                          </div>
-                          {askQueryStep === i + 1 && step.description && (
-                            <div
-                              className="mt-1.5 text-xs"
-                              style={{
-                                color: 'rgb(var(--theme-text-muted))',
-                                marginLeft: '2.25rem',
-                              }}
-                            >
-                              {step.description}
-                            </div>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
+                    <p className="text-sm mt-2" style={{ color: 'rgb(var(--theme-text-muted))' }}>
+                      服务端尚未返回结果，完成后可查看各环节耗时。
+                    </p>
+                    {askElapsedSeconds >= 60 && <p className="text-sm mt-2">本次查询耗时较长，可以继续等待或停止等待；停止等待不会终止服务器任务。</p>}
                   </div>
                 )}
 
-                {/* 错误提示 */}
                 {askError && (
                   <div className="border p-5 shadow-sm" style={{ borderRadius: '16px', backgroundColor: 'rgba(239, 68, 68, 0.05)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
                     <div className="flex items-center gap-2" style={{ color: 'rgb(239, 68, 68)' }}>
@@ -4367,6 +4149,24 @@ const WorkspaceDetailPage = () => {
                     </div>
                     <p className="text-sm mt-2" style={{ color: 'rgb(239, 68, 68)' }}>{askError}</p>
                   </div>
+                )}
+
+                {askDiagnostics && (
+                  <details className="border rounded-2xl p-4" style={{ borderColor: 'rgb(var(--theme-border))' }}>
+                    <summary className="cursor-pointer">查询诊断 · {askDiagnostics.validation?.status === 'verified' ? '已完成完整性检查' : '未通过完整性检查'}</summary>
+                    <p className="text-xs mt-2">完整性检查结合 SQL 规则与模型审核，仍需按实际业务口径验收。</p>
+                    {askDiagnostics.timings && (
+                      <ul className="text-sm mt-3 space-y-1">
+                        {Object.entries({ vector_search_ms: '需求解析与检索', llm_gen_sql_ms: 'SQL 生成与校验', sql_execution_ms: '数据库查询', llm_fusion_ms: '结果合并', total_duration_ms: '总耗时' }).map(([key, label]) => (
+                          <li key={key}>{label}：{((askDiagnostics.timings[key] || 0) / 1000).toFixed(1)} 秒</li>
+                        ))}
+                      </ul>
+                    )}
+                    {(askDiagnostics.validation?.issues || []).map((issue: string, index: number) => <p key={index} className="text-sm mt-2">{issue}</p>)}
+                    {(askDiagnostics.clusters || []).filter((cluster: any) => cluster.target_sql).map((cluster: any, index: number) => (
+                      <pre key={index} className="text-xs overflow-auto mt-3 whitespace-pre-wrap">{cluster.target_sql}</pre>
+                    ))}
+                  </details>
                 )}
 
                 {/* 查询结果 */}
@@ -4383,7 +4183,7 @@ const WorkspaceDetailPage = () => {
                       </div>
                       <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
                         <span className="text-sm" style={{ color: 'rgb(var(--theme-text-muted))' }}>涉及数据源： <strong style={{ color: 'rgb(var(--theme-primary))' }}>{askQueryResult.data.clusters?.length || 0}</strong> 个</span>
-                        <span className="text-sm" style={{ color: 'rgb(var(--theme-text-muted))' }}>结果： <strong style={{ color: 'rgb(34, 197, 94)' }}>{askQueryResult.data.final_rows?.length || askQueryResult.data.clusters?.reduce((s: number, c: any) => s + (c.rows?.length || 0), 0) || 0}</strong> 条</span>
+                        <span className="text-sm" style={{ color: 'rgb(var(--theme-text-muted))' }}>结果： <strong style={{ color: 'rgb(34, 197, 94)' }}>{askQueryResult.data.final_rows?.length ?? 0}</strong> 条</span>
                         {askQueryResult.data.merge?.strategy && (
                           <span className="text-sm" style={{ color: 'rgb(var(--theme-text-muted))' }}>合并方式： <strong style={{ color: 'rgb(59, 130, 246)' }}>{askQueryResult.data.merge.strategy}</strong></span>
                         )}
@@ -4699,7 +4499,7 @@ const WorkspaceDetailPage = () => {
                   </div>
                 )}
 
-                {/* 取消按钮 */}
+                {/* 停止等待不会终止服务器任务 */}
                 {askQueryStatus === 'analyzing' && (
                   <div className="flex justify-center">
                     <button
@@ -4707,7 +4507,7 @@ const WorkspaceDetailPage = () => {
                       className="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition-all shadow-lg"
                       style={{ borderRadius: '9999px' }}
                     >
-                      取消查询
+                      停止等待
                     </button>
                   </div>
                 )}

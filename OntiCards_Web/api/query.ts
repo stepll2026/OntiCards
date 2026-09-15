@@ -186,6 +186,12 @@ export interface DataCardItem {
 
 // 聚合查询数据
 export interface AggQueryData {
+  validation?: {
+    status: 'verified' | 'incomplete' | 'unverified' | 'needs_clarification'
+    issues: string[]
+    columns?: string[]
+  }
+  timings?: Record<string, number>
   clusters: DataCluster[]
   merge: MergeStrategy
   final_rows: Record<string, any>[]
