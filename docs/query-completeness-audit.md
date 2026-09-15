@@ -65,6 +65,9 @@ python -m pytest OntiCards_Api/test/query_validation -q
 `live_model_check.py` 是手动开启的测试。它从环境变量读取模型配置，也可在 API 容器中只读查询现有模型配置；不输出密钥。数据库测试仅创建当前连接的 TEMP 表，结束时回滚并关闭连接。
 
 ```bash
+# 独立测试环境额外安装模型 HTTP 客户端（API 环境已包含）
+python -m pip install requests
+
 # 先通过环境配置 QUERY_TEST_API_KEY、QUERY_TEST_API_URL、QUERY_TEST_MODEL
 python OntiCards_Api/test/query_validation/live_model_check.py
 
