@@ -147,6 +147,8 @@ http://your-ip:9107
 
 完整部署、离线部署、版本升级、HTTPS配置：[部署指南](http://www.onticards.com/docs/zh-cn/deployment.html)
 
+API 启动时会按版本顺序升级平台数据库结构，升级失败会停止启动。版本记录、旧库接入及后续迁移开发见[数据库结构自动升级](docs/database-schema-upgrades.md)。
+
 ## ⚡ 5分钟快速上手流程
 
 1. 登录系统，配置LLM大模型（兼容GPT、Claude、通义千问、DeepSeek、智谱、本地Ollama模型）

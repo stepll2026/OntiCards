@@ -147,6 +147,8 @@ http://your-ip:9107
 
 Full deployment, offline deployment, upgrades, and HTTPS setup: [Deployment Guide](http://www.onticards.com/docs/zh-cn/deployment.html)
 
+The API applies pending platform database migrations in order before serving requests and stops startup if an upgrade fails. See [database schema upgrades](docs/database-schema-upgrades.md) for version records, existing installations, and migration development.
+
 ## ⚡ 5-Minute Quick Start
 
 1. Log in and configure an LLM (GPT, Claude, Qwen, DeepSeek, Zhipu, and local Ollama models are supported)

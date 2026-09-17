@@ -1,7 +1,7 @@
 import logging
 from logging.config import fileConfig
 
-from flask import current_app
+from flask import current_app, has_app_context
 
 from alembic import context
 
@@ -11,7 +11,8 @@ config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-fileConfig(config.config_file_name)
+if not config.attributes.get('schema_upgrade'):
+    fileConfig(config.config_file_name)
 logger = logging.getLogger('alembic.env')
 
 
@@ -36,8 +37,7 @@ def get_engine_url():
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-config.set_main_option('sqlalchemy.url', get_engine_url())
-target_db = current_app.extensions['migrate'].db
+target_db = current_app.extensions['migrate'].db if has_app_context() else None
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -46,6 +46,8 @@ target_db = current_app.extensions['migrate'].db
 
 
 def get_metadata():
+    if target_db is None:
+        return None
     if hasattr(target_db, 'metadatas'):
         return target_db.metadatas[None]
     return target_db.metadata
@@ -63,9 +65,10 @@ def run_migrations_offline():
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = config.get_main_option("sqlalchemy.url") or get_engine_url()
     context.configure(
-        url=url, target_metadata=get_metadata(), literal_binds=True
+        url=url, target_metadata=get_metadata(), literal_binds=True,
+        version_table_schema='public'
     )
 
     with context.begin_transaction():
@@ -90,9 +93,28 @@ def run_migrations_online():
                 directives[:] = []
                 logger.info('No changes in schema detected.')
 
-    conf_args = current_app.extensions['migrate'].configure_args
+    conf_args = dict(current_app.extensions['migrate'].configure_args) if has_app_context() else {}
+    conf_args['version_table_schema'] = 'public'
+    previous_include_object = conf_args.get('include_object')
+
+    def include_object(obj, name, type_, reflected, compare_to):
+        # This ledger is managed by startup, not by application ORM models.
+        if type_ == 'table' and name == 'schema_migrations':
+            return False
+        if previous_include_object:
+            return previous_include_object(obj, name, type_, reflected, compare_to)
+        return True
+
+    conf_args['include_object'] = include_object
     if conf_args.get("process_revision_directives") is None:
         conf_args["process_revision_directives"] = process_revision_directives
+
+    existing_connection = config.attributes.get('connection')
+    if existing_connection is not None:
+        context.configure(connection=existing_connection, target_metadata=get_metadata(), **conf_args)
+        with context.begin_transaction():
+            context.run_migrations()
+        return
 
     connectable = get_engine()
 
