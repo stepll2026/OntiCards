@@ -719,7 +719,7 @@ def search_vector(
 
     with weaviate_client() as client:
         # 调用 embedding（带 usage 版本）
-        vector, embed_usage = qwen_llm_embeddings_with_usage(input_text)
+        vector, embed_usage = qwen_llm_embeddings_with_usage(input_text, purpose="query")
         usage["embedding_tokens"] = embed_usage.get("total_tokens", 0)
 
         target_class = _require_user_class_name(class_name)
@@ -1095,7 +1095,7 @@ def search_field_entries(
     idx_class = _field_index_class_name(user_class)
 
     with weaviate_client() as client:
-        vector = qwen_llm_embeddings(query_text)
+        vector = qwen_llm_embeddings(query_text, purpose="query")
         _require_collection_exists(client, idx_class)
         collection = client.collections.get(idx_class)
 

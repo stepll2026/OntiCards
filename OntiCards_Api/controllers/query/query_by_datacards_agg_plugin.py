@@ -3157,6 +3157,8 @@ class QueryByDataCardsAggPlugin(Resource):
                     model_config_dict = {
                         "api_key": model_config.model_api_key,
                         "api_url": model_config.url,
+                        "api_protocol": getattr(model_config, "api_protocol", "auto"),
+                        "api_options": getattr(model_config, "api_options", None),
                         "model_name": model_config.model_name
                     }
                     print(f"[agg] ✅ 已预加载模型配置: {model_config.model_name}")

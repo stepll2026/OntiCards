@@ -183,7 +183,7 @@ def create_app():
                 #      时，整条响应体只输出状态码+长度，不打印正文。
                 #   2. 响应体过大（> 500 字符）时已截断；这里对 SSO 路径额外压缩。
                 # ============================================================
-                _sensitive_markers = ('"access_token"', '"password"', '"token"', '"secret"')
+                _sensitive_markers = ('"access_token"', '"password"', '"token"', '"secret"', '"model_api_key"')
                 if any(marker in resp_text for marker in _sensitive_markers):
                     app.logger.info(f"[redacted: sensitive response, status={resp.status_code}, len={len(resp_text)}]")
                 elif len(resp_text) > 500:

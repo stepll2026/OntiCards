@@ -4,6 +4,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from models.model_config import Model_configuration
 from flask import current_app
+from controllers.model_config.model_protocols import model_request, normalize_chat, ModelServiceError
 import time
 import logging
 
@@ -77,7 +78,7 @@ def _request_with_timing(method, url, timeout, max_retries, backoff_factor, **kw
         session = _get_session(timeout=timeout, max_retries=max_retries, backoff_factor=backoff_factor)
 
         # 使用 session 发送请求（已内置重试逻辑）
-        response = session.request(method, url, timeout=timeout, **kwargs)
+        response = session.request(method, url, timeout=timeout, allow_redirects=False, **kwargs)
 
         timing["total_ms"] = int((time.time() - start_time) * 1000)
         timing["final_status_code"] = response.status_code
@@ -128,9 +129,7 @@ def qian_wen_llm(text, stream_type, model_config_dict=None):
     """
     # 如果传入了配置字典，直接使用（避免访问数据库）
     if model_config_dict:
-        api_key = model_config_dict.get("api_key")
-        api_url = model_config_dict.get("api_url")
-        model_name = model_config_dict.get("model_name")
+        config = model_config_dict
         # 支持在配置中自定义超时
         timeout = model_config_dict.get("timeout", 360)
     else:
@@ -145,33 +144,11 @@ def qian_wen_llm(text, stream_type, model_config_dict=None):
                 raise ValueError("未找到 model_class 为 'base' 的模型配置")
 
             # 从数据库记录中获取所需参数
-            api_key = model_config.model_api_key
-            api_url = model_config.url
-            model_name = model_config.model_name
+            config = model_config
             # 支持在配置中自定义超时
             timeout = getattr(model_config, 'timeout', 180)
 
-    # 判断 api_key 是否为空
-    if api_key and api_key.strip() and api_key.lower() != 'null':
-        headers = {
-            'Authorization': 'Bearer ' + api_key,
-            'Content-Type': 'application/json',
-        }
-    else:
-        headers = {
-            'Content-Type': 'application/json',
-        }
-
-    json_data = {
-        'model': model_name,
-        'messages': [
-            {
-                'role': 'user',
-                'content': text,
-            },
-        ],
-        'stream': stream_type,
-    }
+    api_url, headers, json_data, protocol = model_request(config, "base", text, stream=stream_type)
 
     # 执行请求（带超时和重试）
     response, timing = _request_with_timing(
@@ -210,7 +187,11 @@ def qian_wen_llm(text, stream_type, model_config_dict=None):
             "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
         }
 
-    return response
+    try:
+        return normalize_chat(response, protocol)
+    except ModelServiceError as exc:
+        return {"error": str(exc), "choices": [{"message": {"content": str(exc)}, "finish_reason": "error"}],
+                "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}}
 
 
 def qian_wen_llm_with_usage(text, stream_type=False, model_config_dict=None):
