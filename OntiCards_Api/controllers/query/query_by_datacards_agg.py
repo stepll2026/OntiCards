@@ -262,7 +262,7 @@ def _fix_trino_sql_columns(sql: str, trino_tables: List[dict]) -> str:
     - 如果用于COUNT判断"是否有记录"（CASE WHEN COUNT(...) > 0），替换为COUNT(*)
     - 如果用于其他COUNT场景，使用表中第一个存在的列（优先使用id列）
     - 如果用于其他用途，使用表中第一个存在的列（优先使用id列）
-    
+
     同时检查表名是否在白名单中，如果不在则抛出错误
     """
     # 首先从SQL中解析出实际的表别名映射（FROM/JOIN中的别名）
@@ -637,11 +637,11 @@ def _ensure_distinct_order_by(sql: str) -> str:
 
 
 def _exec_trino_unified(
-    user_question: str,
-    tables: List[dict],
-    entity_key: str,
-    user_id: str = None,
-    relationship_data: dict = None
+        user_question: str,
+        tables: List[dict],
+        entity_key: str,
+        user_id: str = None,
+        relationship_data: dict = None
 ) -> dict:
     """
     Trino统一查询处理：利用Trino的跨catalog能力，生成一个统一的SQL
@@ -790,7 +790,7 @@ def _exec_trino_unified(
 
     # ✅ 修复：与 _exec_cluster 对齐，根据是否有关系卡片选择不同的 JOIN 关系块和关系卡片信息
     has_relationship_cards = relationship_data and (
-        relationship_data.get("cards") or relationship_data.get("join_suggestions")
+            relationship_data.get("cards") or relationship_data.get("join_suggestions")
     )
 
     if has_relationship_cards:
@@ -839,7 +839,7 @@ def _exec_trino_unified(
 
     print(f"[trino] 生成的提示词长度: {len(prompt)} 字符")
 
-    # 4. 调用LLM生成SQL 
+    # 4. 调用LLM生成SQL
     try:
         response = QwenMaxLatest.qian_wen_llm(prompt, stream_type=False)
         content = response["choices"][0]["message"]["content"]
@@ -864,7 +864,7 @@ def _exec_trino_unified(
             sql_text = _ensure_distinct_order_by(sql_text)
         except Exception as fix_error:
             print(f"[trino] DISTINCT+ORDER BY修复失败: {fix_error}，继续使用原始SQL")
-        
+
         # 6. 执行SQL
         with engine.connect() as conn:
             data, warnings, sql_exec_ms = run_sql_safe_new(
@@ -875,7 +875,7 @@ def _exec_trino_unified(
                 max_rows=1000,
                 allow_semicolon_terminator=True
             )
-            
+
             # 7. 构建返回结果
             entity_ids = []
             if data and isinstance(data, list) and len(data) > 0:
@@ -898,7 +898,7 @@ def _exec_trino_unified(
                 "sql": sql_text,
                 "target_sql": sql_text,  # 添加target_sql字段保持一致
                 "data": data or [],
-                "rows": data or [],  # 添加rows字段保持一致  
+                "rows": data or [],  # 添加rows字段保持一致
                 "warnings": warnings or [],
                 "entity_ids": entity_ids,
                 "note": parsed.get("text", "")
@@ -1250,7 +1250,8 @@ def _llm_fuse_results(
                 tn = t.get("table_name", "")
                 if tn:
                     fusion_table_names_set.add(tn)
-        print(f"[agg] 融合阶段：参与融合的表集合 {sorted(fusion_table_names_set)}（共 {len(fusion_table_names_set)} 张表）")
+        print(
+            f"[agg] 融合阶段：参与融合的表集合 {sorted(fusion_table_names_set)}（共 {len(fusion_table_names_set)} 张表）")
 
         if relationship_data:
             relationship_data = filter_relationship_data_by_tables(
@@ -1371,7 +1372,8 @@ def _llm_fuse_results(
         # 计算融合耗时并添加到结果中
         fusion_time_ms = int((time_module.time() - fusion_start_time) * 1000)
         result["fusion_time_ms"] = fusion_time_ms
-        print(f"[agg] LLM融合总耗时: {fusion_time_ms}ms (提示词准备: {prompt_load_ms + data_prep_ms + prompt_render_ms}ms, LLM调用: {llm_call_ms}ms, 解析: {parse_ms}ms)")
+        print(
+            f"[agg] LLM融合总耗时: {fusion_time_ms}ms (提示词准备: {prompt_load_ms + data_prep_ms + prompt_render_ms}ms, LLM调用: {llm_call_ms}ms, 解析: {parse_ms}ms)")
 
         return result
 
@@ -1458,7 +1460,8 @@ def _exec_cluster_parallel(cluster_idx: int, db_type: str, connect_info: dict,
         )
 
         elapsed_ms = int((time_module.time() - start_time) * 1000)
-        print(f"[_exec_cluster_parallel][{db_type}] 簇 {cluster_idx + 1} 执行完成，返回 {len(result.get('rows', []))} 行数据，耗时 {elapsed_ms}ms")
+        print(
+            f"[_exec_cluster_parallel][{db_type}] 簇 {cluster_idx + 1} 执行完成，返回 {len(result.get('rows', []))} 行数据，耗时 {elapsed_ms}ms")
 
         return (cluster_idx, result)
 
@@ -1667,7 +1670,8 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
     """
     db_name = tables[0].get("database_name") if tables else ""
     cluster_table_names = [t.get("table_name", "unknown") for t in tables]
-    print(f"[_exec_cluster][{db_type}] 开始执行，簇索引={hash(tuple(cluster_table_names)) % 10000}，表数量={len(tables)}, 数据库={db_name}")
+    print(
+        f"[_exec_cluster][{db_type}] 开始执行，簇索引={hash(tuple(cluster_table_names)) % 10000}，表数量={len(tables)}, 数据库={db_name}")
 
     # 始终使用数据库特定的提示词模板
     tpl = load_prompt(_pick_template_by_db(db_type))
@@ -1868,7 +1872,8 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                 allow_semicolon_terminator=True,
                 target_schema=db_name if db_type in ("oracle", "dm") else None
             )
-            print(f"[_exec_cluster][{db_type}] SQL执行成功，返回 {len(data) if isinstance(data, list) else data} 行数据，耗时 {sql_exec_ms}ms")
+            print(
+                f"[_exec_cluster][{db_type}] SQL执行成功，返回 {len(data) if isinstance(data, list) else data} 行数据，耗时 {sql_exec_ms}ms")
             if warnings:
                 print(f"[_exec_cluster][{db_type}] 执行警告: {warnings}")
 
@@ -1899,7 +1904,8 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
 
                 # 特殊情况2：检查是否是统计查询结果（字段名包含 count/sum/avg/total/num 等）
                 # 这些查询的结果即使为 0 也是有效的
-                stat_keywords = ['count', 'sum', 'avg', 'total', 'num', 'amount', 'quantity', 'ratio', 'rate', 'percentage']
+                stat_keywords = ['count', 'sum', 'avg', 'total', 'num', 'amount', 'quantity', 'ratio', 'rate',
+                                 'percentage']
                 is_stat_query = any(
                     any(keyword in k.lower() for keyword in stat_keywords)
                     for k in row.keys()
@@ -1996,7 +2002,8 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                             break
 
                     if attempt < max_retries:
-                        print(f"[_exec_cluster][{db_type}] 🔄 检测到无效列 '{invalid_table_alias}.{invalid_col}'，准备重试...")
+                        print(
+                            f"[_exec_cluster][{db_type}] 🔄 检测到无效列 '{invalid_table_alias}.{invalid_col}'，准备重试...")
                         # 加载重试提示词
                         retry_tpl = load_prompt("retry_whitelist_error.txt")
                         retry_hint = render_prompt(
@@ -2007,7 +2014,8 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                         )
                         print(f"[_exec_cluster][{db_type}] 🔄 进行第 {attempt + 1} 次重试...")
                         # 调用LLM重试
-                        content, retry_usage = qian_wen_llm_with_usage(prompt + retry_hint, stream_type=False, model_config_dict=model_config_dict)
+                        content, retry_usage = qian_wen_llm_with_usage(prompt + retry_hint, stream_type=False,
+                                                                       model_config_dict=model_config_dict)
                         print(f"[_exec_cluster][{db_type}] 🔄 重试LLM返回内容长度: {len(content)} 字符")
 
                         # 解析重试结果
@@ -2071,14 +2079,14 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
             # ========== 检查是否需要重试（SQL执行错误也重试）==========
             # 可重试的错误类型：类型转换错误、列不存在、语法错误等
             retryable_patterns = [
-                "invalid input syntax",      # PostgreSQL类型转换错误，如 integer: ""
-                "cannot be cast",              # 类型转换错误
-                "does not exist",              # 表/列不存在
-                "ambiguous column",            # 列名歧义
-                "column reference",            # 列引用错误
-                "syntax error",                # 语法错误
-                "division by zero",            # 除零错误
-                "overflow",                    # 溢出错误
+                "invalid input syntax",  # PostgreSQL类型转换错误，如 integer: ""
+                "cannot be cast",  # 类型转换错误
+                "does not exist",  # 表/列不存在
+                "ambiguous column",  # 列名歧义
+                "column reference",  # 列引用错误
+                "syntax error",  # 语法错误
+                "division by zero",  # 除零错误
+                "overflow",  # 溢出错误
             ]
 
             should_retry = any(pattern in error_msg.lower() for pattern in retryable_patterns)
@@ -2092,7 +2100,8 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                 retry_hint = render_prompt(retry_tpl, error_msg=error_msg)
                 print(f"[_exec_cluster][{db_type}] 🔄 进行第 {attempt + 1} 次重试...")
                 # 调用LLM重试
-                content, retry_usage = qian_wen_llm_with_usage(prompt + retry_hint, stream_type=False, model_config_dict=model_config_dict)
+                content, retry_usage = qian_wen_llm_with_usage(prompt + retry_hint, stream_type=False,
+                                                               model_config_dict=model_config_dict)
                 print(f"[_exec_cluster][{db_type}] 🔄 重试LLM返回内容长度: {len(content)} 字符")
 
                 # 解析重试结果
@@ -2226,9 +2235,11 @@ def run_sql_safe_new(
         raise ValueError("仅允许执行 SELECT 查询（支持以 WITH 开头的 CTE）。")
 
     # 1.4 危险关键字黑名单（基本 DDL/DML/管理语句）
+    # 注意：只拦截 REPLACE INTO（MySQL DML语句），不拦截 REPLACE() 函数调用
     blacklist = [
         r"\bINSERT\b", r"\bUPDATE\b", r"\bDELETE\b", r"\bMERGE\b",
-        r"\bREPLACE\b", r"\bUPSERT\b",
+        r"\bREPLACE\s+INTO\b",  # 只拦截 REPLACE INTO DML，不拦截 REPLACE() 函数
+        r"\bUPSERT\b",
         r"\bDROP\b", r"\bALTER\b", r"\bTRUNCATE\b", r"\bCREATE\b",
         r"\bGRANT\b", r"\bREVOKE\b",
         r"\bEXEC\b", r"\bEXECUTE\b", r"\bCALL\b",
@@ -2425,7 +2436,7 @@ def run_sql_safe_new(
 
     # 4.1 禁止出现通配列 * 或 别名.* （严格白名单）
     # 注意：需要排除聚合函数中的 COUNT(*) 和乘法运算符 * 等合法用法
-    # 
+    #
     # 策略：提取 SELECT 和 FROM 之间的列列表部分，然后检查是否有裸露的 * 或 别名.*
     # 这样可以避免误判 WHERE 子句中的运算符
 
@@ -2703,7 +2714,8 @@ class QueryByDataCardsAgg(Resource):
         matched_terms = []
         rewritten_question = user_question  # 初始化默认值
         term_rewrite_performed = False  # 标记是否实际进行了术语展开
-        print(f"[术语展开] 初始化: enable_term_rewrite={enable_term_rewrite}, term_rewrite_performed={term_rewrite_performed}")
+        print(
+            f"[术语展开] 初始化: enable_term_rewrite={enable_term_rewrite}, term_rewrite_performed={term_rewrite_performed}")
         if enable_term_rewrite:
             try:
                 library_ids = body.get("library_ids", [])  # 指定术语库ID列表
@@ -2725,7 +2737,8 @@ class QueryByDataCardsAgg(Resource):
                         did_rewrite = False
                         rewritten_question = user_question
                         print(f"[术语展开] 数据源={datasource_id} 无关联的启用的术语库，跳过术语展开")
-                        print(f"[术语展开] 跳过详情: enabled_library_ids={enabled_library_ids}, term_rewrite_performed={term_rewrite_performed}")
+                        print(
+                            f"[术语展开] 跳过详情: enabled_library_ids={enabled_library_ids}, term_rewrite_performed={term_rewrite_performed}")
                 elif datasource_ids_param and isinstance(datasource_ids_param, list):
                     # 处理多个数据源：聚合所有涉及的术语库
                     all_enabled_library_ids = []
@@ -2739,12 +2752,14 @@ class QueryByDataCardsAgg(Resource):
                         rewritten_question, matched_terms, did_rewrite = process_question_by_libraries(
                             user_question, all_enabled_library_ids
                         )
-                        print(f"[术语展开] 多数据源聚合: datasource_ids={datasource_ids_param}, 启用库={all_enabled_library_ids}")
+                        print(
+                            f"[术语展开] 多数据源聚合: datasource_ids={datasource_ids_param}, 启用库={all_enabled_library_ids}")
                     else:
                         did_rewrite = False
                         rewritten_question = user_question
                         print(f"[术语展开] 数据源列表无关联的启用的术语库，跳过术语展开")
-                        print(f"[术语展开] 跳过详情: all_enabled_library_ids={all_enabled_library_ids}, term_rewrite_performed={term_rewrite_performed}")
+                        print(
+                            f"[术语展开] 跳过详情: all_enabled_library_ids={all_enabled_library_ids}, term_rewrite_performed={term_rewrite_performed}")
                 else:
                     # 没有指定数据源，也没有指定术语库，查询所有启用的术语
                     rewritten_question, matched_terms, did_rewrite = process_question(user_question)
@@ -2772,7 +2787,7 @@ class QueryByDataCardsAgg(Resource):
         metrics["vector_search_ms"] += int((time_module.time() - t1) * 1000)
         doc_ids = rs_json.get("doc_ids") or []
         card_list = rs_json.get("data_card_results") or []
-        
+
         # 收集向量检索的 usage 信息（embedding + rerank tokens, rerank ms, rerank scores）
         vector_usage = rs_json.get("usage", {})
         tokens["embedding_tokens"] = vector_usage.get("embedding_tokens", 0)
@@ -2823,7 +2838,7 @@ class QueryByDataCardsAgg(Resource):
                 table_obj = card_to_table_obj(schema_row, card, connect_info, ds_schema_name=ds_schema_name)
                 table_objs.append(table_obj)
                 print(f"[DEBUG] ✅ 卡片 {idx + 1}: {table_obj.get('table_name')} (connect_name={connect_name})")
-                
+
                 # 收集表名（去重）
                 table_name = table_obj.get("table_name")
                 if table_name and table_name not in table_names:
@@ -2837,7 +2852,7 @@ class QueryByDataCardsAgg(Resource):
                     "connect_name": connect_name,
                     "card_content": _make_json_serializable(card)  # 立即序列化，避免后续循环引用问题
                 })
-                
+
                 # 收集数据源信息（去重）（增加用户隔离），ds_info 已在上面查询
                 if ds_info:
                     ds_id = str(ds_info.id)
@@ -2871,7 +2886,8 @@ class QueryByDataCardsAgg(Resource):
                         ds_name = ds_info.database_name or ds_info.connect_name
                         if ds_name not in source_datasource_names:
                             source_datasource_names.append(ds_name)
-                    print(f"[聚合检索] 来源数据源: id={ds_id}, name={source_datasource_names[-1] if source_datasource_names else '未知'}")
+                    print(
+                        f"[聚合检索] 来源数据源: id={ds_id}, name={source_datasource_names[-1] if source_datasource_names else '未知'}")
                 except ValueError:
                     print(f"[聚合检索] ⚠️ 无效的数据源ID: {ds_id}，跳过")
                     continue
@@ -2948,7 +2964,8 @@ class QueryByDataCardsAgg(Resource):
                     "rewritten_question": rewritten_question
                 } if term_rewrite_performed else None
             )
-            print(f"[查询日志] 术语展开状态: term_rewrite_performed={term_rewrite_performed}, processed_question={'有值' if (user_question if term_rewrite_performed else None) else 'None'}")
+            print(
+                f"[查询日志] 术语展开状态: term_rewrite_performed={term_rewrite_performed}, processed_question={'有值' if (user_question if term_rewrite_performed else None) else 'None'}")
             return format_response(
                 {
                     "clusters": [],
@@ -3025,9 +3042,11 @@ class QueryByDataCardsAgg(Resource):
                         trino_relationship_data["cards"].update(rel_data.get("cards", {}))
                         trino_relationship_data["join_suggestions"].extend(rel_data.get("join_suggestions", []))
 
-            has_trino_rel_cards = trino_relationship_data.get("cards") or trino_relationship_data.get("join_suggestions")
+            has_trino_rel_cards = trino_relationship_data.get("cards") or trino_relationship_data.get(
+                "join_suggestions")
             if has_trino_rel_cards:
-                print(f"[agg] Trino统一查询：合并后 {len(trino_relationship_data['cards'])} 张关系卡片, {len(trino_relationship_data['join_suggestions'])} 个JOIN建议")
+                print(
+                    f"[agg] Trino统一查询：合并后 {len(trino_relationship_data['cards'])} 张关系卡片, {len(trino_relationship_data['join_suggestions'])} 个JOIN建议")
             else:
                 print(f"[agg] Trino统一查询：未发现关系卡片")
 
@@ -3094,7 +3113,8 @@ class QueryByDataCardsAgg(Resource):
                         "rewritten_question": rewritten_question
                     } if term_rewrite_performed else None
                 )
-                print(f"[查询日志] 术语展开状态: term_rewrite_performed={term_rewrite_performed}, processed_question={'有值' if (user_question if term_rewrite_performed else None) else 'None'}")
+                print(
+                    f"[查询日志] 术语展开状态: term_rewrite_performed={term_rewrite_performed}, processed_question={'有值' if (user_question if term_rewrite_performed else None) else 'None'}")
 
                 return format_response(payload, 200, "查询成功")
 
@@ -3321,7 +3341,8 @@ class QueryByDataCardsAgg(Resource):
                     except Exception as e:
                         print(f"[agg] ❌ 并行任务异常: 簇 {task_idx}, 错误: {str(e)}")
                         results_dict[task_idx] = {
-                            "db_type": clusters.items().__getitem__(task_idx)[0][0] if task_idx < len(list(clusters.items())) else "unknown",
+                            "db_type": clusters.items().__getitem__(task_idx)[0][0] if task_idx < len(
+                                list(clusters.items())) else "unknown",
                             "connect_info_safe": {"type": "unknown"},
                             "tables": [],
                             "target_sql": "",
@@ -3333,10 +3354,12 @@ class QueryByDataCardsAgg(Resource):
                         }
 
             # 按原始顺序整理结果
-            cluster_results = [results_dict.get(i) for i in range(len(cluster_tasks)) if results_dict.get(i) is not None]
+            cluster_results = [results_dict.get(i) for i in range(len(cluster_tasks)) if
+                               results_dict.get(i) is not None]
 
             parallel_elapsed_ms = int((time_module.time() - parallel_start_time) * 1000)
-            print(f"[agg] 并行执行完成，耗时 {parallel_elapsed_ms}ms（串行预估耗时约 {parallel_elapsed_ms * max_workers}ms）")
+            print(
+                f"[agg] 并行执行完成，耗时 {parallel_elapsed_ms}ms（串行预估耗时约 {parallel_elapsed_ms * max_workers}ms）")
 
             # 汇总 LLM usage 和 metrics 信息
             for r in cluster_results:
@@ -3459,7 +3482,8 @@ class QueryByDataCardsAgg(Resource):
                     "rewritten_question": rewritten_question
                 } if term_rewrite_performed else None
             )
-            print(f"[查询日志] 术语展开状态: term_rewrite_performed={term_rewrite_performed}, processed_question={'有值' if (user_question if term_rewrite_performed else None) else 'None'}")
+            print(
+                f"[查询日志] 术语展开状态: term_rewrite_performed={term_rewrite_performed}, processed_question={'有值' if (user_question if term_rewrite_performed else None) else 'None'}")
 
             return format_response(payload, 200, "success")
 
@@ -3535,7 +3559,8 @@ class QueryByDataCardsAgg(Resource):
                     "rewritten_question": rewritten_question
                 } if term_rewrite_performed else None
             )
-            print(f"[查询日志] 术语展开状态: term_rewrite_performed={term_rewrite_performed}, processed_question={'有值' if (user_question if term_rewrite_performed else None) else 'None'}")
+            print(
+                f"[查询日志] 术语展开状态: term_rewrite_performed={term_rewrite_performed}, processed_question={'有值' if (user_question if term_rewrite_performed else None) else 'None'}")
 
             return format_response(payload, 200, "success")
 
@@ -3600,12 +3625,12 @@ class QueryByDataCardsAgg(Resource):
         def is_detail_list_query(user_question: str) -> bool:
             """
             判断是否是明细列表查询（需要保留多条记录），而不是聚合查询
-            
+
             明细列表查询的特征：
             1. 包含"列出"、"显示"、"查询"、"列举"等动词
             2. 包含多个明细字段（如时间、地点、教师、教室等）
             3. 不包含聚合关键词（如"总和"、"平均"、"统计"等）
-            
+
             聚合查询的特征：
             1. 包含聚合关键词（如"最"、"总"、"平均"、"统计"等）
             2. 通常只关注少数字段（如只关心"销量最好的产品名称和销量"）
@@ -3827,7 +3852,7 @@ class QueryByDataCardsAgg(Resource):
             return False
 
         # 根据查询类型和融合策略，过滤空记录并生成最终结果
-        # 
+        #
         # 重要逻辑：
         # - OR/UNION 查询：不过滤空记录（因为满足任一条件即可，某些字段缺失是正常的）
         # - AND/PRIORITY 查询：过滤空记录（因为需要同时满足多个条件，字段应该完整）
@@ -3943,7 +3968,8 @@ class QueryByDataCardsAgg(Resource):
                 "rewritten_question": rewritten_question
             } if term_rewrite_performed else None
         )
-        print(f"[查询日志] 术语展开状态: term_rewrite_performed={term_rewrite_performed}, processed_question={'有值' if (user_question if term_rewrite_performed else None) else 'None'}")
+        print(
+            f"[查询日志] 术语展开状态: term_rewrite_performed={term_rewrite_performed}, processed_question={'有值' if (user_question if term_rewrite_performed else None) else 'None'}")
 
         return format_response(payload, 200, "success")
 

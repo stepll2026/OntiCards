@@ -47,8 +47,9 @@ from controllers.business_term.term_recognizer import (
 )
 
 # === 注册 Flask Blueprint 和 API ===
-query_by_datacards_agg_plugin= Blueprint('query_by_datacards_agg_plugin', __name__)
+query_by_datacards_agg_plugin = Blueprint('query_by_datacards_agg_plugin', __name__)
 api = Api(query_by_datacards_agg_plugin)
+
 
 # ---- 简单工具 ----
 
@@ -66,6 +67,7 @@ def _strip_code_fences(s: str) -> str:
         s = re.sub(r"\s*```\s*$", "", s, flags=re.DOTALL)
     return s.strip()
 
+
 def _remove_sql_comments(sql: str) -> str:
     """
     移除 SQL 中的注释（单行 -- 和多行 /* */）
@@ -76,73 +78,76 @@ def _remove_sql_comments(sql: str) -> str:
     sql = re.sub(r"--[^\n]*", "", sql)
     return sql.strip()
 
+
 def _extract_sql_from_llm_text(raw: str):
     """
     从 LLM 文本里提取 SQL。如果是 note/解释，返回 kind='note'。
     返回 dict: {'kind':'sql'|'note'|'text', 'text': '<内容>'}
-    
+
     注意：当 LLM 同时返回 ```sql``` 和 ```note``` 时，需要判断 SQL 是否有效：
     - 如果 SQL 是占位符（如 SELECT NULL WHERE FALSE），优先返回 note
     - 如果 SQL 是有效查询，优先返回 SQL，忽略说明性的 note
     """
     t = (raw or "").strip()
     if not t:
-        return {"kind":"text","text":""}
+        return {"kind": "text", "text": ""}
 
     # 先尝试提取 SQL 和 note
-    sql_match = re.search(r"```sql\s*(.+?)\s*```", t, flags=re.IGNORECASE|re.DOTALL)
-    note_match = re.search(r"```note\s*(.+?)\s*```", t, flags=re.IGNORECASE|re.DOTALL)
-    
+    sql_match = re.search(r"```sql\s*(.+?)\s*```", t, flags=re.IGNORECASE | re.DOTALL)
+    note_match = re.search(r"```note\s*(.+?)\s*```", t, flags=re.IGNORECASE | re.DOTALL)
+
     # 情况1：同时包含 SQL 和 note
     if sql_match and note_match:
         sql_text = sql_match.group(1).strip()
         sql_text = _remove_sql_comments(sql_text)
-        
+
         # 判断是否是占位符 SQL（无效的 SQL）
         is_placeholder = (
-            "SELECT NULL" in sql_text.upper() or
-            "WHERE FALSE" in sql_text.upper() or
-            re.search(r"SELECT\s+NULL\s+AS", sql_text, re.IGNORECASE)
+                "SELECT NULL" in sql_text.upper() or
+                "WHERE FALSE" in sql_text.upper() or
+                re.search(r"SELECT\s+NULL\s+AS", sql_text, re.IGNORECASE)
         )
-        
+
         if is_placeholder:
             # 占位符 SQL + note：AI 真的无法查询，返回 note
             note_body = note_match.group(1).strip()
-            return {"kind":"note","text":note_body}
+            return {"kind": "note", "text": note_body}
         else:
             # 有效 SQL + note：AI 生成了 SQL 并附加了说明，返回 SQL
-            return {"kind":"sql","text": sql_text}
-    
+            return {"kind": "sql", "text": sql_text}
+
     # 情况2：只有 note（没有 SQL）
     if note_match:
         note_body = note_match.group(1).strip()
-        return {"kind":"note","text":note_body}
-    
+        return {"kind": "note", "text": note_body}
+
     # 情况3：note 起始标记（没有结束标记）
     if t.lower().startswith("```note"):
         body = _strip_code_fences(t)
-        return {"kind":"note","text":body}
+        return {"kind": "note", "text": body}
 
     # 情况4：只有 SQL（没有 note）
     if sql_match:
         sql_text = sql_match.group(1).strip()
         sql_text = _remove_sql_comments(sql_text)
-        return {"kind":"sql","text": sql_text}
+        return {"kind": "sql", "text": sql_text}
 
     # 情况5：裸文本中包含 SELECT/WITH
     m2 = re.search(r"\b(SELECT|WITH)\b", t, flags=re.IGNORECASE)
     if m2:
         sql_text = t[m2.start():].strip()
         sql_text = _remove_sql_comments(sql_text)
-        return {"kind":"sql","text": sql_text}
+        return {"kind": "sql", "text": sql_text}
 
     # 情况6：都不是，当作普通文本
-    return {"kind":"text","text": t}
+    return {"kind": "text", "text": t}
+
 
 # ======= shared utils (identifier & nolock) =======
 def _strip_nolock(x: str) -> str:
     """移除 SQL Server 的 WITH(NOLOCK)/WITH(READUNCOMMITTED) 表提示，便于表名解析"""
     return re.sub(r"\s+WITH\s*\([^)]+\)", "", x, flags=re.IGNORECASE)
+
 
 def _norm_ident(ident: str) -> str:
     """
@@ -159,6 +164,7 @@ def _norm_ident(ident: str) -> str:
     s = s.replace("`", "").replace('"', "").replace("[", "").replace("]", "")
     parts = [p for p in re.split(r"\s*\.\s*", s) if p]
     return (parts[-1] if parts else s).lower()
+
 
 def _infer_strategy(user_question: str) -> str:
     """
@@ -207,6 +213,7 @@ def _infer_strategy(user_question: str) -> str:
     # 4) 兜底：OR
     return "OR"
 
+
 def _fix_trino_sql_columns(sql: str, trino_tables: List[dict]) -> str:
     """
     修复Trino SQL中使用了不存在列的问题
@@ -214,15 +221,15 @@ def _fix_trino_sql_columns(sql: str, trino_tables: List[dict]) -> str:
     - 如果用于COUNT判断"是否有记录"（CASE WHEN COUNT(...) > 0），替换为COUNT(*)
     - 如果用于其他COUNT场景，使用表中第一个存在的列（优先使用id列）
     - 如果用于其他用途，使用表中第一个存在的列（优先使用id列）
-    
+
     同时检查表名是否在白名单中，如果不在则抛出错误
     """
     # 首先从SQL中解析出实际的表别名映射（FROM/JOIN中的别名）
     # 构建：SQL中的别名 -> 完整表名 -> 列白名单
     sql_alias_to_table = {}  # SQL别名 -> 完整表名
-    table_to_columns = {}    # 完整表名 -> 列集合
+    table_to_columns = {}  # 完整表名 -> 列集合
     whitelist_tables = set()  # 白名单表名集合（用于验证）
-    
+
     # 从trino_tables构建表名到列的映射
     for t in trino_tables:
         full_table_name = t.get("table_name", "")
@@ -233,7 +240,7 @@ def _fix_trino_sql_columns(sql: str, trino_tables: List[dict]) -> str:
             # 同时添加规范化后的表名（去掉引号，只保留表名部分）
             table_name_only = _norm_ident(full_table_name)
             whitelist_tables.add(table_name_only)
-    
+
     # 从SQL中解析FROM/JOIN，建立SQL别名到表名的映射
     # 使用括号/引号感知的扫描器替代一次性正则，覆盖逗号隐式连接
     _from_refs = iter_from_table_refs(sql)
@@ -250,11 +257,11 @@ def _fix_trino_sql_columns(sql: str, trino_tables: List[dict]) -> str:
             tbl_normalized = _norm_ident(raw_tbl)
             # 去掉所有引号，转换为小写，用于精确匹配
             tbl_clean = raw_tbl.replace('"', '').replace('`', '').replace('[', '').replace(']', '').lower()
-            
+
             # 检查表名是否在白名单中
             is_in_whitelist = False
             matched_table = None
-            
+
             # 首先尝试精确匹配（去掉引号后的完整路径）
             for full_table_name, cols in table_to_columns.items():
                 full_table_clean = full_table_name.replace('"', '').lower()
@@ -262,7 +269,7 @@ def _fix_trino_sql_columns(sql: str, trino_tables: List[dict]) -> str:
                     is_in_whitelist = True
                     matched_table = full_table_name
                     break
-            
+
             # 如果精确匹配失败，尝试规范化匹配
             if not is_in_whitelist:
                 for whitelist_table in whitelist_tables:
@@ -275,25 +282,25 @@ def _fix_trino_sql_columns(sql: str, trino_tables: List[dict]) -> str:
                                 matched_table = full_table_name
                                 break
                         break
-            
+
             if not is_in_whitelist:
                 # 表名不在白名单中，抛出错误
                 available_tables = [t.get("table_name", "") for t in trino_tables]
                 raise ValueError(f'SQL包含非白名单表: {raw_tbl}。可用表: {", ".join(available_tables)}')
-            
+
             sql_tables_found.append((raw_tbl, matched_table))
-            
+
             if raw_alias:
                 alias = _norm_ident(raw_alias)
                 # 查找匹配的表（通过规范化表名匹配）
                 if matched_table and matched_table in table_to_columns:
                     sql_alias_to_table[alias] = (matched_table, table_to_columns[matched_table])
-    
+
     # 构建SQL别名到列白名单的映射
     alias_to_columns = {}
     for alias, (table_name, cols) in sql_alias_to_table.items():
         alias_to_columns[alias] = cols
-    
+
     # 处理没有表别名的情况：如果SQL中只有一个表且没有别名，建立默认映射
     if not alias_to_columns and len(sql_tables_found) == 1:
         # 只有一个表且没有别名，直接使用表名作为"别名"
@@ -305,45 +312,47 @@ def _fix_trino_sql_columns(sql: str, trino_tables: List[dict]) -> str:
             alias_to_columns[default_alias] = table_to_columns[matched_table]
             # 也添加空字符串作为别名（用于匹配不带别名的列引用）
             alias_to_columns[""] = table_to_columns[matched_table]
-    
+
     # 调试信息
     if alias_to_columns:
         print(f"[trino-fix] 解析到 {len(alias_to_columns)} 个SQL别名映射:")
         for alias, cols in alias_to_columns.items():
             alias_display = alias if alias else "(无别名)"
-            print(f"[trino-fix]   别名 {alias_display} -> {len(cols)} 列: {sorted(cols)[:5]}{'...' if len(cols) > 5 else ''}")
+            print(
+                f"[trino-fix]   别名 {alias_display} -> {len(cols)} 列: {sorted(cols)[:5]}{'...' if len(cols) > 5 else ''}")
     else:
         print(f"[trino-fix] 警告：未能解析到任何SQL别名映射")
-    
+
     # 查找所有列引用：包括 alias."column" 和直接 "column" 两种情况
     # 模式1：带表别名的列引用 alias."column"
     col_ref_with_alias_pattern = re.compile(
         r'(?P<alias>[`"\[\]]?[A-Za-z_]\w*[`"\[\]]?)\s*\.\s*"(?P<col>[^"]+)"',
         re.IGNORECASE
     )
-    
+
     fixed_sql = sql
     replacements = []
-    
+
     # 先处理带表别名的列引用
     for match in col_ref_with_alias_pattern.finditer(sql):
         alias = _norm_ident(match.group("alias"))
         col = match.group("col").lower()
         full_match = match.group(0)
-        
+
         # 检查列是否在白名单中
         if alias in alias_to_columns:
             allowed_cols = alias_to_columns[alias]
             if col not in allowed_cols:
-                print(f"[trino-fix] 检测到不存在的列: {full_match} (别名: {alias}, 列: {col}, 可用列: {sorted(allowed_cols)})")
+                print(
+                    f"[trino-fix] 检测到不存在的列: {full_match} (别名: {alias}, 列: {col}, 可用列: {sorted(allowed_cols)})")
                 # 列不在白名单中，尝试修复
                 if allowed_cols:
                     # 检查上下文，判断是否是"是否有记录"的场景
                     # 查找 COUNT(e."event_id") 在 CASE WHEN COUNT(...) > 0 中的情况
                     match_start = match.start()
                     match_end = match.end()
-                    context = sql[max(0, match_start-200):min(len(sql), match_end+200)]
-                    
+                    context = sql[max(0, match_start - 200):min(len(sql), match_end + 200)]
+
                     # 检查是否是 CASE WHEN COUNT(...) > 0 的模式（用于判断"是否有记录"）
                     # 匹配模式：CASE WHEN COUNT(e."event_id") > 0
                     is_case_when_count = re.search(
@@ -351,14 +360,14 @@ def _fix_trino_sql_columns(sql: str, trino_tables: List[dict]) -> str:
                         context,
                         re.IGNORECASE | re.DOTALL
                     )
-                    
+
                     # 检查是否是COUNT场景
                     is_count_context = re.search(
                         r'\bCOUNT\s*\(\s*' + re.escape(full_match) + r'\s*\)',
                         context,
                         re.IGNORECASE | re.DOTALL
                     )
-                    
+
                     if is_case_when_count:
                         # 用于"是否有记录"判断，优先使用id列，如果没有id列则使用COUNT(*)
                         if "id" in allowed_cols:
@@ -388,7 +397,7 @@ def _fix_trino_sql_columns(sql: str, trino_tables: List[dict]) -> str:
                 else:
                     # 表中没有列，无法修复
                     print(f"[trino-fix] 警告：表{alias}没有可用列，无法修复列引用: {full_match}")
-    
+
     # 处理直接列引用（不带表别名的情况，如 SELECT "user_id" FROM table）
     # 只在没有表别名或只有一个表的情况下检查
     if len(sql_tables_found) == 1:
@@ -399,7 +408,7 @@ def _fix_trino_sql_columns(sql: str, trino_tables: List[dict]) -> str:
             allowed_cols_for_direct = table_to_columns[matched_table]
         elif "" in alias_to_columns:
             allowed_cols_for_direct = alias_to_columns[""]
-        
+
         if allowed_cols_for_direct:
             # 查找SELECT子句中的直接列引用（不在函数内）
             # 匹配模式：SELECT子句中的独立列引用，如 SELECT "user_id", "name", "age"
@@ -416,19 +425,20 @@ def _fix_trino_sql_columns(sql: str, trino_tables: List[dict]) -> str:
                     r'(?<!\.)"(?P<col>[^"]+)"(?=\s*(?:,|\s+FROM|\s+ORDER|\s+GROUP|\s+HAVING|\s+WHERE|\s*$))',
                     re.IGNORECASE
                 )
-                
+
                 for match in independent_col_pattern.finditer(select_clause):
                     col = match.group("col").lower()
                     full_match = match.group(0)
-                    
+
                     # 跳过已经在replacements中的列（避免重复处理）
                     already_handled = any(old == full_match for old, _, _ in replacements)
                     if already_handled:
                         continue
-                    
+
                     # 检查列是否在白名单中
                     if col not in allowed_cols_for_direct:
-                        print(f"[trino-fix] 检测到不存在的直接列引用: {full_match} (列: {col}, 可用列: {sorted(allowed_cols_for_direct)})")
+                        print(
+                            f"[trino-fix] 检测到不存在的直接列引用: {full_match} (列: {col}, 可用列: {sorted(allowed_cols_for_direct)})")
                         # 列不在白名单中，尝试修复
                         # 优先使用id列，如果没有id列则使用第一个存在的列
                         if "id" in allowed_cols_for_direct:
@@ -437,7 +447,7 @@ def _fix_trino_sql_columns(sql: str, trino_tables: List[dict]) -> str:
                             replacement_col = list(allowed_cols_for_direct)[0]
                         new_ref = f'"{replacement_col}"'
                         replacements.append((full_match, new_ref, f"直接列引用不存在，替换为{replacement_col}"))
-    
+
     # 执行替换
     if replacements:
         print(f"[trino-fix] 检测到 {len(replacements)} 个需要修复的列引用:")
@@ -445,10 +455,11 @@ def _fix_trino_sql_columns(sql: str, trino_tables: List[dict]) -> str:
             print(f"[trino-fix]   {old} -> {new} ({reason})")
             # 直接替换所有出现的地方
             fixed_sql = fixed_sql.replace(old, new)
-        
+
         print(f"[trino-fix] 修复后的SQL: {fixed_sql[:500]}...")
-    
+
     return fixed_sql
+
 
 def _ensure_distinct_order_by(sql: str) -> str:
     """
@@ -458,21 +469,21 @@ def _ensure_distinct_order_by(sql: str) -> str:
     # 检查是否使用了 DISTINCT
     if not re.search(r'\bSELECT\s+DISTINCT\b', sql, re.IGNORECASE):
         return sql
-    
+
     # 提取 SELECT 子句
     select_match = re.search(r'SELECT\s+DISTINCT\s+(.*?)\s+FROM', sql, re.IGNORECASE | re.DOTALL)
     if not select_match:
         return sql
-    
+
     select_clause = select_match.group(1)
-    
+
     # 提取 ORDER BY 子句（可能包含 DESC/ASC）
     order_by_match = re.search(r'ORDER\s+BY\s+(.*?)(?:\s+LIMIT|\s*$)', sql, re.IGNORECASE | re.DOTALL)
     if not order_by_match:
         return sql
-    
+
     order_by_clause = order_by_match.group(1).strip()
-    
+
     # 解析 SELECT 中的列（支持 alias."column" 和直接 "column"）
     select_cols = set()
     # 匹配 alias."column" 格式
@@ -484,14 +495,14 @@ def _ensure_distinct_order_by(sql: str) -> str:
         select_cols.add(f'{match.group(1)}."{match.group(2)}"')  # 原始格式
         select_cols.add(f'{alias}."{col}"')  # 规范化格式
         select_cols.add(f'"{col}"')  # 不带别名格式
-    
+
     # 匹配直接 "column" 格式（不在函数内）
     direct_col_pattern = re.compile(r'(?<!\.)"([^"]+)"', re.IGNORECASE)
     for match in direct_col_pattern.finditer(select_clause):
         col = match.group(1).lower()
         select_cols.add(f'"{match.group(1)}"')  # 原始格式
         select_cols.add(f'"{col}"')  # 小写格式
-    
+
     # 解析 ORDER BY 中的列（去掉 DESC/ASC 等修饰符）
     order_by_col_refs = []
     # 匹配 alias."column" DESC/ASC 格式
@@ -507,7 +518,7 @@ def _ensure_distinct_order_by(sql: str) -> str:
             full_ref = order_by_clause[match_start:match.end() + desc_asc_match.end()]
         else:
             full_ref = match.group(0)
-        
+
         # 规范化用于匹配
         alias_norm = _norm_ident(alias)
         col_lower = col.lower()
@@ -518,7 +529,7 @@ def _ensure_distinct_order_by(sql: str) -> str:
             'direct_col': f'"{col}"',
             'direct_col_norm': f'"{col_lower}"'
         })
-    
+
     # 匹配直接 "column" DESC/ASC 格式
     for match in direct_col_pattern.finditer(order_by_clause):
         col = match.group(1)
@@ -530,7 +541,7 @@ def _ensure_distinct_order_by(sql: str) -> str:
             full_ref = order_by_clause[match_start:match.end() + desc_asc_match.end()]
         else:
             full_ref = match.group(0)
-        
+
         col_lower = col.lower()
         order_by_col_refs.append({
             'full_ref': full_ref,
@@ -539,7 +550,7 @@ def _ensure_distinct_order_by(sql: str) -> str:
             'direct_col': f'"{col}"',
             'direct_col_norm': f'"{col_lower}"'
         })
-    
+
     # 检查 ORDER BY 中的列是否在 SELECT 中
     missing_cols = []
     for col_ref in order_by_col_refs:
@@ -553,18 +564,18 @@ def _ensure_distinct_order_by(sql: str) -> str:
             is_in_select = True
         elif col_ref['direct_col_norm'] and col_ref['direct_col_norm'] in select_cols:
             is_in_select = True
-        
+
         if not is_in_select:
             # 提取列引用部分（去掉 DESC/ASC）
             col_only = re.sub(r'\s+(DESC|ASC)\s*$', '', col_ref['full_ref'], flags=re.IGNORECASE).strip()
             missing_cols.append(col_only)
-    
+
     if not missing_cols:
         return sql
-    
+
     # 需要添加缺失的列到 SELECT 子句
     print(f"[trino-fix] 检测到 DISTINCT + ORDER BY 问题，ORDER BY 中的列不在 SELECT 中: {missing_cols}")
-    
+
     # 在 SELECT 子句末尾添加缺失的列（在最后一个列之后，FROM 之前）
     # 找到最后一个列的位置（考虑换行和缩进）
     lines = select_clause.split('\n')
@@ -575,20 +586,21 @@ def _ensure_distinct_order_by(sql: str) -> str:
     else:
         # 最后一行有逗号，直接添加
         new_select_clause = select_clause.rstrip() + '\n    ' + ',\n    '.join(missing_cols)
-    
+
     # 替换 SELECT 子句
     fixed_sql = sql[:select_match.start(1)] + new_select_clause + sql[select_match.end(1):]
-    
+
     print(f"[trino-fix] 修复后的SQL（添加了ORDER BY中的列到SELECT）: {fixed_sql[:500]}...")
-    
+
     return fixed_sql
 
+
 def _exec_trino_unified(
-    user_question: str,
-    tables: List[dict],
-    entity_key: str,
-    user_id: str = None,
-    relationship_data: dict = None
+        user_question: str,
+        tables: List[dict],
+        entity_key: str,
+        user_id: str = None,
+        relationship_data: dict = None
 ) -> dict:
     """
     Trino统一查询处理：利用Trino的跨catalog能力，生成一个统一的SQL
@@ -633,7 +645,7 @@ def _exec_trino_unified(
         base_name = trino_connect_name.split('-')[0]  # "trino-mysql-8" -> "trino"
         trino_connect_info = map_connect_name_to_connect_info(base_name, DatasourceInfo, user_id=user_id)
         print(f"[DEBUG] 方案2查找'{base_name}': {trino_connect_info is not None}")
-    
+
     # 方案3：如果还没找到，查找第一个包含trino的连接
     if not trino_connect_info:
         from core.connect_info_encryptor import decrypt_connect_info
@@ -646,21 +658,21 @@ def _exec_trino_unified(
                 trino_connect_info = decrypt_connect_info(conn.connect_info)
                 print(f"[DEBUG] 方案3找到包含trino的连接: {conn.connect_name}")
                 break
-    
+
     if not trino_connect_info:
         raise ValueError(f"找不到Trino连接信息，当前连接名: {trino_connect_name}")
-    
+
     print(f"[trino] 最终使用连接配置: {trino_connect_info[:100]}...")
     print(f"[trino] 连接信息类型: {type(trino_connect_info)}")
-    
+
     # 检查是否是真正的Trino连接
     if not trino_connect_info or not trino_connect_info.startswith("trino://"):
         print(f"[WARNING] 找到的连接不是Trino连接: {trino_connect_info}")
         print(f"[WARNING] 回退到传统分簇处理...")
         raise ValueError("未找到真正的Trino连接配置，请添加格式为 trino://username@host:port/ 的连接")
-    
+
     engine = get_db_engine(trino_connect_info)
-    
+
     # 2. 构建跨catalog的表结构信息，使用完整的catalog.schema.table格式
     trino_tables = []
     for t in tables:
@@ -712,12 +724,12 @@ def _exec_trino_unified(
 
         if not catalog:
             raise ValueError(f"无法为表 {table_name} 推断 Trino catalog，请检查数据源配置。")
-        
+
         # 构建完整表名
         full_table_name = f'"{catalog}"."{schema}"."{table_name}"'
-        
+
         print(f"[trino] 表映射: {table_name} -> {full_table_name} (connect_name: {connect_name})")
-        
+
         trino_table = {
             "table_name": full_table_name,  # 使用完整路径
             "alias": f"t{len(trino_tables) + 1}",
@@ -727,16 +739,17 @@ def _exec_trino_unified(
         }
         # 调试信息：检查列信息是否正确传递
         col_names = [c.get("name", "") for c in trino_table.get("columns", [])]
-        print(f"[trino] 表 {table_name} 的列信息: {len(col_names)} 列 - {col_names[:5]}{'...' if len(col_names) > 5 else ''}")
+        print(
+            f"[trino] 表 {table_name} 的列信息: {len(col_names)} 列 - {col_names[:5]}{'...' if len(col_names) > 5 else ''}")
         trino_tables.append(trino_table)
-    
+
     # 3. 使用Trino模板生成SQL
     tpl = load_prompt("trino_multi_table.txt")
     tables_block = make_tables_block("trino", trino_tables)
 
     # ✅ 修复：与 _exec_cluster 对齐，根据是否有关系卡片选择不同的 JOIN 关系块和关系卡片信息
     has_relationship_cards = relationship_data and (
-        relationship_data.get("cards") or relationship_data.get("join_suggestions")
+            relationship_data.get("cards") or relationship_data.get("join_suggestions")
     )
 
     if has_relationship_cards:
@@ -782,35 +795,35 @@ def _exec_trino_unified(
         entity_key=entity_key,
         user_question=user_question,
     )
-    
+
     print(f"[trino] 生成的提示词长度: {len(prompt)} 字符")
-    
-    # 4. 调用LLM生成SQL 
+
+    # 4. 调用LLM生成SQL
     try:
         response = QwenMaxLatest.qian_wen_llm(prompt, stream_type=False)
         content = response["choices"][0]["message"]["content"]
-        
+
         # 使用系统内置的SQL解析函数
         parsed = _extract_sql_from_llm_text(content)
-        
+
         if parsed["kind"] != "sql":
             raise ValueError(f"LLM未返回SQL: {parsed.get('text', 'unknown')}")
-        
+
         sql_text = parsed["text"]
         print(f"[trino] LLM生成SQL: {sql_text}")
-        
+
         # 5. 自动修复SQL中使用了不存在列的问题（仅Trino）
         try:
             sql_text = _fix_trino_sql_columns(sql_text, trino_tables)
         except Exception as fix_error:
             print(f"[trino] SQL自动修复失败: {fix_error}，继续使用原始SQL")
-        
+
         # 5.5. 确保 DISTINCT + ORDER BY 的语法正确（Trino要求ORDER BY中的列必须在SELECT中）
         try:
             sql_text = _ensure_distinct_order_by(sql_text)
         except Exception as fix_error:
             print(f"[trino] DISTINCT+ORDER BY修复失败: {fix_error}，继续使用原始SQL")
-        
+
         # 6. 执行SQL
         with engine.connect() as conn:
             data, warnings, sql_exec_ms = run_sql_safe_new(
@@ -821,7 +834,7 @@ def _exec_trino_unified(
                 max_rows=1000,
                 allow_semicolon_terminator=True
             )
-            
+
             # 7. 构建返回结果
             entity_ids = []
             if data and isinstance(data, list) and len(data) > 0:
@@ -829,9 +842,9 @@ def _exec_trino_unified(
                 for row in data:
                     if entity_key in row and row[entity_key] is not None:
                         entity_ids.append(row[entity_key])
-            
+
             print(f"[trino] 查询完成，返回 {len(data) if data else 0} 行")
-            
+
             return {
                 "db_type": "trino",
                 "_connect_info_raw": trino_connect_info,
@@ -844,12 +857,12 @@ def _exec_trino_unified(
                 "sql": sql_text,
                 "target_sql": sql_text,  # 添加target_sql字段保持一致
                 "data": data or [],
-                "rows": data or [],  # 添加rows字段保持一致  
+                "rows": data or [],  # 添加rows字段保持一致
                 "warnings": warnings or [],
                 "entity_ids": entity_ids,
                 "note": parsed.get("text", "")
             }
-    
+
     except Exception as e:
         print(f"[trino] SQL执行失败: {str(e)}")
         raise
@@ -871,6 +884,7 @@ def _pick_template_by_db(db_type: str) -> str:
         "dm": "dm_multi_table.txt",
     }
     return m.get((db_type or "").lower(), "mysql_multi_table.txt")
+
 
 def _find_entity_key_field(row: dict, entity_key: str) -> str | None:
     """
@@ -931,13 +945,13 @@ def _find_entity_key_field(row: dict, entity_key: str) -> str | None:
 def _collect_entity_ids(rows: List[dict], entity_key: str) -> Set[Any]:
     """
     收集实体 ID，同时过滤掉"空记录"（除了 entity_key 外，其他字段都是无效值）
-    
+
     特殊情况：如果记录只有 entity_key 一个字段，则认为是有效的（用于聚合查询的跨簇融合）
 
     智能匹配：支持别名匹配，如 entity_key="id" 可以匹配 "user_id"、"product_id" 等
     """
     s = set()
-    
+
     def has_valid_data(row: dict, entity_key_field: str) -> bool:
         """
         检查记录是否包含有效数据
@@ -977,7 +991,7 @@ def _collect_entity_ids(rows: List[dict], entity_key: str) -> Set[Any]:
             if v is not None and v != 0 and v != 0.0 and v != "" and v is not False:
                 return True
         return False
-    
+
     # 首次查找entity_key字段（只需查找一次）
     entity_key_field = None
     if rows:
@@ -995,8 +1009,9 @@ def _collect_entity_ids(rows: List[dict], entity_key: str) -> Set[Any]:
             # 只收集那些有有效数据的记录的 ID
             if has_valid_data(r, entity_key_field):
                 s.add(r[entity_key_field])
-    
+
     return s
+
 
 def _make_json_serializable(obj, _seen=None):
     """
@@ -1007,17 +1022,17 @@ def _make_json_serializable(obj, _seen=None):
     # 初始化已访问对象的集合（用于检测循环引用）
     if _seen is None:
         _seen = set()
-    
+
     # 基本类型直接返回（不需要检测循环引用）
     if obj is None or isinstance(obj, (bool, int, float, str)):
         return obj
-    
+
     # 检测循环引用（只对可变对象检测）
     obj_id = id(obj)
     if obj_id in _seen:
         # 检测到循环引用，返回一个安全的占位符
         return f"<CircularRef:{type(obj).__name__}>"
-    
+
     # 处理特殊类型
     if isinstance(obj, datetime):
         # datetime 必须在 date 之前检查，因为 datetime 是 date 的子类
@@ -1074,6 +1089,7 @@ def _make_json_serializable(obj, _seen=None):
             # 无法序列化，返回类型名称
             return f"<{type(obj).__name__}>"
 
+
 def _merge_sets(sets: List[Set[Any]], strategy: str) -> Set[Any]:
     if not sets:
         return set()
@@ -1088,8 +1104,10 @@ def _merge_sets(sets: List[Set[Any]], strategy: str) -> Set[Any]:
         out &= s
     return out
 
+
 def _filter_by_ids(rows: List[dict], entity_key: str, final_ids: Set[Any]) -> List[dict]:
     return [r for r in (rows or []) if r.get(entity_key) in final_ids]
+
 
 def _filter_clusters_by_question(cluster_results: List[dict], user_question: str) -> tuple[list[dict], list[str]]:
     """
@@ -1099,10 +1117,10 @@ def _filter_clusters_by_question(cluster_results: List[dict], user_question: str
 
 
 def _llm_fuse_results(
-    user_question: str,
-    cluster_results: List[dict],
-    relationship_data: dict = None,
-    model_config_dict: dict = None
+        user_question: str,
+        cluster_results: List[dict],
+        relationship_data: dict = None,
+        model_config_dict: dict = None
 ) -> dict:
     """
     使用LLM进行智能结果融合（语义理解融合）
@@ -1147,7 +1165,7 @@ def _llm_fuse_results(
             tables = r.get("tables", [])
             table_names = [t.get("table_name", "") for t in tables]
 
-            cluster_text = f"### 数据源 {i+1} ({db_type})\n"
+            cluster_text = f"### 数据源 {i + 1} ({db_type})\n"
             cluster_text += f"涉及表: {', '.join(table_names)}\n"
             cluster_text += f"返回行数: {len(rows)}\n"
 
@@ -1188,7 +1206,8 @@ def _llm_fuse_results(
                 tn = t.get("table_name", "")
                 if tn:
                     fusion_table_names_set.add(tn)
-        print(f"[agg] 融合阶段：参与融合的表集合 {sorted(fusion_table_names_set)}（共 {len(fusion_table_names_set)} 张表）")
+        print(
+            f"[agg] 融合阶段：参与融合的表集合 {sorted(fusion_table_names_set)}（共 {len(fusion_table_names_set)} 张表）")
 
         if relationship_data:
             relationship_data = filter_relationship_data_by_tables(
@@ -1270,7 +1289,8 @@ def _llm_fuse_results(
         # 计算融合耗时并添加到结果中
         fusion_time_ms = int((time_module.time() - fusion_start_time) * 1000)
         result["fusion_time_ms"] = fusion_time_ms
-        print(f"[agg] LLM融合总耗时: {fusion_time_ms}ms (提示词准备: {prompt_load_ms + data_prep_ms + prompt_render_ms}ms, LLM调用: {llm_call_ms}ms, 解析: {parse_ms}ms)")
+        print(
+            f"[agg] LLM融合总耗时: {fusion_time_ms}ms (提示词准备: {prompt_load_ms + data_prep_ms + prompt_render_ms}ms, LLM调用: {llm_call_ms}ms, 解析: {parse_ms}ms)")
 
         return result
 
@@ -1352,7 +1372,8 @@ def _exec_cluster_parallel(cluster_idx: int, db_type: str, connect_info: dict,
         )
 
         elapsed_ms = int((time_module.time() - start_time) * 1000)
-        print(f"[_exec_cluster_parallel] 簇 {cluster_idx + 1} 执行完成，返回 {len(result.get('rows', []))} 行数据，耗时 {elapsed_ms}ms")
+        print(
+            f"[_exec_cluster_parallel] 簇 {cluster_idx + 1} 执行完成，返回 {len(result.get('rows', []))} 行数据，耗时 {elapsed_ms}ms")
 
         return (cluster_idx, result)
 
@@ -1417,7 +1438,7 @@ def get_data_card_json(
         enable_rerank: bool = True,  # 是否启用重排序（默认启用）
         rerank_top_n: int = None,  # 重排序后保留的 top N 结果（None 则使用 max_results）
         class_name: str = None,  # 用户向量检索空间类名
-        datasource_id = None  # 数据源ID过滤（支持 str 单个ID 或 list 多个ID）
+        datasource_id=None  # 数据源ID过滤（支持 str 单个ID 或 list 多个ID）
 ):
     """
     基于向量相似度召回数据卡片（支持重排序 + 数据源过滤）
@@ -1482,7 +1503,7 @@ def get_data_card_json(
 
     data_card_results = []
     result_doc_ids = []
-    
+
     for doc_id in doc_ids:
         if not doc_id:
             continue
@@ -1511,13 +1532,14 @@ def get_data_card_json(
                 # 如果不是合法 JSON，就原样放进去
                 data_card_results.append(card_data_str)
                 result_doc_ids.append(doc_id)
-    
+
     result = {
         "doc_ids": [str(d) for d in result_doc_ids if d],
         "data_card_results": data_card_results,
         "usage": vector_usage  # 返回向量检索的 usage 信息
     }
     return result
+
 
 # 抽取白名单工具函数
 def build_cluster_tables(tables: list[dict]) -> list[dict]:
@@ -1538,9 +1560,10 @@ def build_cluster_tables(tables: list[dict]) -> list[dict]:
         for t in (tables or [])
     ]
 
+
 def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                   tables: List[dict], entity_key: str, relationship_data: dict = None,
-                  debug: bool=False, model_config_dict: dict = None) -> dict:
+                  debug: bool = False, model_config_dict: dict = None) -> dict:
     """
     - 从对应方言 txt 加载模板
     - 渲染【白名单表字段】【允许关系】【关系卡片信息】
@@ -1576,7 +1599,7 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
 
     # 根据是否有关系卡片选择不同的JOIN关系块和关系卡片信息
     has_relationship_cards = relationship_data and (
-        relationship_data.get("cards") or relationship_data.get("join_suggestions")
+            relationship_data.get("cards") or relationship_data.get("join_suggestions")
     )
 
     if has_relationship_cards:
@@ -1758,7 +1781,8 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                 allow_semicolon_terminator=True,
                 target_schema=db_name if db_type in ("oracle", "dm") else None
             )
-            print(f"[_exec_cluster][{db_type}] SQL执行成功，返回 {len(data) if isinstance(data, list) else data} 行数据，耗时 {sql_exec_ms}ms")
+            print(
+                f"[_exec_cluster][{db_type}] SQL执行成功，返回 {len(data) if isinstance(data, list) else data} 行数据，耗时 {sql_exec_ms}ms")
             if warnings:
                 print(f"[_exec_cluster][{db_type}] 执行警告: {warnings}")
 
@@ -1789,7 +1813,8 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
 
                 # 特殊情况2：检查是否是统计查询结果（字段名包含 count/sum/avg/total/num 等）
                 # 这些查询的结果即使为 0 也是有效的
-                stat_keywords = ['count', 'sum', 'avg', 'total', 'num', 'amount', 'quantity', 'ratio', 'rate', 'percentage']
+                stat_keywords = ['count', 'sum', 'avg', 'total', 'num', 'amount', 'quantity', 'ratio', 'rate',
+                                 'percentage']
                 is_stat_query = any(
                     any(keyword in k.lower() for keyword in stat_keywords)
                     for k in row.keys()
@@ -1886,7 +1911,8 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                             break
 
                     if attempt < max_retries:
-                        print(f"[_exec_cluster][{db_type}] 🔄 检测到无效列 '{invalid_table_alias}.{invalid_col}'，准备重试...")
+                        print(
+                            f"[_exec_cluster][{db_type}] 🔄 检测到无效列 '{invalid_table_alias}.{invalid_col}'，准备重试...")
                         # 加载重试提示词
                         retry_tpl = load_prompt("retry_whitelist_error.txt")
                         retry_hint = render_prompt(
@@ -1897,7 +1923,8 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                         )
                         print(f"[_exec_cluster][{db_type}] 🔄 进行第 {attempt + 1} 次重试...")
                         # 调用LLM重试
-                        content, retry_usage = qian_wen_llm_with_usage(prompt + retry_hint, stream_type=False, model_config_dict=model_config_dict)
+                        content, retry_usage = qian_wen_llm_with_usage(prompt + retry_hint, stream_type=False,
+                                                                       model_config_dict=model_config_dict)
                         print(f"[_exec_cluster][{db_type}] 🔄 重试LLM返回内容长度: {len(content)} 字符")
 
                         # 解析重试结果
@@ -1929,10 +1956,10 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                 return {
                     "db_type": db_type,
                     "_connect_info_raw": connect_info,
-                        "connect_info_safe": {
-                            "type": db_type,
-                            "database": tables[0].get("database_name") if tables else None
-                        },
+                    "connect_info_safe": {
+                        "type": db_type,
+                        "database": tables[0].get("database_name") if tables else None
+                    },
                     "tables": [{"table_name": t.get("table_name"), "alias": t.get("alias")} for t in tables],
                     "cluster_tables": cluster_tables,
                     "target_sql": " ".join(final_sql.split()),
@@ -1976,7 +2003,8 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                 retry_hint = render_prompt(retry_tpl, error_msg=error_msg)
                 print(f"[_exec_cluster][{db_type}] 🔄 进行第 {attempt + 1} 次重试...")
                 # 调用LLM重试
-                content, retry_usage = qian_wen_llm_with_usage(prompt + retry_hint, stream_type=False, model_config_dict=model_config_dict)
+                content, retry_usage = qian_wen_llm_with_usage(prompt + retry_hint, stream_type=False,
+                                                               model_config_dict=model_config_dict)
                 print(f"[_exec_cluster][{db_type}] 🔄 重试LLM返回内容长度: {len(content)} 字符")
 
                 # 解析重试结果
@@ -2010,10 +2038,10 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                 return {
                     "db_type": db_type,
                     "_connect_info_raw": connect_info,
-                        "connect_info_safe": {
-                            "type": db_type,
-                            "database": tables[0].get("database_name") if tables else None
-                        },
+                    "connect_info_safe": {
+                        "type": db_type,
+                        "database": tables[0].get("database_name") if tables else None
+                    },
                     "tables": [{"table_name": t.get("table_name"), "alias": t.get("alias")} for t in tables],
                     "cluster_tables": cluster_tables,
                     "target_sql": " ".join(final_sql.split()),
@@ -2033,10 +2061,10 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
         # 保留原始 connect_info 用于回填查询
         "_connect_info_raw": connect_info,
         # 用于序列化的简化版本
-                        "connect_info_safe": {
-                            "type": db_type,
-                            "database": tables[0].get("database_name") if tables else None
-                        },
+        "connect_info_safe": {
+            "type": db_type,
+            "database": tables[0].get("database_name") if tables else None
+        },
         # tables 中可能有复杂对象，只提取表名
         "tables": [{"table_name": t.get("table_name"), "alias": t.get("alias")} for t in tables],
         "cluster_tables": cluster_tables,
@@ -2060,14 +2088,14 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
 
 
 def run_sql_safe_new(
-    engine,
-    sql: str,
-    cluster_tables: list,
-    db_type: str | None = None,
-    *,
-    max_rows: int = 1000,
-    allow_semicolon_terminator: bool = True,
-    target_schema: str | None = None,
+        engine,
+        sql: str,
+        cluster_tables: list,
+        db_type: str | None = None,
+        *,
+        max_rows: int = 1000,
+        allow_semicolon_terminator: bool = True,
+        target_schema: str | None = None,
 ):
     """
     多表白名单 + 安全校验 + 执行。
@@ -2124,9 +2152,11 @@ def run_sql_safe_new(
         raise ValueError("仅允许执行 SELECT 查询（支持以 WITH 开头的 CTE）。")
 
     # 1.4 危险关键字黑名单（基本 DDL/DML/管理语句）
+    # 注意：只拦截 REPLACE INTO（MySQL DML语句），不拦截 REPLACE() 函数调用
     blacklist = [
         r"\bINSERT\b", r"\bUPDATE\b", r"\bDELETE\b", r"\bMERGE\b",
-        r"\bREPLACE\b", r"\bUPSERT\b",
+        r"\bREPLACE\s+INTO\b",  # 只拦截 REPLACE INTO DML，不拦截 REPLACE() 函数
+        r"\bUPSERT\b",
         r"\bDROP\b", r"\bALTER\b", r"\bTRUNCATE\b", r"\bCREATE\b",
         r"\bGRANT\b", r"\bREVOKE\b",
         r"\bEXEC\b", r"\bEXECUTE\b", r"\bCALL\b",
@@ -2153,7 +2183,7 @@ def run_sql_safe_new(
         print(f"[cte-check] 检测到 CTE 名称: {cte_names}")
 
     # 注意：这里先不依赖列白名单；只校验"物理表是否在 cluster_tables 允许的集合"即可
-    allowed_physical = { _norm_ident(t.get("table_name")) for t in (cluster_tables or []) }
+    allowed_physical = {_norm_ident(t.get("table_name")) for t in (cluster_tables or [])}
     # 将 CTE 名称加入允许列表（CTE 是临时结果集，不是物理表）
     allowed_physical.update(cte_names)
 
@@ -2168,7 +2198,7 @@ def run_sql_safe_new(
     # 先将这些函数调用临时替换
     temp_sql_for_table_check = sql_stripped
     temp_sql_for_table_check = re.sub(r'\b(EXTRACT|SUBSTRING|POSITION|TRIM)\s*\([^)]+\bFROM\b[^)]+\)',
-                                       'FUNC_WITH_FROM_PLACEHOLDER', temp_sql_for_table_check, flags=re.IGNORECASE)
+                                      'FUNC_WITH_FROM_PLACEHOLDER', temp_sql_for_table_check, flags=re.IGNORECASE)
 
     # 使用括号/引号感知的扫描器替代一次性正则，覆盖逗号隐式连接
     for _ref in iter_from_table_refs(temp_sql_for_table_check):
@@ -2183,12 +2213,11 @@ def run_sql_safe_new(
             print(f"[whitelist-check] CTE名称: {cte_names}")
             raise ValueError(f"检测到非白名单表: {raw_tbl}")
 
-
     # ---------- 2) 准备白名单（表 & 列） ----------
     allowed_tables: dict[str, set[str]] = {}  # 物理表名(小写) -> 该表允许列(小写)集合
     # 对于 Trino 跨 catalog 查询，需要同时支持完整路径和规范化表名
     table_name_mapping: dict[str, str] = {}  # 规范化表名 -> 原始表名（用于调试）
-    
+
     for t in cluster_tables or []:
         raw_table_name = t.get("table_name", "")
         tname = _norm_ident(raw_table_name)
@@ -2206,7 +2235,7 @@ def run_sql_safe_new(
             table_name_mapping[tname] = raw_table_name
             # 调试信息：打印白名单中的表名（原始 vs 规范化后）
             print(f"[whitelist-build] 表名: 原始={raw_table_name}, 规范化={tname}")
-    
+
     # 添加系统虚拟表到 allowed_tables（不需要列白名单）
     for sys_table in system_virtual_tables:
         if sys_table not in allowed_tables:
@@ -2233,9 +2262,9 @@ def run_sql_safe_new(
     # 先将常见的带 FROM 关键字的函数调用临时替换
     temp_sql_for_from = sql_stripped
     # 替换 EXTRACT(...FROM...) 和 SUBSTRING(...FROM...) 等函数
-    temp_sql_for_from = re.sub(r'\b(EXTRACT|SUBSTRING|POSITION|TRIM)\s*\([^)]+\bFROM\b[^)]+\)', 
-                                'FUNC_WITH_FROM_PLACEHOLDER', temp_sql_for_from, flags=re.IGNORECASE)
-    
+    temp_sql_for_from = re.sub(r'\b(EXTRACT|SUBSTRING|POSITION|TRIM)\s*\([^)]+\bFROM\b[^)]+\)',
+                               'FUNC_WITH_FROM_PLACEHOLDER', temp_sql_for_from, flags=re.IGNORECASE)
+
     # 使用括号/引号感知的扫描器替代一次性正则，覆盖逗号隐式连接
     for _ref in iter_from_table_refs(temp_sql_for_from):
         raw_tbl = _ref.raw_table or ""
@@ -2324,16 +2353,16 @@ def run_sql_safe_new(
 
     # 4.1 禁止出现通配列 * 或 别名.* （严格白名单）
     # 注意：需要排除聚合函数中的 COUNT(*) 和乘法运算符 * 等合法用法
-    # 
+    #
     # 策略：提取 SELECT 和 FROM 之间的列列表部分，然后检查是否有裸露的 * 或 别名.*
     # 这样可以避免误判 WHERE 子句中的运算符
-    
+
     # 先将所有括号内包含 * 的内容临时替换，避免误判 COUNT(*) 等函数
     temp_sql = re.sub(r'\([^)]*\*[^)]*\)', '(PLACEHOLDER)', sql_stripped)
     # 再将乘法运算符替换（更宽泛的模式：任何 非空格字符 * 数字）
     temp_sql = re.sub(r'(\S+)\s*\*\s*(\d+(?:\.\d+)?)', r'\1 MULT \2', temp_sql)
     temp_sql = re.sub(r'(\d+(?:\.\d+)?)\s*\*\s*(\S+)', r'\1 MULT \2', temp_sql)
-    
+
     # 只匹配 SELECT 后直接跟 * 或列表中的 , * 或 别名.* 的情况
     # 注意：使用更精确的模式，确保匹配的是列通配符而不是运算符
     star_pattern = re.compile(
@@ -2389,12 +2418,14 @@ def run_sql_safe_new(
             sql_exec_ms = int((time_module.time() - sql_exec_start) * 1000)
             return {"rowcount": result.rowcount}, warnings, sql_exec_ms
 
-def _split_ids_for_db(ids: list, db_type: str, chunk_for_oracle:int=1000, chunk_default:int=1000):
+
+def _split_ids_for_db(ids: list, db_type: str, chunk_for_oracle: int = 1000, chunk_default: int = 1000):
     ids = list(ids or [])
     if not ids:
         return []
     n = chunk_for_oracle if (db_type or "").lower() == "oracle" else chunk_default
-    return [ids[i:i+n] for i in range(0, len(ids), n)]
+    return [ids[i:i + n] for i in range(0, len(ids), n)]
+
 
 def _sql_literal(v):
     if isinstance(v, (int, float)) or (isinstance(v, str) and v.isdigit()):
@@ -2402,34 +2433,37 @@ def _sql_literal(v):
     # 简单转义单引号
     return "'" + str(v).replace("'", "''") + "'"
 
-def _build_projection_sql(db_type: str, tables: list, entity_key: str, need_cols: list, id_batch: list[str|int]) -> str:
+
+def _build_projection_sql(db_type: str, tables: list, entity_key: str, need_cols: list,
+                          id_batch: list[str | int]) -> str:
     """
     构造投影查询 SQL：只返回 entity_key + need_cols，WHERE entity_key IN (id_batch)
     优先选择包含 entity_key 的表作为主表；若所有表都不含该键，则抛出异常。
     """
     main_table = None
     main_table_cols = []
-    
+
     for t in tables:
         cols = [c.get("name") for c in (t.get("columns") or []) if c.get("name")]
         if any(c.lower() == entity_key.lower() for c in cols):
             main_table = t["table_name"]
             main_table_cols = cols
             break
-    
+
     if not main_table:
         raise ValueError(f"簇内所有表均不包含实体键 {entity_key}，无法构造投影查询")
-    
+
     # 过滤出主表实际存在的列（避免查询不存在的列）
     main_table_cols_lower = {c.lower() for c in main_table_cols}
     valid_cols = [entity_key]
     for c in need_cols:
         if c != entity_key and c.lower() in main_table_cols_lower:
             valid_cols.append(c)
-    
+
     col_list = ", ".join([f"{main_table}.{c}" for c in valid_cols])
     in_list = ", ".join([_sql_literal(x) for x in id_batch])
     return f"SELECT {col_list} FROM {main_table} WHERE {main_table}.{entity_key} IN ({in_list})"
+
 
 # 从请求头获取Api_key
 def _get_api_key_from_headers():
@@ -2448,6 +2482,7 @@ def _get_api_key_from_headers():
 
     return request.headers.get("X-API-Key", "").strip()
 
+
 # 过期时间格式化
 def _is_expired(expires_at):
     if not expires_at:
@@ -2461,11 +2496,12 @@ def _is_expired(expires_at):
 
     return expires_at <= now_utc
 
+
 # 查库并校验Api_key
 def _require_api_key_user_id():
     """
     校验 API Key 并返回用户信息
-    
+
     返回: (user_id, error_tuple, api_key_id)
         - user_id: 用户ID
         - error_tuple: (错误信息, HTTP状态码) 或 None
@@ -2492,41 +2528,42 @@ def _require_api_key_user_id():
 
     return obj.user_id, None, str(obj.id)
 
+
 # ---- 资源类：聚合检索----
 
 
 def _log_query_plugin(
-    user_id: str,
-    question: str,
-    sql: str,
-    source_datasource_ids: list,
-    source_datasource_names: list,
-    datasource_ids: list,
-    datasource_names: list,
-    table_names: list,
-    metrics: dict,
-    tokens: dict,
-    quality: dict,
-    result_count: int,
-    merge_strategy: str,
-    success: bool = True,
-    error_message: str = None,
-    api_key_id: str = None,
-    full_response_result: dict = None,
-    cluster_sqls: list = None,
-    # === 新增参数 ===
-    processed_question: str = None,
-    term_rewrite_info: dict = None
+        user_id: str,
+        question: str,
+        sql: str,
+        source_datasource_ids: list,
+        source_datasource_names: list,
+        datasource_ids: list,
+        datasource_names: list,
+        table_names: list,
+        metrics: dict,
+        tokens: dict,
+        quality: dict,
+        result_count: int,
+        merge_strategy: str,
+        success: bool = True,
+        error_message: str = None,
+        api_key_id: str = None,
+        full_response_result: dict = None,
+        cluster_sqls: list = None,
+        # === 新增参数 ===
+        processed_question: str = None,
+        term_rewrite_info: dict = None
 ):
     """
     查询日志记录辅助函数（插件版）
     """
     try:
         metrics['total_duration_ms'] = metrics.get('vector_search_ms', 0) + \
-                                        metrics.get('rerank_ms', 0) + \
-                                        metrics.get('llm_gen_sql_ms', 0) + \
-                                        metrics.get('llm_fusion_ms', 0) + \
-                                        metrics.get('sql_execution_ms', 0)
+                                       metrics.get('rerank_ms', 0) + \
+                                       metrics.get('llm_gen_sql_ms', 0) + \
+                                       metrics.get('llm_fusion_ms', 0) + \
+                                       metrics.get('sql_execution_ms', 0)
 
         if success:
             QueryLogger.log_success(
@@ -2658,7 +2695,8 @@ class QueryByDataCardsAggPlugin(Resource):
                 datasource_id = str(ds_info.id)
                 print(f"[DEBUG] 根据数据源名称 '{connect_name}' 找到数据源ID: {datasource_id}")
             else:
-                return format_response(None, 400, f"未找到数据源名称为 '{connect_name}' 的数据源，请确认该数据源是否存在")
+                return format_response(None, 400,
+                                       f"未找到数据源名称为 '{connect_name}' 的数据源，请确认该数据源是否存在")
 
         # === 术语识别与展开（新增） ===
         # 获取可选参数：是否启用术语转写（默认启用）
@@ -2666,7 +2704,8 @@ class QueryByDataCardsAggPlugin(Resource):
         matched_terms = []
         rewritten_question = user_question  # 初始化默认值
         term_rewrite_performed = False  # 标记是否实际进行了术语展开
-        print(f"[术语展开] 初始化: enable_term_rewrite={enable_term_rewrite}, term_rewrite_performed={term_rewrite_performed}")
+        print(
+            f"[术语展开] 初始化: enable_term_rewrite={enable_term_rewrite}, term_rewrite_performed={term_rewrite_performed}")
         if enable_term_rewrite:
             try:
                 library_ids = body.get("library_ids", [])  # 指定术语库ID列表
@@ -2688,7 +2727,8 @@ class QueryByDataCardsAggPlugin(Resource):
                         did_rewrite = False
                         rewritten_question = user_question
                         print(f"[术语展开] 数据源={datasource_id} 无关联的启用的术语库，跳过术语展开")
-                        print(f"[术语展开] 跳过详情: enabled_library_ids={enabled_library_ids}, term_rewrite_performed={term_rewrite_performed}")
+                        print(
+                            f"[术语展开] 跳过详情: enabled_library_ids={enabled_library_ids}, term_rewrite_performed={term_rewrite_performed}")
                 elif datasource_ids_param and isinstance(datasource_ids_param, list):
                     # 处理多个数据源：聚合所有涉及的术语库
                     all_enabled_library_ids = []
@@ -2702,12 +2742,14 @@ class QueryByDataCardsAggPlugin(Resource):
                         rewritten_question, matched_terms, did_rewrite = process_question_by_libraries(
                             user_question, all_enabled_library_ids
                         )
-                        print(f"[术语展开] 多数据源聚合: datasource_ids={datasource_ids_param}, 启用库={all_enabled_library_ids}")
+                        print(
+                            f"[术语展开] 多数据源聚合: datasource_ids={datasource_ids_param}, 启用库={all_enabled_library_ids}")
                     else:
                         did_rewrite = False
                         rewritten_question = user_question
                         print(f"[术语展开] 数据源列表无关联的启用的术语库，跳过术语展开")
-                        print(f"[术语展开] 跳过详情: all_enabled_library_ids={all_enabled_library_ids}, term_rewrite_performed={term_rewrite_performed}")
+                        print(
+                            f"[术语展开] 跳过详情: all_enabled_library_ids={all_enabled_library_ids}, term_rewrite_performed={term_rewrite_performed}")
                 else:
                     # 没有指定数据源，也没有指定术语库，查询所有启用的术语
                     rewritten_question, matched_terms, did_rewrite = process_question(user_question)
@@ -2748,7 +2790,7 @@ class QueryByDataCardsAggPlugin(Resource):
         metrics["vector_search_ms"] += int((time_module.time() - t1) * 1000)
         doc_ids = rs_json.get("doc_ids") or []
         card_list = rs_json.get("data_card_results") or []
-        
+
         # 收集向量检索的 usage 信息（embedding + rerank tokens, rerank ms, rerank scores）
         vector_usage = rs_json.get("usage", {})
         tokens["embedding_tokens"] = vector_usage.get("embedding_tokens", 0)
@@ -2801,7 +2843,7 @@ class QueryByDataCardsAggPlugin(Resource):
                 print(f"[DEBUG] 卡片 doc_id={doc_id} 使用 schema_name: {ds_schema_name} (from DatasourceInfo)")
 
             table_objs.append(card_to_table_obj(schema_row, card, connect_info, ds_schema_name=ds_schema_name))
-            
+
             # 收集数据卡片详细信息
             data_cards_info.append({
                 "doc_id": doc_id,
@@ -2810,7 +2852,7 @@ class QueryByDataCardsAggPlugin(Resource):
                 "connect_name": connect_name,
                 "card_content": card  # 完整的数据卡片内容
             })
-            
+
             # 收集数据源信息（去重），ds_info 已在上面查询
             if ds_info:
                 ds_id = str(ds_info.id)
@@ -2819,7 +2861,7 @@ class QueryByDataCardsAggPlugin(Resource):
                     datasource_ids.append(ds_id)
                 if ds_name not in datasource_names:
                     datasource_names.append(ds_name)
-            
+
             # 收集表名（去重）
             table_name = schema_row.table_name
             if table_name and table_name not in table_names:
@@ -2839,7 +2881,7 @@ class QueryByDataCardsAggPlugin(Resource):
         print(f"[DEBUG][CARDS] filtered_out_doc_ids = {filtered_out_doc_ids}")
         print("=" * 80 + "\n")
 
-        entity_key = infer_entity_key_from_cards(table_objs) # 获取主键
+        entity_key = infer_entity_key_from_cards(table_objs)  # 获取主键
 
         # 补充来源数据源的名称
         if source_datasource_ids:
@@ -2878,7 +2920,8 @@ class QueryByDataCardsAggPlugin(Resource):
                     user_id=str(user_id)
                 )
                 relationship_data_cache[ds_id] = rel_data
-                print(f"[agg] 数据源 {ds_id} 获取到 {len(rel_data.get('cards', {}))} 张关系卡片, {len(rel_data.get('join_suggestions', []))} 个JOIN建议")
+                print(
+                    f"[agg] 数据源 {ds_id} 获取到 {len(rel_data.get('cards', {}))} 张关系卡片, {len(rel_data.get('join_suggestions', []))} 个JOIN建议")
             except Exception as e:
                 print(f"[agg] 获取数据源 {ds_id} 的关系卡片失败: {e}")
                 relationship_data_cache[ds_id] = {"cards": {}, "join_suggestions": [], "missing_tables": table_names}
@@ -2908,15 +2951,15 @@ class QueryByDataCardsAggPlugin(Resource):
             connect_name = t.get("connect_name", "")
             table_name = t.get("table_name")
             db_type = t.get("db_type")
-            print(f"  表{i+1}: {table_name} -> connect_name: '{connect_name}', db_type: '{db_type}'")
-        
+            print(f"  表{i + 1}: {table_name} -> connect_name: '{connect_name}', db_type: '{db_type}'")
+
         # 检查是否所有表都通过Trino连接（connect_name以"trino-"开头）
         trino_connected_tables = [t for t in table_objs if (t.get("connect_name") or "").lower().startswith("trino-")]
         is_all_trino_connected = len(trino_connected_tables) == len(table_objs) and len(table_objs) > 0
-        
+
         print(f"[DEBUG] 通过Trino连接的表: {len(trino_connected_tables)}/{len(table_objs)}")
         print(f"[DEBUG] 是否全部通过Trino: {is_all_trino_connected}")
-        
+
         if is_all_trino_connected:
             # 所有表都通过Trino连接，使用统一的跨catalog处理
             print(f"[agg] 检测到纯Trino连接查询，使用跨catalog模式，共 {len(trino_connected_tables)} 张表")
@@ -2940,9 +2983,11 @@ class QueryByDataCardsAggPlugin(Resource):
                         trino_relationship_data["cards"].update(rel_data.get("cards", {}))
                         trino_relationship_data["join_suggestions"].extend(rel_data.get("join_suggestions", []))
 
-            has_trino_rel_cards = trino_relationship_data.get("cards") or trino_relationship_data.get("join_suggestions")
+            has_trino_rel_cards = trino_relationship_data.get("cards") or trino_relationship_data.get(
+                "join_suggestions")
             if has_trino_rel_cards:
-                print(f"[agg] Trino统一查询：合并后 {len(trino_relationship_data['cards'])} 张关系卡片, {len(trino_relationship_data['join_suggestions'])} 个JOIN建议")
+                print(
+                    f"[agg] Trino统一查询：合并后 {len(trino_relationship_data['cards'])} 张关系卡片, {len(trino_relationship_data['join_suggestions'])} 个JOIN建议")
             else:
                 print(f"[agg] Trino统一查询：未发现关系卡片")
 
@@ -2954,7 +2999,7 @@ class QueryByDataCardsAggPlugin(Resource):
                     user_id=user_id,  # 传入 user_id 用于用户隔离
                     relationship_data=trino_relationship_data,  # ✅ 修复：传入关系卡片数据
                 )
-                
+
                 # 直接返回Trino结果，不需要跨簇融合
                 # 但需要做一次深度清理，移除不可序列化/循环引用字段
                 clean_trino_cluster = {k: v for k, v in trino_result.items() if not k.startswith("_")}
@@ -3010,10 +3055,11 @@ class QueryByDataCardsAggPlugin(Resource):
                         "rewritten_question": rewritten_question
                     } if term_rewrite_performed else None
                 )
-                print(f"[查询日志] 术语展开状态: term_rewrite_performed={term_rewrite_performed}, processed_question={'有值' if (user_question if term_rewrite_performed else None) else 'None'}")
+                print(
+                    f"[查询日志] 术语展开状态: term_rewrite_performed={term_rewrite_performed}, processed_question={'有值' if (user_question if term_rewrite_performed else None) else 'None'}")
 
                 return format_response(payload, 200, "查询成功")
-                
+
             except ValueError as ve:
                 # 如果是连接配置问题，回退到传统分簇处理
                 if "未找到真正的Trino连接配置" in str(ve):
@@ -3081,7 +3127,7 @@ class QueryByDataCardsAggPlugin(Resource):
 
                     cluster_results.append(r)
                 except ValueError as ve:
-                    print(f"[agg] ⚠️ 簇 {idx+1} 执行失败（ValueError）: {str(ve)}")
+                    print(f"[agg] ⚠️ 簇 {idx + 1} 执行失败（ValueError）: {str(ve)}")
                     error_result = {
                         "db_type": db_type,
                         "connect_info_safe": {"type": db_type},
@@ -3097,7 +3143,7 @@ class QueryByDataCardsAggPlugin(Resource):
                 except Exception as e:
                     import traceback
                     error_detail = traceback.format_exc()
-                    print(f"[agg] ⚠️ 簇 {idx+1} 执行异常: {str(e)}")
+                    print(f"[agg] ⚠️ 簇 {idx + 1} 执行异常: {str(e)}")
                     print(f"[agg] 详细错误堆栈:\n{error_detail}")
 
                     user_friendly_msg = "查询执行失败"
@@ -3234,10 +3280,12 @@ class QueryByDataCardsAggPlugin(Resource):
                         }
 
             # 按原始顺序整理结果
-            cluster_results = [results_dict.get(i) for i in range(len(cluster_tasks)) if results_dict.get(i) is not None]
+            cluster_results = [results_dict.get(i) for i in range(len(cluster_tasks)) if
+                               results_dict.get(i) is not None]
 
             parallel_elapsed_ms = int((time_module.time() - parallel_start_time) * 1000)
-            print(f"[agg] 并行执行完成，耗时 {parallel_elapsed_ms}ms（串行预估耗时约 {parallel_elapsed_ms * max_workers}ms）")
+            print(
+                f"[agg] 并行执行完成，耗时 {parallel_elapsed_ms}ms（串行预估耗时约 {parallel_elapsed_ms * max_workers}ms）")
 
             # 汇总 LLM usage 和 metrics 信息
             for r in cluster_results:
@@ -3337,7 +3385,8 @@ class QueryByDataCardsAggPlugin(Resource):
                 datasource_ids=datasource_ids,
                 datasource_names=datasource_names,
                 table_names=table_names,
-                metrics={**metrics, "llm_fusion_ms": llm_fusion_result.get("fusion_time_ms", 0), "total_duration_ms": total_duration_ms},
+                metrics={**metrics, "llm_fusion_ms": llm_fusion_result.get("fusion_time_ms", 0),
+                         "total_duration_ms": total_duration_ms},
                 tokens=tokens,
                 result_count=len(final_rows),
                 quality=quality,
@@ -3355,8 +3404,9 @@ class QueryByDataCardsAggPlugin(Resource):
                     "rewritten_question": rewritten_question
                 } if term_rewrite_performed else None
             )
-            print(f"[查询日志] 术语展开状态: term_rewrite_performed={term_rewrite_performed}, processed_question={'有值' if (user_question if term_rewrite_performed else None) else 'None'}")
-            
+            print(
+                f"[查询日志] 术语展开状态: term_rewrite_performed={term_rewrite_performed}, processed_question={'有值' if (user_question if term_rewrite_performed else None) else 'None'}")
+
             return format_response(payload, 200, "success")
 
         # ==============================================================
@@ -3432,7 +3482,8 @@ class QueryByDataCardsAggPlugin(Resource):
                     "rewritten_question": rewritten_question
                 } if term_rewrite_performed else None
             )
-            print(f"[查询日志] 术语展开状态: term_rewrite_performed={term_rewrite_performed}, processed_question={'有值' if (user_question if term_rewrite_performed else None) else 'None'}")
+            print(
+                f"[查询日志] 术语展开状态: term_rewrite_performed={term_rewrite_performed}, processed_question={'有值' if (user_question if term_rewrite_performed else None) else 'None'}")
 
             return format_response(payload, 200, "success")
 
@@ -3449,12 +3500,12 @@ class QueryByDataCardsAggPlugin(Resource):
                     if col.get("name") == entity_key:
                         return True
             return False
-        
+
         entity_sets = []
         for r in cluster_results:
             has_ids = r.get("entity_ids") is not None and len(r.get("entity_ids") or []) > 0
             has_key = _has_entity_key_in_cluster(r, entity_key)
-            
+
             if has_ids and has_key:
                 entity_sets.append(set(r.get("entity_ids") or []))
                 print(f"[agg] 簇 {r.get('db_type')} 参与融合，entity_ids={r.get('entity_ids')}")
@@ -3488,95 +3539,96 @@ class QueryByDataCardsAggPlugin(Resource):
 
         # 6) 构造最终结果：直接从 cluster_results 中提取符合 final_ids 的行
         # 不需要回填查询，因为第一次查询已经返回了完整的数据（包括 JOIN 和 WHERE 条件）
-        
+
         # 6.0) 检测查询类型：是"明细列表查询"还是"聚合查询"
         # 明细列表查询：列出、显示、查询、展示 + 多个字段（如时间、地点等明细信息）
         # 聚合查询：统计、总和、平均、最大、最小、计数等
         def is_detail_list_query(user_question: str) -> bool:
             """
             判断是否是明细列表查询（需要保留多条记录），而不是聚合查询
-            
+
             明细列表查询的特征：
             1. 包含"列出"、"显示"、"查询"、"列举"等动词
             2. 包含多个明细字段（如时间、地点、教师、教室等）
             3. 不包含聚合关键词（如"总和"、"平均"、"统计"等）
-            
+
             聚合查询的特征：
             1. 包含聚合关键词（如"最"、"总"、"平均"、"统计"等）
             2. 通常只关注少数字段（如只关心"销量最好的产品名称和销量"）
             """
             q = user_question.lower()
-            
+
             # 明细列表关键词
             detail_keywords = ['列出', '显示', '查询', '列举', '展示', '查看', '有哪些', '都有什么']
             # 聚合关键词
-            agg_keywords = ['最高', '最低', '最大', '最小', '最多', '最少', '总和', '平均', '统计', '计数', '排名', '第一', '第二']
-            
+            agg_keywords = ['最高', '最低', '最大', '最小', '最多', '最少', '总和', '平均', '统计', '计数', '排名',
+                            '第一', '第二']
+
             # 时间/地点等明细字段关键词（这些通常意味着需要明细列表）
             detail_field_keywords = ['时间', '地点', '教室', '日期', '星期', '地址', '位置', '仓库', '负责人']
-            
+
             has_detail_verb = any(kw in q for kw in detail_keywords)
             has_agg_keyword = any(kw in q for kw in agg_keywords)
             has_detail_fields = any(kw in q for kw in detail_field_keywords)
-            
+
             # 如果有明细动词，且有明细字段，且没有聚合关键词 → 明细列表查询
             if has_detail_verb and has_detail_fields and not has_agg_keyword:
                 return True
-            
+
             # 如果有多个明细字段关键词（2个及以上），即使没有明确的动词 → 也可能是明细列表查询
             detail_field_count = sum(1 for kw in detail_field_keywords if kw in q)
             if detail_field_count >= 2 and not has_agg_keyword:
                 return True
-            
+
             return False
-        
+
         # 判断当前查询类型
         is_detail_query = is_detail_list_query(user_question)
         print(f"[agg] 查询类型检测：{'明细列表查询' if is_detail_query else '聚合查询'}")
-        
+
         rows_by_id = {}
         all_detail_rows = []  # 用于明细列表查询，保留所有记录
         fill_warnings = list(cluster_filter_warnings or [])
-        
+
         # 6.1) 收集每个簇的警告信息
         for r in cluster_results:
             db_type = r.get("db_type", "unknown")
             cluster_warnings = r.get("warnings", [])
-            
+
             # 添加簇级别的警告
             if cluster_warnings:
                 for w in cluster_warnings:
                     fill_warnings.append(f"[{db_type}] {w}")
-            
+
             # 添加跳过融合的原因
             has_rows = r.get("rows") and len(r.get("rows")) > 0
             has_entity_ids = r.get("entity_ids") and len(r.get("entity_ids")) > 0
             has_key = _has_entity_key_in_cluster(r, entity_key)
-            
+
             if not has_rows:
                 fill_warnings.append(f"[{db_type}] 无查询结果（跳过融合）")
             elif not has_entity_ids:
                 fill_warnings.append(f"[{db_type}] 结果中未包含实体键 '{entity_key}'（跳过融合）")
             elif not has_key:
                 fill_warnings.append(f"[{db_type}] 实体键 '{entity_key}' 不存在于表结构中（可能是别名，跳过融合）")
-        
+
         # 6.2) 根据查询类型，采用不同的融合策略
         field_conflicts = {}  # {entity_id: {field_name: [value1, value2, ...]}}
-        
+
         use_final_ids = len(final_ids) > 0
         fallback_row_counter = 0
 
         # 缓存每个簇的entity_key字段映射（避免重复查找）
         entity_key_field_cache = {}  # {簇索引: 实际字段名}
         entity_key_field = None  # 默认值，用于单簇场景
-        
+
         for r_idx, r in enumerate(cluster_results):
             # 只处理有查询结果的簇
             if not r.get("rows"):
                 continue
-            
+
             db_type = r.get("db_type", "unknown")
-            
+
             # 查找该簇中的entity_key对应字段（只查找一次）
             if r_idx not in entity_key_field_cache:
                 first_row = r.get("rows")[0] if r.get("rows") else {}
@@ -3587,9 +3639,9 @@ class QueryByDataCardsAggPlugin(Resource):
                 entity_key_field_cache[r_idx] = entity_key_field
                 if entity_key_field != entity_key:
                     print(f"[融合] 簇 {db_type}: entity_key='{entity_key}' 匹配到别名字段: '{entity_key_field}'")
-            
+
             entity_key_field = entity_key_field_cache[r_idx]
-            
+
             for row in r.get("rows"):
                 k = row.get(entity_key_field)  # 使用匹配到的字段名
 
@@ -3602,7 +3654,7 @@ class QueryByDataCardsAggPlugin(Resource):
                         fallback_row_counter += 1
                         k = f"__row_{fallback_row_counter}"
                     # 同时确保该占位键不会进入 final_ids（final_ids 已为空）
-                
+
                 if is_detail_query:
                     # 明细列表查询：保留所有记录，不去重
                     all_detail_rows.append(row.copy())
@@ -3623,10 +3675,10 @@ class QueryByDataCardsAggPlugin(Resource):
                                         field_conflicts[k][field] = [old_value]
                                     if new_value not in field_conflicts[k][field]:
                                         field_conflicts[k][field].append(new_value)
-                        
+
                         # 合并字段（后来的覆盖先前的）
                         rows_by_id[k].update(row)
-        
+
         # 6.3) 添加字段冲突警告（仅在聚合查询模式下）
         if not is_detail_query and field_conflicts:
             for entity_id, fields in field_conflicts.items():
@@ -3634,7 +3686,7 @@ class QueryByDataCardsAggPlugin(Resource):
                     fill_warnings.append(
                         f"[融合] 实体 {entity_key}={entity_id} 的字段 '{field_name}' 在多个簇中值不同：{values}（已采用最后一个簇的值）"
                     )
-        
+
         # 6.4) 检查融合结果是否为空
         if is_detail_query:
             if not all_detail_rows and final_ids:
@@ -3646,7 +3698,7 @@ class QueryByDataCardsAggPlugin(Resource):
                 fill_warnings.append(
                     f"[融合] 融合策略 '{merge_strategy}' 计算出 {len(final_ids)} 个实体ID，但无法从任何簇中提取到对应的完整行数据"
                 )
-        
+
         # 6.5) 过滤掉"空记录"：除了 entity_key 外，其他字段都是 NULL/0/空字符串的记录
         def _is_empty_record(row: dict, entity_key: str) -> bool:
             """
@@ -3685,18 +3737,18 @@ class QueryByDataCardsAggPlugin(Resource):
             non_key_fields = {k: v for k, v in row.items() if k != entity_key}
             if not non_key_fields:
                 return True
-            
+
             # 定义"无效值"：None、0、0.0、空字符串、False
             def is_invalid_value(v):
                 return v is None or v == 0 or v == 0.0 or v == "" or v is False
-            
+
             # 统计无效值的数量
             invalid_count = sum(1 for v in non_key_fields.values() if is_invalid_value(v))
-            
+
             # 情况 1：所有非 entity_key 字段都是无效值 → 空记录
             if invalid_count == len(non_key_fields):
                 return True
-            
+
             # 情况 2：大部分字段（>= 70%）是无效值 → 检查是否有有意义的值
             if invalid_count >= len(non_key_fields) * 0.7:
                 has_meaningful_value = False
@@ -3715,12 +3767,12 @@ class QueryByDataCardsAggPlugin(Resource):
                         elif not isinstance(v, (str, int, float)):
                             has_meaningful_value = True
                             break
-                
+
                 if not has_meaningful_value:
                     return True
-            
+
             return False
-        
+
         # 根据查询类型和融合策略，过滤空记录并生成最终结果
         #
         # 重要逻辑：
@@ -3835,8 +3887,10 @@ class QueryByDataCardsAggPlugin(Resource):
                 "rewritten_question": rewritten_question
             } if term_rewrite_performed else None
         )
-        print(f"[查询日志] 术语展开状态: term_rewrite_performed={term_rewrite_performed}, processed_question={'有值' if (user_question if term_rewrite_performed else None) else 'None'}")
+        print(
+            f"[查询日志] 术语展开状态: term_rewrite_performed={term_rewrite_performed}, processed_question={'有值' if (user_question if term_rewrite_performed else None) else 'None'}")
 
         return format_response(payload, 200, "success")
+
 
 api.add_resource(QueryByDataCardsAggPlugin, "/query_by_datacards_agg_plugin")
