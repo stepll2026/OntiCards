@@ -864,7 +864,7 @@ class RuleExecutor:
                         'violated_conditions': violated_list,
                         'rule_type': rule.rule_type,
                         'condition_mode': 'AND'
-                    }] 
+                    }]
 
             # 策略2：无 sql_text，兜底动态生成样本查询
             condition = rule.condition_expr or ''
@@ -1012,7 +1012,7 @@ class RuleExecutor:
                                     'violated_conditions': all_violated_conditions,
                                     'condition_mode': condition_mode,
                                     'rule_type': rule.rule_type
-                                }] 
+                                }]
                 except Exception as e:
                     print(f"[WARN] 多条件样本查询失败: {str(e)}")
 
@@ -1104,7 +1104,7 @@ class RuleExecutor:
                     'sample_value': all_records,  # 数组形式，数据库完整原始记录（全字段）
                     'condition_expr': condition.strip() if condition.strip() else None,
                     'rule_type': rule.rule_type
-                }] 
+                }]
 
         except Exception as e:
             # 失败样例采集异常：打印详细错误（包含规则ID便于追溯），
@@ -1420,6 +1420,8 @@ class AuditExecutor:
         print(f"[基础检测] 开始扫描 {len(all_table_entries)} 张表/视图 ...")
 
         # 2. 一次性下发 DDL（仅 PG/MySQL/MSSQL 需要；Oracle/SQLite/Trino 自动 no-op）
+        #    注：data_audit.perform_data_audit 内置了 DDL 权限不足的兜底——
+        #        第一次安装失败时会自动切换到应用层统计，所以这里预下发失败也可继续。
         try:
             _da.load_data_audit_ddl(
                 self.engine,
@@ -1427,7 +1429,7 @@ class AuditExecutor:
                 mysql_database=self.db_name or (self.connect_info.get('database') if self.connect_info else None),
             )
         except Exception as e:
-            print(f"[WARN] 预下发 data_audit DDL 失败（部分数据库 DDL 是应用层兜底，影响有限）: {e}")
+            print(f"[WARN] 预下发 data_audit DDL 失败（perform_data_audit 内已具备应用层兜底，不影响最终结果）: {e}")
 
         all_audit_data = []
         for table_name, table_type in all_table_entries:

@@ -15,7 +15,7 @@ POST /console/api/data_audit
 """
 
 import re
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from flask import Blueprint, request
 from flask_restful import Resource, Api
@@ -52,24 +52,29 @@ _SQL_FILE_NAMES: Dict[str, str] = {
 
 _SPLIT_PATTERN = r"--@@split"
 
+
 def _ok(data): return {"code": 200, "msg": "success", "data": data}, 200
+
+
 def _bad(msg, code=400): return {"code": code, "msg": msg, "data": None}, 200
+
 
 def _normalize_db_type(s: str) -> str:
     s = (s or "").lower()
-    if s in ("postgres","postgresql","pg"): return "postgresql"
-    if s in ("mysql","mariadb"): return "mysql"
-    if s in ("mssql","sqlserver","sql_server"): return "mssql"
-    if s in ("oracle","ora"): return "oracle"
-    if s in ("sqlite","sqlite3"): return "sqlite"
+    if s in ("postgres", "postgresql", "pg"): return "postgresql"
+    if s in ("mysql", "mariadb"): return "mysql"
+    if s in ("mssql", "sqlserver", "sql_server"): return "mssql"
+    if s in ("oracle", "ora"): return "oracle"
+    if s in ("sqlite", "sqlite3"): return "sqlite"
     if s in ("trino",): return "trino"
     # 人大金仓（KingBase）- 基于 PostgreSQL 内核，标准化为 kingbase
-    if s in ("kingbase","kingbase8","kingbasees","人大金仓","金仓"): return "kingbase"
+    if s in ("kingbase", "kingbase8", "kingbasees", "人大金仓", "金仓"): return "kingbase"
     # OceanBase MySQL 模式租户（仅 MySQL 模式；Oracle 模式由探测逻辑拒绝）
-    if s in ("oceanbase","ob","oceanbase_mysql","oceanbase_mysql_mode","oceanbase-ce"): return "oceanbase"
+    if s in ("oceanbase", "ob", "oceanbase_mysql", "oceanbase_mysql_mode", "oceanbase-ce"): return "oceanbase"
     # 达梦 DM：标准化为 dm
-    if s in ("dm","dameng","达梦"): return "dm"
+    if s in ("dm", "dameng", "达梦"): return "dm"
     return s
+
 
 def _locate_sql_file(db_type: str) -> str:
     """按 db_type 查找对应的提示词名称（优先从数据库读取）。"""
@@ -81,6 +86,7 @@ def _locate_sql_file(db_type: str) -> str:
     if content is None:
         raise FileNotFoundError(f"未找到 {db_type} 的提示词内容")
     return file_name  # 返回名称而非路径，后续通过 prompt_manager 获取内容
+
 
 def _read_sql_chunks_from_file(db_type: str) -> List[str]:
     """读取提示词内容（从数据库优先，fallback到文件），并按 --@@split 切分为可执行语句段。"""
@@ -104,14 +110,15 @@ def _read_sql_chunks_from_file(db_type: str) -> List[str]:
             continue
         first = lines[0].strip().upper()
         # 过滤客户端控制语句与 SQL*Plus 结束符、以及纯注释块
-        if first.startswith("DELIMITER"):   # MySQL 客户端命令
+        if first.startswith("DELIMITER"):  # MySQL 客户端命令
             continue
-        if first == "/":                   # Oracle 单独一行的 /
+        if first == "/":  # Oracle 单独一行的 /
             continue
         if all((ln.strip().startswith("--") or ln.strip() == "") for ln in lines):
             continue
         filtered.append(s)
     return filtered
+
 
 def _exec_ddl_batch(engine: Engine, stmts: List[str], db_type: str, *, mysql_database: Optional[str] = None):
     """逐条执行 DDL；PG 需转义 %，MySQL 可先 USE 目标库；Oracle/达梦 需剔除 SQL*Plus 风格的 /。"""
@@ -129,6 +136,392 @@ def _exec_ddl_batch(engine: Engine, stmts: List[str], db_type: str, *, mysql_dat
             conn.exec_driver_sql(sql_to_run)
 
 
+# ============================================================
+# DDL 安装状态缓存 + 权限错误识别
+# ------------------------------------------------------------
+# 目的：让 data_audit 在低权限账号下也能跑通。
+#   - 第一次安装 DDL 时，如果失败原因是权限不足（MySQL 1370、PG 42501、
+#     MSSQL 262 等），把状态记为 "no_perm"，并自动切换到应用层统计；
+#   - 后续调用直接走应用层，不再尝试 DDL 安装，避免每次都报同样的错。
+#   - 若安装成功则记为 "ok"，跳过后续的 DDL 安装，直接调用存储过程。
+# ============================================================
+
+# 取值：None=未尝试, "ok"=安装成功, "no_perm"=权限不足走应用层
+_DDL_INSTALL_STATE: Dict[Tuple[int, str], str] = {}
+
+
+def _engine_state_key(engine: Engine, db_type: str) -> Tuple[int, str]:
+    """构造 DDL 安装状态的缓存 key。同一 engine 对象 + 同一 db_type 共享状态。"""
+    return (id(engine), db_type)
+
+
+def _is_ddl_permission_error(exc: Exception, db_type: str) -> bool:
+    """
+    判断异常是否属于「DDL 安装权限不足」。
+
+    触发场景（典型）：
+      - MySQL/OceanBase：用户缺少 ALTER ROUTINE 权限，无法 DROP PROCEDURE
+        → 报错码 1370 = ER_SP_ALTER_ROUTINE_NO_ACCESS
+      - PostgreSQL/KingBase：用户缺少 schema 上的 CREATE 权限
+        → 报错码 42501 = insufficient_privilege（permission denied）
+      - MSSQL：用户缺少 CREATE PROCEDURE 权限
+        → 报错码 262 / 229 等（permission denied on object）
+
+    若识别为权限错误，调用方应降级到应用层统计 _audit_*_direct。
+    """
+    msg = (str(exc) or "").lower()
+    if db_type in ("mysql", "oceanbase"):
+        # MySQL 1370 = ER_SP_ALTER_ROUTINE_NO_ACCESS
+        # OceanBase 沿用 MySQL 错误码
+        if "1370" in msg:
+            return True
+        if "alter routine" in msg and "denied" in msg:
+            return True
+        if "create routine" in msg and "denied" in msg:
+            return True
+        # 兜底：明显是 routine/privilege 组合
+        if "denied" in msg and "routine" in msg:
+            return True
+        return False
+    if db_type in ("postgresql", "kingbase"):
+        # PG 42501 = insufficient_privilege
+        if "42501" in msg:
+            return True
+        if "permission denied" in msg:
+            return True
+        # 创建函数/模式时的权限问题
+        if "must be owner" in msg:
+            return True
+        return False
+    if db_type == "mssql":
+        # MSSQL 常见权限错误码
+        if "262" in msg or "229" in msg:
+            return True
+        if "permission denied" in msg and ("procedure" in msg or "schema" in msg):
+            return True
+        if "create procedure" in msg and "denied" in msg:
+            return True
+        return False
+    return False
+
+
+# ============================================================
+# 应用层基础质检（DDL 权限不足时的兜底实现）
+# ------------------------------------------------------------
+# 语义与各 db 对应的 DDL 文件 libs/data_audit_ddl_sql/data_audit_<db>.txt
+# 完全一致；只是把存储过程内的循环用 Python 重写一遍，N+2 次往返换一次往返。
+# 适用于：MySQL / OceanBase / PostgreSQL / KingBase / MSSQL。
+# 不适用：Oracle / SQLite / Trino（已有等价 _audit_*_direct，不重复实现）。
+# ============================================================
+
+# 与 libs/data_audit_ddl_sql/data_audit_mysql.txt 第 17-19 行严格一致
+_MYSQL_CHAR_TYPES = (
+    "char", "varchar", "tinytext", "text", "mediumtext", "longtext", "enum", "set"
+)
+# 与 libs/data_audit_ddl_sql/data_audit_mssql.txt 第 30-32 行严格一致
+_MSSQL_CHAR_TYPES = (
+    "char", "nchar", "varchar", "nvarchar", "text", "ntext"
+)
+
+
+def _audit_mysql_direct(engine: Engine, schema: str, table: str) -> dict:
+    """
+    MySQL 应用层基础质检（DDL 权限不足时的兜底）。
+
+    统计语义与 libs/data_audit_ddl_sql/data_audit_mysql.txt 完全一致：
+      - total_rows    = COUNT(*) FROM `schema`.`table`
+      - null_count    = SUM(CASE WHEN `col` IS NULL THEN 1 ELSE 0 END)
+      - empty_str_count 仅对字符型（char/varchar/text/enum/set 等）统计：
+                         SUM(CASE WHEN `col` IS NOT NULL AND TRIM(`col`) = '' THEN 1 ELSE 0 END)
+      - missing_count = null_count + empty_str_count
+      - missing_pct   = ROUND(100.0 * missing_count / total_rows, 2)；total=0 时为 0
+
+    Args:
+        engine: SQLAlchemy Engine
+        schema: 数据库名（MySQL 中 schema == database）
+        table:  表名
+
+    Returns:
+        与 perform_data_audit 一致的 dict：{db_type, database, schema, table, report: [...]}
+    """
+    schema = (schema or "").strip()
+    table = (table or "").strip()
+    if not schema:
+        raise Exception("_audit_mysql_direct: 缺少 schema/database")
+    if not table:
+        raise Exception("_audit_mysql_direct: 缺少 table")
+
+    # MySQL 标识符引用：`db`.`table`，对反引号转义防止注入
+    qschema = schema.replace("`", "``")
+    qtable = table.replace("`", "``")
+    full_table_ref = f"`{qschema}`.`{qtable}`"
+
+    with engine.connect() as conn:
+        # 1) 总行数
+        total = conn.execute(text(f"SELECT COUNT(*) FROM {full_table_ref}")).scalar() or 0
+
+        # 2) 列信息（与 DDL information_schema.COLUMNS 同一来源）
+        cols = conn.execute(
+            text("""
+                 SELECT COLUMN_NAME, LOWER(DATA_TYPE) AS data_type_lc
+                 FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = :s
+                   AND TABLE_NAME = :t
+                 ORDER BY ORDINAL_POSITION
+                 """),
+            {"s": schema, "t": table},
+        ).fetchall()
+
+        report = []
+        for col_name, data_type_lc in cols:
+            qcol = col_name.replace("`", "``")
+            col_ref = f"`{qcol}`"
+            is_char = data_type_lc in _MYSQL_CHAR_TYPES
+
+            # 单次查询同时返回 null + empty，省一半往返
+            if is_char:
+                sql = text(f"""
+                    SELECT
+                      COALESCE(SUM(CASE WHEN {col_ref} IS NULL THEN 1 ELSE 0 END), 0) AS nulls,
+                      COALESCE(SUM(CASE WHEN {col_ref} IS NOT NULL AND TRIM({col_ref}) = '' THEN 1 ELSE 0 END), 0) AS empties
+                    FROM {full_table_ref}
+                """)
+            else:
+                sql = text(f"""
+                    SELECT
+                      COALESCE(SUM(CASE WHEN {col_ref} IS NULL THEN 1 ELSE 0 END), 0) AS nulls,
+                      0 AS empties
+                    FROM {full_table_ref}
+                """)
+            row = conn.execute(sql).first() or (0, 0)
+            null_count = int(row[0] or 0)
+            empty_count = int(row[1] or 0)
+            missing = null_count + empty_count
+            pct = 0.0 if total == 0 else round(100.0 * missing / int(total), 2)
+
+            report.append({
+                "column_name": col_name,
+                "data_type": data_type_lc,
+                "total_rows": int(total),
+                "null_count": null_count,
+                "empty_str_count": empty_count,
+                "missing_count": missing,
+                "missing_pct": float(pct),
+            })
+
+        report.sort(key=lambda x: (-x["missing_pct"], x["column_name"] or ""))
+
+        return {
+            "db_type": "mysql",
+            "database": schema,
+            "schema": schema,
+            "table": table,
+            "report": report,
+        }
+
+
+def _audit_oceanbase_direct(engine: Engine, schema: str, table: str) -> dict:
+    """
+    OceanBase MySQL 模式应用层基础质检（DDL 权限不足时的兜底）。
+
+    OceanBase 沿用 MySQL 协议与 information_schema，所以复用 MySQL 的统计 SQL，
+    仅返回的 db_type 标识为 oceanbase。
+    """
+    result = _audit_mysql_direct(engine, schema, table)
+    result["db_type"] = "oceanbase"
+    return result
+
+
+def _audit_postgresql_direct(engine: Engine, schema: str, table: str) -> dict:
+    """
+    PostgreSQL 应用层基础质检（DDL 权限不足时的兜底）。
+
+    统计语义与 libs/data_audit_ddl_sql/data_audit_postgre.txt 完全一致：
+      - 字符串类型判定：pg_type.typcategory = 'S'（与 DDL 第 39 行一致）
+      - null_count    = count(*) FILTER (WHERE col IS NULL)
+      - empty_str_count（仅字符型）
+                      = count(*) FILTER (WHERE col IS NOT NULL AND btrim(col) = '')
+      - missing_count = null + empty
+      - missing_pct   = round(100.0 * missing / total, 2)
+    """
+    schema = (schema or "public").strip() or "public"
+    table = (table or "").strip()
+    if not table:
+        raise Exception("_audit_postgresql_direct: 缺少 table")
+
+    qschema = schema.replace('"', '""')
+    qtable = table.replace('"', '""')
+
+    with engine.connect() as conn:
+        # 1) 总行数（用 format 防注入更稳妥，但这里表名已 sanitize，简化拼接）
+        total_sql = text(f'SELECT COUNT(*) FROM "{qschema}"."{qtable}"')
+        total = conn.execute(total_sql).scalar() or 0
+
+        # 2) 列信息 + typcategory（与 DDL 第 27-37 行一致）
+        cols = conn.execute(
+            text("""
+                 SELECT a.attname                                       AS column_name,
+                        pg_catalog.format_type(a.atttypid, a.atttypmod) AS data_type,
+                        t.typcategory                                   AS category
+                 FROM pg_catalog.pg_attribute a
+                          JOIN pg_catalog.pg_class c ON c.oid = a.attrelid
+                          JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+                          JOIN pg_catalog.pg_type t ON t.oid = a.atttypid
+                 WHERE n.nspname = :schema
+                   AND c.relname = :table
+                   AND a.attnum > 0
+                   AND NOT a.attisdropped
+                 ORDER BY a.attnum
+                 """),
+            {"schema": schema, "table": table},
+        ).fetchall()
+
+        report = []
+        for col_name, data_type, category in cols:
+            qcol = col_name.replace('"', '""')
+            col_ref = f'"{qcol}"'
+            is_string = (category == "S")
+
+            # 单次查询同时返回 null + empty（用 FILTER 子句，PG 原生语法）
+            if is_string:
+                sql = text(f"""
+                    SELECT
+                      count(*) FILTER (WHERE {col_ref} IS NULL) AS nulls,
+                      count(*) FILTER (WHERE {col_ref} IS NOT NULL AND btrim({col_ref}) = '') AS empties
+                    FROM "{qschema}"."{qtable}"
+                """)
+            else:
+                sql = text(f"""
+                    SELECT
+                      count(*) FILTER (WHERE {col_ref} IS NULL) AS nulls,
+                      0::bigint AS empties
+                    FROM "{qschema}"."{qtable}"
+                """)
+            row = conn.execute(sql).first() or (0, 0)
+            null_count = int(row[0] or 0)
+            empty_count = int(row[1] or 0)
+            missing = null_count + empty_count
+            pct = 0.0 if total == 0 else round(100.0 * missing / int(total), 2)
+
+            report.append({
+                "column_name": col_name,
+                "data_type": data_type,
+                "total_rows": int(total),
+                "null_count": null_count,
+                "empty_str_count": empty_count,
+                "missing_count": missing,
+                "missing_pct": float(pct),
+            })
+
+        report.sort(key=lambda x: (-x["missing_pct"], x["column_name"] or ""))
+
+        return {
+            "db_type": "postgresql",
+            "database": schema,
+            "schema": schema,
+            "table": table,
+            "report": report,
+        }
+
+
+def _audit_kingbase_direct(engine: Engine, schema: str, table: str) -> dict:
+    """
+    KingBase（人大金仓）应用层基础质检（DDL 权限不足时的兜底）。
+
+    KingBase 基于 PostgreSQL 内核，PG 语法 / information_schema / pg_catalog
+    都可直接复用，所以复用 PG 的统计 SQL，仅返回的 db_type 标识为 kingbase。
+    """
+    result = _audit_postgresql_direct(engine, schema, table)
+    result["db_type"] = "kingbase"
+    return result
+
+
+def _audit_mssql_direct(engine: Engine, schema: str, table: str) -> dict:
+    """
+    MSSQL 应用层基础质检（DDL 权限不足时的兜底）。
+
+    统计语义与 libs/data_audit_ddl_sql/data_audit_mssql.txt 完全一致：
+      - 字符型白名单：'char','nchar','varchar','nvarchar','text','ntext'
+        （与 DDL 第 30-32 行一致）
+      - null_count    = SUM(CASE WHEN col IS NULL THEN 1 ELSE 0 END)
+      - empty_str_count（仅字符型）：
+                         SUM(CASE WHEN col IS NOT NULL AND LEN(LTRIM(RTRIM(col))) = 0 THEN 1 ELSE 0 END)
+      - missing_count = null + empty
+      - missing_pct   = ROUND(100.0 * missing / total, 2)
+    """
+    schema = (schema or "dbo").strip() or "dbo"
+    table = (table or "").strip()
+    if not table:
+        raise Exception("_audit_mssql_direct: 缺少 table")
+
+    qschema = schema.replace("]", "]]")
+    qtable = table.replace("]", "]]")
+
+    with engine.connect() as conn:
+        # 1) 总行数
+        total_sql = text(f"SELECT COUNT(*) FROM [{qschema}].[{qtable}]")
+        total = conn.execute(total_sql).scalar() or 0
+
+        # 2) 列信息（sys.columns + sys.types，与 DDL 第 29-32 行一致）
+        cols = conn.execute(
+            text("""
+                 SELECT c.name, LOWER(t.name) AS data_type_lc
+                 FROM sys.columns c
+                          JOIN sys.types t ON t.user_type_id = c.user_type_id
+                 WHERE c.object_id = OBJECT_ID(QUOTENAME(:s) + '.' + QUOTENAME(:t))
+                 ORDER BY c.column_id
+                 """),
+            {"s": schema, "t": table},
+        ).fetchall()
+
+        report = []
+        for col_name, data_type_lc in cols:
+            qcol = col_name.replace("]", "]]")
+            col_ref = f"[{qcol}]"
+            is_char = data_type_lc in _MSSQL_CHAR_TYPES
+
+            # 单次查询同时返回 null + empty
+            if is_char:
+                sql = text(f"""
+                    SELECT
+                      COALESCE(SUM(CASE WHEN {col_ref} IS NULL THEN 1 ELSE 0 END), 0) AS nulls,
+                      COALESCE(SUM(CASE WHEN {col_ref} IS NOT NULL AND LEN(LTRIM(RTRIM({col_ref}))) = 0 THEN 1 ELSE 0 END), 0) AS empties
+                    FROM [{qschema}].[{qtable}]
+                """)
+            else:
+                sql = text(f"""
+                    SELECT
+                      COALESCE(SUM(CASE WHEN {col_ref} IS NULL THEN 1 ELSE 0 END), 0) AS nulls,
+                      0 AS empties
+                    FROM [{qschema}].[{qtable}]
+                """)
+            row = conn.execute(sql).first() or (0, 0)
+            null_count = int(row[0] or 0)
+            empty_count = int(row[1] or 0)
+            missing = null_count + empty_count
+            pct = 0.0 if total == 0 else round(100.0 * missing / int(total), 2)
+
+            report.append({
+                "column_name": col_name,
+                "data_type": data_type_lc,
+                "total_rows": int(total),
+                "null_count": null_count,
+                "empty_str_count": empty_count,
+                "missing_count": missing,
+                "missing_pct": float(pct),
+            })
+
+        report.sort(key=lambda x: (-x["missing_pct"], x["column_name"] or ""))
+
+        return {
+            "db_type": "mssql",
+            "database": schema,
+            "schema": schema,
+            "table": table,
+            "report": report,
+        }
+
+
 def load_data_audit_ddl(engine: Engine, db_type: str, *, mysql_database: Optional[str] = None) -> None:
     """
     一次性下发 data_audit 所需的 DDL（存储过程 / 函数）。
@@ -137,6 +530,12 @@ def load_data_audit_ddl(engine: Engine, db_type: str, *, mysql_database: Optiona
       因此可以反复调用；本函数适用于"批量扫描多张表只发一次 DDL"的场景。
     - Oracle / SQLite / Trino：DLL 由各自特殊路径处理，无需预下发；
       本函数对它们安全 no-op。
+
+    权限失败处理：
+      - 若 DDL 安装因权限问题失败（MySQL 1370、PG 42501、MSSQL 262/229 等），
+        会把状态记入模块级缓存 _DDL_INSTALL_STATE，后续 perform_data_audit 调用
+        将自动切换到应用层统计 _audit_*_direct，不再重复尝试 DDL 安装。
+      - 其它异常（非权限错误，如语法、连接问题）会原样抛出，不静默处理。
 
     Args:
         engine: SQLAlchemy Engine 对象
@@ -151,11 +550,31 @@ def load_data_audit_ddl(engine: Engine, db_type: str, *, mysql_database: Optiona
         # Oracle/SQLite/Trino 在 perform_data_audit 中走应用层统计，无需 DDL
         return
 
+    # 已知该 engine + db_type 已经确认无权限，跳过重复尝试
+    if _DDL_INSTALL_STATE.get(_engine_state_key(engine, db_type)) == "no_perm":
+        raise Exception(
+            f"{db_type} 该连接账号缺少 DDL 安装权限（先前已确认），"
+            f"请使用 perform_data_audit 的应用层兜底路径（_audit_*_direct）"
+        )
+
     stmts = _read_sql_chunks_from_file(db_type)
     if not stmts:
         raise Exception(f"{db_type} 的外置 SQL 脚本为空或未找到可执行语句")
 
-    _exec_ddl_batch(engine, stmts, db_type, mysql_database=mysql_database)
+    try:
+        _exec_ddl_batch(engine, stmts, db_type, mysql_database=mysql_database)
+        _DDL_INSTALL_STATE[_engine_state_key(engine, db_type)] = "ok"
+    except Exception as e:
+        # 仅权限错误才标记为 no_perm（让 perform_data_audit 切换到应用层），
+        # 其它错误（如 SQL 语法、连接断开）继续向上抛，不静默吞掉
+        if _is_ddl_permission_error(e, db_type):
+            _DDL_INSTALL_STATE[_engine_state_key(engine, db_type)] = "no_perm"
+            print(
+                f"[WARN] {db_type} data_audit DDL 安装权限不足（{e}），"
+                f"已切换到应用层基础质检（_audit_*_direct）。"
+                f"后续同连接的盘查将不再尝试 DDL 安装。"
+            )
+        raise
 
 
 def _call_data_audit_proc(engine: Engine, db_type: str, schema: str, table: str):
@@ -198,6 +617,7 @@ def _fetch_mappings(engine: Engine, sql: str, params: Optional[dict] = None) -> 
     with engine.begin() as conn:
         res: Result = conn.execute(text(sql), params or {})
         return [dict(row) for row in res.mappings().all()]
+
 
 # 核心方法封装（供其他接口整合调用）
 def perform_data_audit(engine, db_type, database_name, table_name, schema_name=None, connect_info=None):
@@ -281,26 +701,85 @@ def perform_data_audit(engine, db_type, database_name, table_name, schema_name=N
                 # 优先从连接信息中获取 catalog_type（如果有的话）
                 catalog_type = connect_info.get("catalog_type")
 
-            print(f"[DEBUG] Trino 数据盘查 - catalog: {catalog}, catalog_type: {catalog_type}, schema: {schema}, table: {table}")
+            print(
+                f"[DEBUG] Trino 数据盘查 - catalog: {catalog}, catalog_type: {catalog_type}, schema: {schema}, table: {table}")
             return _audit_trino_direct(engine, catalog, schema, table, catalog_type=catalog_type)
 
-        # 其它库：先执行 DDL（函数/存储过程创建），再调用
+        # 其它库：先看 DDL 安装状态，按需降级到应用层统计
+        # _DDL_INSTALL_STATE 由 load_data_audit_ddl 维护，本函数也会写入，
+        # 这样同一 engine 后续调用会跳过 DDL 安装直接走应用层（或直接走存储过程）。
+        state_key = _engine_state_key(engine, db_type)
+        install_state = _DDL_INSTALL_STATE.get(state_key)
+
+        # helper：拿到当前 db_type 的 schema 参数（与下方 proc 调用保持完全一致）
+        def _resolve_fallback_schema() -> str:
+            if db_type in ("mysql", "oceanbase"):
+                return (
+                        schema_name
+                        or database_name
+                        or (connect_info.get("database") if connect_info else None)
+                        or ""
+                )
+            if db_type in ("postgresql", "kingbase"):
+                return schema_name or "public"
+            if db_type == "mssql":
+                return schema_name or "dbo"
+            return schema_name or ""
+
+        # 1) 已经确认无权限 → 直接走应用层统计，绕开 DDL/存储过程
+        if install_state == "no_perm":
+            if db_type == "mysql":
+                return _audit_mysql_direct(engine, _resolve_fallback_schema(), table)
+            if db_type == "oceanbase":
+                return _audit_oceanbase_direct(engine, _resolve_fallback_schema(), table)
+            if db_type == "postgresql":
+                return _audit_postgresql_direct(engine, _resolve_fallback_schema(), table)
+            if db_type == "kingbase":
+                return _audit_kingbase_direct(engine, _resolve_fallback_schema(), table)
+            if db_type == "mssql":
+                return _audit_mssql_direct(engine, _resolve_fallback_schema(), table)
+            # dm / 其它类型暂不提供应用层兜底，走原路径
+
+        # 2) 尝试 DDL 安装
         stmts = _read_sql_chunks_from_file(db_type)
         if not stmts:
             raise Exception(f"{db_type} 的外置 SQL 脚本为空或未找到可执行语句")
 
-        _exec_ddl_batch(
-            engine, stmts, db_type,
-            mysql_database=(database_name or (connect_info.get("database") if connect_info else None))
-        )
+        try:
+            _exec_ddl_batch(
+                engine, stmts, db_type,
+                mysql_database=(database_name or (connect_info.get("database") if connect_info else None))
+            )
+            _DDL_INSTALL_STATE[state_key] = "ok"
+        except Exception as e:
+            # 仅权限错误才静默降级到应用层；其它错误（语法、连接等）继续向上抛
+            if _is_ddl_permission_error(e, db_type):
+                _DDL_INSTALL_STATE[state_key] = "no_perm"
+                print(
+                    f"[WARN] {db_type} data_audit DDL 安装权限不足（{e}），"
+                    f"本次结果来自应用层基础质检（_audit_*_direct），"
+                    f"后续同连接的盘查将不再尝试 DDL 安装。"
+                )
+                if db_type == "mysql":
+                    return _audit_mysql_direct(engine, _resolve_fallback_schema(), table)
+                if db_type == "oceanbase":
+                    return _audit_oceanbase_direct(engine, _resolve_fallback_schema(), table)
+                if db_type == "postgresql":
+                    return _audit_postgresql_direct(engine, _resolve_fallback_schema(), table)
+                if db_type == "kingbase":
+                    return _audit_kingbase_direct(engine, _resolve_fallback_schema(), table)
+                if db_type == "mssql":
+                    return _audit_mssql_direct(engine, _resolve_fallback_schema(), table)
+                # dm：暂未提供应用层兜底，继续抛出
+            raise
 
         # 调用并取结果
         if db_type == "postgresql" or db_type == "kingbase":
             schema = schema_name or "public"
             rows = _fetch_mappings(engine,
-                "SELECT * FROM data_audit(:s, :t)",
-                {"s": schema, "t": table}
-            )
+                                   "SELECT * FROM data_audit(:s, :t)",
+                                   {"s": schema, "t": table}
+                                   )
 
         elif db_type == "mysql":
             schema = schema_name or database_name or (connect_info.get("database") if connect_info else None)
@@ -326,9 +805,9 @@ def perform_data_audit(engine, db_type, database_name, table_name, schema_name=N
         elif db_type == "mssql":
             schema = schema_name or "dbo"
             rows = _fetch_mappings(engine,
-                "EXEC dbo.data_audit @schema=:s, @table=:t",
-                {"s": schema, "t": table}
-            )
+                                   "EXEC dbo.data_audit @schema=:s, @table=:t",
+                                   {"s": schema, "t": table}
+                                   )
 
         elif db_type == "dm":
             # 达梦 DM：先下发过程 DDL，再调用过程返回结果集
@@ -377,9 +856,9 @@ def perform_data_audit(engine, db_type, database_name, table_name, schema_name=N
     except Exception as e:
         raise Exception(f"异常：{str(e)}")
 
+
 # 接口测试资源类
 class DataAuditAPI(Resource):
-
     """POST /console/api/data_audit"""
 
     def post(self):
@@ -425,6 +904,7 @@ class DataAuditAPI(Resource):
 
         except Exception as e:
             return _bad(str(e))
+
 
 # ---------- ORACLE：涉及复杂的表空间和权限控制，容易导致盘点审计的sql语句执行报错，这里直接在代码逻辑层统计 ----------
 def _audit_oracle_direct(engine: Engine, owner: str, table: str, database_name: str = None):
@@ -523,20 +1003,23 @@ def _audit_oracle_direct(engine: Engine, owner: str, table: str, database_name: 
             "report": report
         }
 
+
 # ---------- TRINO：直接在应用层统计，类似 Oracle 的处理方式 ----------
 def _is_trino_transient_conn_error(e: Exception) -> bool:
     msg = str(e).lower()
     # 覆盖你日志里的关键特征：JDBC_ERROR / connection attempt failed
     return (
-        "jdbc_error" in msg
-        or "connection attempt failed" in msg
-        or "server disconnected" in msg
-        or "connection refused" in msg
-        or "connection reset" in msg
-        or "timed out" in msg
+            "jdbc_error" in msg
+            or "connection attempt failed" in msg
+            or "server disconnected" in msg
+            or "connection refused" in msg
+            or "connection reset" in msg
+            or "timed out" in msg
     )
 
-def _trino_scalar_with_retry(engine: Engine, sql_text, params: dict | None = None, *, retries: int = 2, sleep_sec: float = 0.3):
+
+def _trino_scalar_with_retry(engine: Engine, sql_text, params: dict | None = None, *, retries: int = 2,
+                             sleep_sec: float = 0.3):
     """
     只给 Trino 盘查用的轻量重试：
     - 遇到疑似瞬时连接错误：关闭本次连接，重新开连接重试
@@ -554,6 +1037,7 @@ def _trino_scalar_with_retry(engine: Engine, sql_text, params: dict | None = Non
             time.sleep(sleep_sec * (i + 1))
     raise last
 
+
 def _audit_trino_direct(engine: Engine, catalog: str, schema: str, table: str, catalog_type: str = None):
     """
     Trino 版数据盘查：不使用存储过程，直接应用层统计。
@@ -566,9 +1050,9 @@ def _audit_trino_direct(engine: Engine, catalog: str, schema: str, table: str, c
         catalog_type = catalog.lower()
     else:
         catalog_type = catalog_type.lower()
-        
+
     print(f"[DEBUG] Trino 数据盘查 - catalog: {catalog}, 使用的 catalog_type: {catalog_type}")
-    
+
     with engine.begin() as conn:
         # 1) 总行数
         total_sql = text(f'SELECT COUNT(*) FROM {catalog}.{schema}.{table}')
@@ -577,7 +1061,7 @@ def _audit_trino_direct(engine: Engine, catalog: str, schema: str, table: str, c
         # 2) 列信息 - 对于MSSQL，参考正常MSSQL的实现方式
         if catalog_type in ('mssql', 'sqlserver'):
             return _audit_trino_mssql_like(engine, catalog, schema, table, total)
-        
+
         # 其他catalog类型的通用处理
         # 根据 catalog 类型确定字段名引号策略
         def quote_column(col_name: str) -> str:
@@ -602,21 +1086,21 @@ def _audit_trino_direct(engine: Engine, catalog: str, schema: str, table: str, c
         report = []
         for col_name, data_type in cols:
             print(f"[DEBUG] 处理字段: {col_name}, 类型: {data_type}")
-            
+
             # 判断数据类型
             data_type_lower = data_type.lower()
             is_array = 'array(' in data_type_lower
             is_string = any(t in data_type_lower for t in ['char', 'text', 'varchar'])
-            
+
             # 为字段名添加合适的引号
             quoted_col_name = quote_column(col_name)
-            
+
             # 3) NULL 数
             null_sql = text(f'''
                 SELECT COUNT(*) FROM {catalog}.{schema}.{table}
                 WHERE {quoted_col_name} IS NULL
             ''')
-            
+
             try:
                 null_count = _trino_scalar_with_retry(engine, null_sql) or 0
             except Exception as e:
@@ -625,7 +1109,7 @@ def _audit_trino_direct(engine: Engine, catalog: str, schema: str, table: str, c
 
             # 4) 空字符串数
             empty_count = 0
-            
+
             # 数组类型字段的特殊处理
             if is_array:
                 try:
@@ -638,7 +1122,7 @@ def _audit_trino_direct(engine: Engine, catalog: str, schema: str, table: str, c
                 except Exception as e:
                     print(f"[WARN] Trino 数组字段 {col_name} 空数组检查失败，跳过: {e}")
                     empty_count = 0
-            
+
             # 普通字符串类型字段的处理
             elif is_string:
                 try:
@@ -662,9 +1146,9 @@ def _audit_trino_direct(engine: Engine, catalog: str, schema: str, table: str, c
                             SELECT COUNT(*) FROM {catalog}.{schema}.{table}
                             WHERE {quoted_col_name} = ''
                         ''')
-                    
+
                     empty_count = _trino_scalar_with_retry(engine, empty_sql) or 0
-                    
+
                 except Exception as e:
                     print(f"[WARN] Trino 字段 {col_name} 空字符串检查失败，跳过: {e}")
                     empty_count = 0
@@ -699,11 +1183,11 @@ def _audit_trino_mssql_like(engine: Engine, catalog: str, schema: str, table: st
     参考正常MSSQL存储过程的逻辑，使用动态SQL和CASE WHEN的方式
     """
     print(f"[DEBUG] 使用MSSQL专用盘查逻辑 - catalog: {catalog}, schema: {schema}, table: {table}")
-    
+
     with engine.begin() as conn:
         # 首先验证数据的真实情况
         print(f"[DEBUG] 验证表数据 - 总行数: {total}")
-        
+
         # 直接查看每个字段的实际数据内容
         cols_sql = text(f"""
             SELECT column_name, data_type
@@ -712,7 +1196,7 @@ def _audit_trino_mssql_like(engine: Engine, catalog: str, schema: str, table: st
             ORDER BY ordinal_position
         """)
         cols_preview = conn.execute(cols_sql, {"schema": schema, "table": table}).fetchall()
-        
+
         for col_name, _ in cols_preview:
             try:
                 # 直接查看字段的实际值
@@ -721,7 +1205,7 @@ def _audit_trino_mssql_like(engine: Engine, catalog: str, schema: str, table: st
                 print(f"[DEBUG] 字段 {col_name} 实际值示例: {[row[0] for row in values]}")
             except Exception as e:
                 print(f"[DEBUG] 无法获取字段 {col_name} 的值: {e}")
-        
+
         # 获取字段列表 - 使用information_schema
         cols_sql = text(f"""
             SELECT column_name, data_type
@@ -734,20 +1218,21 @@ def _audit_trino_mssql_like(engine: Engine, catalog: str, schema: str, table: st
         report = []
         for col_name, data_type in cols:
             print(f"[DEBUG] 处理字段: {col_name}, 类型: {data_type}")
-            
+
             # 判断是否为字符串类型（参考MSSQL存储过程的逻辑）
             data_type_lower = data_type.lower()
-            is_string_type = any(t in data_type_lower for t in ['char', 'nchar', 'varchar', 'nvarchar', 'text', 'ntext'])
-            
+            is_string_type = any(
+                t in data_type_lower for t in ['char', 'nchar', 'varchar', 'nvarchar', 'text', 'ntext'])
+
             # 使用方括号引用字段名（MSSQL风格）
             quoted_col_name = f'[{col_name}]'
-            
+
             # 使用最基本的方式检查NULL值
             print(f"[DEBUG] 使用基础方式检查字段 {col_name}")
-            
+
             # 针对数组类型的NULL检查 - 检查数组元素是否为NULL
             null_count = 0
-            
+
             try:
                 if 'integer' in data_type_lower:
                     # 对于整数数组，检查数组第一个元素是否为NULL
@@ -767,21 +1252,21 @@ def _audit_trino_mssql_like(engine: Engine, catalog: str, schema: str, table: st
                         AND cardinality({quoted_col_name}) > 0 
                         AND {quoted_col_name}[1] IS NULL
                     ''')
-                
+
                 null_count = conn.execute(null_sql).scalar() or 0
                 print(f"[DEBUG] 字段 {col_name} 数组元素NULL检查: {null_count}")
-                
+
             except Exception as e:
                 print(f"[DEBUG] 字段 {col_name} 数组元素NULL检查失败: {e}")
                 null_count = 0
-            
+
             print(f"[DEBUG] 字段 {col_name} 最终NULL计数: {null_count}")
 
             # 对于字符串字段，检查空字符串和空格
             empty_count = 0
             if is_string_type:
                 print(f"[DEBUG] 字段 {col_name} 是字符串类型，检查空字符串和空格")
-                
+
                 # 策略1: 检查数组第一个元素是否为空字符串
                 try:
                     empty_string_sql = text(f'''
@@ -796,7 +1281,7 @@ def _audit_trino_mssql_like(engine: Engine, catalog: str, schema: str, table: st
                     empty_count += empty_string_count
                 except Exception as e:
                     print(f"[DEBUG] 字段 {col_name} 空字符串检查失败: {e}")
-                
+
                 # 策略2: 检查数组第一个元素是否为空格（TRIM后为空）
                 try:
                     trim_empty_sql = text(f'''
@@ -812,7 +1297,7 @@ def _audit_trino_mssql_like(engine: Engine, catalog: str, schema: str, table: st
                     empty_count += trim_empty_count
                 except Exception as e:
                     print(f"[DEBUG] 字段 {col_name} 空格检查失败: {e}")
-                    
+
                 print(f"[DEBUG] 字段 {col_name} 最终空字符串计数: {empty_count}")
 
             missing = int(null_count) + int(empty_count)
@@ -837,6 +1322,7 @@ def _audit_trino_mssql_like(engine: Engine, catalog: str, schema: str, table: st
             "table": table,
             "report": report
         }
+
 
 # ---------- SQLite：读取"伪 SQL 文件"，在应用层循环执行 ----------
 def _handle_sqlite_audit(engine: Engine, table: str):
@@ -917,6 +1403,7 @@ def _handle_sqlite_audit(engine: Engine, table: str):
             "table": table,
             "report": report
         }
+
 
 # 资源接口注册
 api.add_resource(DataAuditAPI, "/data_audit")
