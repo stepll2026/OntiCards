@@ -175,15 +175,30 @@ def _get_friendly_sql_error_message(e: Exception, rule: GovernanceRule = None) -
         hint = (f"执行失败，目标表/视图/对象 '{target}' 不存在"
                 if target else "执行失败，目标表/视图不存在")
 
-    # 3) 列 / 字段不存在
+    # 3) 列 / 字段不存在（覆盖各 DB 方言：PG "column does not exist"、
+    #    MySQL "Unknown column"、MSSQL "Invalid column name"、
+    #    SQLite "no such column"、Trino "column not found"、Oracle ORA-00904）
     elif (('column' in err_lower or 'field' in err_lower or 'ora-00904' in err_lower)
             and ('does not exist' in err_lower or 'was not found' in err_lower
-                 or 'cannot be found' in err_lower or 'invalid identifier' in err_lower)):
+                 or 'cannot be found' in err_lower or 'invalid identifier' in err_lower
+                 or 'unknown column' in err_lower or 'unknown field' in err_lower
+                 or 'invalid column name' in err_lower or 'no such column' in err_lower
+                 or 'column not found' in err_lower)):
+        # PG/Trino/Oracle 风格: column "xxx" does not exist / invalid identifier
         m = re.search(
             r'(?:column|field)\s*["\']?([^"\']+?)["\']?\s+'
-            r'(?:does not exist|was not found|cannot be found|invalid identifier)',
+            r'(?:does not exist|was not found|cannot be found|invalid identifier|not found)',
             err_lower
         )
+        # MySQL 风格: Unknown column 'xxx'
+        if not m:
+            m = re.search(r"unknown column\s+['\"]([^'\"]+)['\"]", err_lower)
+        # SQLite: no such column: xxx
+        if not m:
+            m = re.search(r'no such column:\s*([^\s\'"]+)', err_lower)
+        # MSSQL: Invalid column name 'xxx'
+        if not m:
+            m = re.search(r"invalid column name\s+['\"]([^'\"]+)['\"]", err_lower)
         # ORA-00904 错误码格式: ORA-00904: "XXX": invalid identifier
         if not m:
             m = re.search(r'ora-00904:\s*"?([^"\']+?)"?', err_lower)
