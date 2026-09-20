@@ -32,6 +32,7 @@ from controllers.query.sql_join_utils import (
     filter_relationship_data_by_tables, merge_relationship_data
 )
 from controllers.query.sql_from_guard import iter_from_table_refs
+from controllers.query.sql_join_scope import JoinAliasScopeError, validate_join_alias_scope
 from controllers.query.sql_prompt_loader import load_prompt, render_prompt
 from controllers.datacard.data_card_db_api import get_data_card_by_doc_id
 from controllers.weaviate_db_tool.weaviate_api import search_vector
@@ -51,6 +52,121 @@ api = Api(query_by_datacards_agg)
 
 
 # ---- 简单工具 ----
+_JOIN_SCOPE_DIALECTS = {"postgresql", "postgres", "pgsql", "kingbase", "kingbasees"}
+_JOIN_SCOPE_RULES = """
+
+【JOIN 作用域约束（必须遵守）】
+逐个检查 JOIN 的 ON 条件：只能引用该 JOIN 左右输入中已经可见的关系别名，
+以及当前子查询依法可见的外层别名；不得引用后续 JOIN 才声明的别名。
+括号 JOIN、逗号分隔的 FROM 项、CTE 和子查询具有各自的作用域，不能只按全文别名判断。
+修正时保持原查询的业务含义、INNER/LEFT/RIGHT/FULL JOIN 类型、关联条件及 ON/WHERE 条件位置。
+不得通过删除关联条件、改成 CROSS JOIN、移动外连接过滤条件或更换 JOIN 类型来消除错误。
+只使用给定表字段白名单，重新输出完整的单条只读 SQL。
+"""
+
+
+def _append_join_scope_rules(prompt: str, db_type: str) -> str:
+    if (db_type or "").strip().lower() in _JOIN_SCOPE_DIALECTS:
+        if _JOIN_SCOPE_RULES not in prompt:
+            return prompt + _JOIN_SCOPE_RULES
+    return prompt
+
+
+def _sql_error_details(error: Exception) -> tuple[str, str | None]:
+    """Prefer driver diagnostics; do not copy SQLAlchemy SQL/parameter dumps into a retry."""
+    original = getattr(error, "orig", None) or error
+    diagnostic = getattr(original, "diag", None)
+    message = getattr(diagnostic, "message_primary", None) or str(original)
+    message = re.split(r"\n\[(?:SQL|parameters):", message, maxsplit=1)[0]
+    sqlstate = getattr(original, "sqlstate", None) or getattr(original, "pgcode", None)
+    return message[:2000], sqlstate
+
+
+def _classify_sql_execution_error(error: Exception, db_type: str) -> dict:
+    message, sqlstate = _sql_error_details(error)
+    lowered = message.lower()
+    is_pg = (db_type or "").strip().lower() in _JOIN_SCOPE_DIALECTS
+    alias_error = is_pg and sqlstate in (None, "42P01", "42P10") and any(fragment in lowered for fragment in (
+        "missing from-clause entry", "invalid reference to from-clause entry",
+    ))
+    patterns = (
+        "invalid input syntax", "cannot be cast", "does not exist", "ambiguous column",
+        "column reference", "syntax error", "division by zero", "overflow",
+    )
+    # 42P01 also means a missing physical relation: it is not proof of an alias scope error.
+    code = "JOIN_ALIAS_OUT_OF_SCOPE" if alias_error else (
+        "SQL_UNDEFINED_RELATION" if is_pg and sqlstate == "42P01" else "SQL_EXECUTION_ERROR"
+    )
+    return {
+        "message": message, "sqlstate": sqlstate, "code": code,
+        "retryable": alias_error or any(p in lowered for p in patterns) or (
+            is_pg and sqlstate == "42P01"
+        ),
+    }
+
+
+def _build_sql_retry_prompt(prompt: str, db_type: str, failed_sql: str,
+                            error_message: str, retry_template: str | None = None) -> str:
+    """Keep the failing attempt explicit even when the database stores an older template."""
+    if retry_template is None:
+        retry_template = load_prompt("retry_execution_error.txt")
+    retry_hint = render_prompt(retry_template, error_msg=error_message, failed_sql=failed_sql)
+    if "{{failed_sql}}" not in retry_template:
+        retry_hint += "\n【本次失败 SQL】\n```sql\n" + failed_sql + "\n```\n"
+    if "{{error_msg}}" not in retry_template:
+        retry_hint += "\n【本次执行错误】\n" + error_message + "\n"
+    return _append_join_scope_rules(prompt + "\n" + retry_hint, db_type)
+
+
+def _all_clusters_failed(cluster_results: list[dict]) -> bool:
+    # A successful SELECT returning zero rows remains a success.
+    return bool(cluster_results) and all(bool(result.get("error")) for result in cluster_results)
+
+
+def _load_sql_retry_templates() -> dict[str, str]:
+    """Snapshot retry templates in the request thread before dispatching workers."""
+    templates = {}
+    for filename in ("retry_execution_error.txt", "retry_whitelist_error.txt"):
+        try:
+            templates[filename] = load_prompt(filename)
+        except Exception as exc:
+            # Keep workers independent of Flask context even when loading a custom template fails.
+            print(f"[agg] 重试提示词读取失败 ({filename}): {type(exc).__name__}，使用通用修正规则")
+            templates[filename] = "请根据错误修正本次失败 SQL，保持业务条件不变，只返回完整 SQL。"
+    return templates
+
+
+def _retry_sql_generation(prompt: str, db_type: str, failed_sql: str, error_message: str,
+                          llm_usage: dict, model_config_dict: dict = None,
+                          retry_templates: dict = None,
+                          template_name: str = "retry_execution_error.txt",
+                          template_values: dict = None) -> tuple[str | None, str | None]:
+    """Return corrected SQL or a diagnostic, preserving the failed query on model errors."""
+    try:
+        if retry_templates is None:
+            retry_template = load_prompt(template_name)
+        else:
+            # Do not consult the database/cache from a worker, including after cache invalidation.
+            retry_template = retry_templates.get(template_name) or "请修正 SQL，保持业务条件不变。"
+        retry_template = render_prompt(retry_template, **(template_values or {}))
+        retry_prompt = _build_sql_retry_prompt(
+            prompt, db_type, failed_sql, error_message, retry_template=retry_template)
+        content, retry_usage = qian_wen_llm_with_usage(
+            retry_prompt, stream_type=False, model_config_dict=model_config_dict)
+        # Count every returned generation, including a refusal/non-SQL response.
+        for key in ("prompt_tokens", "completion_tokens", "total_tokens", "generation_ms"):
+            llm_usage[key] = (llm_usage.get(key) or 0) + ((retry_usage or {}).get(key) or 0)
+        parsed_retry = _extract_sql_from_llm_text(content)
+        if parsed_retry["kind"] == "sql":
+            corrected_sql = _strip_code_fences(parsed_retry["text"])
+            if corrected_sql:
+                return corrected_sql, None
+        return None, "模型未返回可执行 SQL，已停止自动修正"
+    except Exception as exc:
+        # Exception text from an HTTP client may contain credentials; retain its type only.
+        return None, f"模型 SQL 修正失败（{type(exc).__name__}）"
+
+
 def _strip_code_fences(s: str) -> str:
     """
     去掉 Markdown 代码围栏：```sql ... ``` / ``` ... ```
@@ -1425,7 +1541,8 @@ def _should_use_llm_fusion(cluster_results: List[dict]) -> bool:
 
 def _exec_cluster_parallel(cluster_idx: int, db_type: str, connect_info: dict,
                            tables: List[dict], entity_key: str, relationship_data: dict = None,
-                           user_question: str = "", model_config_dict: dict = None) -> Tuple[int, dict]:
+                           user_question: str = "", model_config_dict: dict = None,
+                           retry_templates: dict = None) -> Tuple[int, dict]:
     """
     并行执行簇的包装函数（用于 ThreadPoolExecutor）
 
@@ -1454,7 +1571,8 @@ def _exec_cluster_parallel(cluster_idx: int, db_type: str, connect_info: dict,
             tables=tables,
             entity_key=entity_key,
             relationship_data=relationship_data,
-            model_config_dict=model_config_dict  # 传递模型配置
+            model_config_dict=model_config_dict,  # 传递模型配置
+            retry_templates=retry_templates,
         )
 
         elapsed_ms = int((time_module.time() - start_time) * 1000)
@@ -1648,7 +1766,8 @@ def build_cluster_tables(tables: list[dict]) -> list[dict]:
 
 def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                   tables: List[dict], entity_key: str, relationship_data: dict = None,
-                  debug: bool = False, model_config_dict: dict = None) -> dict:
+                  debug: bool = False, model_config_dict: dict = None,
+                  retry_templates: dict = None) -> dict:
     """
     - 从对应方言 txt 加载模板
     - 渲染【白名单表字段】【允许关系】【关系卡片信息】
@@ -1715,10 +1834,13 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
         relationship_cards_info=relationship_cards_info,
         entity_key=entity_key
     )
+    # Database/cached templates may predate the JOIN scope rule; enforce it in code as well.
+    prompt = _append_join_scope_rules(prompt, db_type)
     print(f"[_exec_cluster][{db_type}] 提示词总长度: {len(prompt)} 字符")
 
     print(f"[_exec_cluster][{db_type}] 开始调用LLM生成SQL...")
     content, llm_usage = qian_wen_llm_with_usage(prompt, stream_type=False, model_config_dict=model_config_dict)
+    llm_usage = dict(llm_usage or {})
     print(f"[_exec_cluster][{db_type}] LLM返回内容长度: {len(content)} 字符")
 
     # 先解析 LLM 输出的"类型"
@@ -1744,6 +1866,8 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
             "rows": [],
             "entity_ids": [],
             "note": parsed.get("text", ""),
+            "error": "模型未返回可执行 SQL",
+            "error_code": "MODEL_SQL_MISSING",
             "warnings": ["模型未返回可执行 SQL（已跳过该簇）。"],
             "_llm_usage": llm_usage,  # LLM usage 信息
             "_sql_execution_ms": 0  # 未执行 SQL 时为 0
@@ -1816,6 +1940,8 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
             "rows": [],
             "entity_ids": [],
             "note": f"LLM生成的SQL使用了非白名单表 {', '.join(invalid_tables)}，当前白名单仅包含 {', '.join([t.get('table_name') for t in tables])}。可能需要其他数据源提供这些表的信息。",
+            "error": f"SQL包含非白名单表: {', '.join(invalid_tables)}",
+            "error_code": "SQL_TABLE_NOT_ALLOWED",
             "warnings": [f"SQL包含非白名单表: {', '.join(invalid_tables)}，已跳过执行。"],
             "_llm_usage": llm_usage,  # LLM usage 信息
             "_sql_execution_ms": 0  # 未执行 SQL 时为 0
@@ -1838,6 +1964,8 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
             "rows": [],
             "entity_ids": [],
             "note": "模型返回的 SQL 缺少 FROM/JOIN，已跳过该簇。",
+            "error": "模型返回的 SQL 缺少 FROM/JOIN",
+            "error_code": "SQL_FROM_MISSING",
             "warnings": ["模型未引用任何表（缺少 FROM/JOIN），已跳过该簇。"],
             "_llm_usage": llm_usage,  # LLM usage 信息
             "_sql_execution_ms": 0  # 未执行 SQL 时为 0
@@ -1852,10 +1980,11 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
     last_error = None
     final_sql = sql_text
     success = False
+    retry_attempts = 0
 
     for attempt in range(max_retries + 1):
         if attempt > 0:
-            print(f"[_exec_cluster][{db_type}] 🔄 SQL白名单校验失败，尝试第 {attempt} 次重试...")
+            print(f"[_exec_cluster][{db_type}] 🔄 尝试第 {attempt} 次 SQL 修正...")
 
         print(f"[_exec_cluster][{db_type}] 开始执行SQL...")
         try:
@@ -1977,7 +2106,20 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
             user_friendly_msg = "查询条件校验失败"
 
             # ========== 检查是否需要重试 ==========
-            if "列不在白名单" in error_msg:
+            if isinstance(ve, JoinAliasScopeError):
+                user_friendly_msg = "SQL 的 JOIN 别名作用域不正确，自动修正未能完成"
+                if attempt < max_retries:
+                    print(f"[_exec_cluster][{db_type}] SQL 作用域校验失败，code={ve.code}，准备修正")
+                    retry_attempts += 1
+                    corrected_sql, retry_error = _retry_sql_generation(
+                        prompt, db_type, final_sql, error_msg, llm_usage,
+                        model_config_dict=model_config_dict, retry_templates=retry_templates)
+                    if corrected_sql is not None:
+                        final_sql = corrected_sql
+                        # Re-enter run_sql_safe_new: scope, read-only and whitelist checks all run again.
+                        continue
+                    error_msg += f"；{retry_error}"
+            elif "列不在白名单" in error_msg:
                 # 提取无效列的信息
                 invalid_col_match = re.search(r"列不在白名单:\s*([^\[]+)\.([^\[]+)", error_msg)
                 if invalid_col_match:
@@ -1997,30 +2139,21 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
 
                     if attempt < max_retries:
                         print(f"[_exec_cluster][{db_type}] 🔄 检测到无效列 '{invalid_table_alias}.{invalid_col}'，准备重试...")
-                        # 加载重试提示词
-                        retry_tpl = load_prompt("retry_whitelist_error.txt")
-                        retry_hint = render_prompt(
-                            retry_tpl,
-                            invalid_table_alias=invalid_table_alias,
-                            invalid_col=invalid_col,
-                            available_cols=', '.join(available_cols_for_table) if available_cols_for_table else '(无)'
-                        )
-                        print(f"[_exec_cluster][{db_type}] 🔄 进行第 {attempt + 1} 次重试...")
-                        # 调用LLM重试
-                        content, retry_usage = qian_wen_llm_with_usage(prompt + retry_hint, stream_type=False, model_config_dict=model_config_dict)
-                        print(f"[_exec_cluster][{db_type}] 🔄 重试LLM返回内容长度: {len(content)} 字符")
-
-                        # 解析重试结果
-                        parsed_retry = _extract_sql_from_llm_text(content)
-                        if parsed_retry["kind"] == "sql":
-                            final_sql = _strip_code_fences(parsed_retry["text"])
-                            print(f"[_exec_cluster][{db_type}] 🔄 重试生成的SQL:\n{final_sql}")
-                            # 合并 usage
-                            if retry_usage and llm_usage:
-                                llm_usage["retry_tokens"] = retry_usage.get("tokens", 0)
+                        retry_attempts += 1
+                        corrected_sql, retry_error = _retry_sql_generation(
+                            prompt, db_type, final_sql, error_msg, llm_usage,
+                            model_config_dict=model_config_dict, retry_templates=retry_templates,
+                            template_name="retry_whitelist_error.txt",
+                            template_values={
+                                "invalid_table_alias": invalid_table_alias,
+                                "invalid_col": invalid_col,
+                                "available_cols": ', '.join(available_cols_for_table) if available_cols_for_table else '(无)',
+                            })
+                        if corrected_sql is not None:
+                            final_sql = corrected_sql
+                            print(f"[_exec_cluster][{db_type}] 🔄 重试 SQL 长度: {len(final_sql)} 字符")
                             continue  # 继续下一次循环，尝试执行重试后的SQL
-                        else:
-                            print(f"[_exec_cluster][{db_type}] ⚠️ 重试后仍未返回有效SQL")
+                        error_msg += f"；{retry_error}"
 
             # 如果达到最大重试次数或不是白名单错误，返回错误
             if "非白名单表" in error_msg:
@@ -2045,18 +2178,21 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                 "entity_ids": [],
                 "note": user_friendly_msg,
                 "error": error_msg,
-                "warnings": [f"查询执行失败，已重试 {attempt} 次"],
+                "warnings": [f"查询执行失败，已重试 {retry_attempts} 次"],
                 "_llm_usage": llm_usage,
                 "_sql_execution_ms": 0
             }
 
         except Exception as e:
             # SQL执行异常
-            error_msg = str(e)
+            error_info = _classify_sql_execution_error(e, db_type)
+            error_msg = error_info["message"]
             user_friendly_msg = "查询执行失败"
 
             # 解析常见的PostgreSQL错误
-            if "does not exist" in error_msg:
+            if error_info["code"] == "JOIN_ALIAS_OUT_OF_SCOPE":
+                user_friendly_msg = "SQL 的 JOIN 别名作用域不正确，自动修正未能完成"
+            elif "does not exist" in error_msg:
                 if "relation" in error_msg:
                     user_friendly_msg = "表不存在，可能是schema配置问题"
                 elif "column" in error_msg:
@@ -2069,43 +2205,21 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                 user_friendly_msg = "SQL语法错误，可能是大模型生成的SQL不正确"
 
             # ========== 检查是否需要重试（SQL执行错误也重试）==========
-            # 可重试的错误类型：类型转换错误、列不存在、语法错误等
-            retryable_patterns = [
-                "invalid input syntax",      # PostgreSQL类型转换错误，如 integer: ""
-                "cannot be cast",              # 类型转换错误
-                "does not exist",              # 表/列不存在
-                "ambiguous column",            # 列名歧义
-                "column reference",            # 列引用错误
-                "syntax error",                # 语法错误
-                "division by zero",            # 除零错误
-                "overflow",                    # 溢出错误
-            ]
-
-            should_retry = any(pattern in error_msg.lower() for pattern in retryable_patterns)
+            should_retry = error_info["retryable"]
 
             if should_retry and attempt < max_retries:
                 print(f"[_exec_cluster][{db_type}] 🔄 检测到可重试的SQL执行错误，准备重试...")
-                print(f"[_exec_cluster][{db_type}] 🔄 错误详情: {error_msg[:200]}")
-
-                # 加载重试提示词
-                retry_tpl = load_prompt("retry_execution_error.txt")
-                retry_hint = render_prompt(retry_tpl, error_msg=error_msg)
+                print(f"[_exec_cluster][{db_type}] SQL 错误 code={error_info['code']}, sqlstate={error_info['sqlstate']}")
                 print(f"[_exec_cluster][{db_type}] 🔄 进行第 {attempt + 1} 次重试...")
-                # 调用LLM重试
-                content, retry_usage = qian_wen_llm_with_usage(prompt + retry_hint, stream_type=False, model_config_dict=model_config_dict)
-                print(f"[_exec_cluster][{db_type}] 🔄 重试LLM返回内容长度: {len(content)} 字符")
-
-                # 解析重试结果
-                parsed_retry = _extract_sql_from_llm_text(content)
-                if parsed_retry["kind"] == "sql":
-                    final_sql = _strip_code_fences(parsed_retry["text"])
-                    print(f"[_exec_cluster][{db_type}] 🔄 重试生成的SQL:\n{final_sql}")
-                    # 合并 usage
-                    if retry_usage and llm_usage:
-                        llm_usage["retry_tokens"] = retry_usage.get("tokens", 0)
+                retry_attempts += 1
+                corrected_sql, retry_error = _retry_sql_generation(
+                    prompt, db_type, final_sql, error_msg, llm_usage,
+                    model_config_dict=model_config_dict, retry_templates=retry_templates)
+                if corrected_sql is not None:
+                    final_sql = corrected_sql
+                    print(f"[_exec_cluster][{db_type}] 🔄 重试 SQL 长度: {len(final_sql)} 字符")
                     continue  # 继续下一次循环，尝试执行重试后的SQL
-                else:
-                    print(f"[_exec_cluster][{db_type}] ⚠️ 重试后仍未返回有效SQL")
+                error_msg += f"；{retry_error}"
 
             # 不可重试或达到最大重试次数，返回错误
             print(f"[_exec_cluster][{db_type}] ⚠️ SQL执行异常（已重试 {attempt} 次）: {error_msg}")
@@ -2123,7 +2237,7 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                 "entity_ids": [],
                 "note": user_friendly_msg,
                 "error": error_msg,
-                "warnings": [f"查询执行失败，已重试 {attempt} 次"],
+                "warnings": [f"查询执行失败，已重试 {retry_attempts} 次"],
                 "_llm_usage": llm_usage,
                 "_sql_execution_ms": 0
             }
@@ -2237,6 +2351,10 @@ def run_sql_safe_new(
     ]
     if re.search("|".join(blacklist), sql_stripped, flags=re.IGNORECASE):
         raise ValueError("检测到潜在危险关键字，拒绝执行。")
+
+    # Run on every execution attempt before opening a connection. Other dialects retain their guards.
+    if (db_type or "").strip().lower() in _JOIN_SCOPE_DIALECTS:
+        validate_join_alias_scope(sql_stripped, db_type)
 
     # ---------- 1.x 全局 FROM/JOIN 物理表白名单扫描（先拒绝注释后再做扫描） ----------
     # 提取 SQL 中的 CTE（公共表表达式）名称，避免将 CTE 名称误判为非白名单表
@@ -3243,6 +3361,9 @@ class QueryByDataCardsAgg(Resource):
             except Exception as e:
                 print(f"[agg] ⚠️ 预加载通用提示词失败: {e}")
 
+            # Retry templates must survive a cold or invalidated cache without worker DB access.
+            retry_templates = _load_sql_retry_templates()
+
             # 预加载模型配置（避免在线程中访问数据库）
             print(f"[agg] 预加载模型配置...")
             model_config_dict = None
@@ -3307,6 +3428,7 @@ class QueryByDataCardsAgg(Resource):
                         relationship_data=task["relationship_data"],
                         user_question=user_question,
                         model_config_dict=task["model_config_dict"],  # 传递模型配置
+                        retry_templates=retry_templates,
                     )
                     future_to_task[future] = task["idx"]
 
@@ -3356,6 +3478,39 @@ class QueryByDataCardsAgg(Resource):
         # 4.5) 过滤与问题无关的簇，防止无关结果进入融合环节
         cluster_results, cluster_filter_warnings = _filter_clusters_by_question(cluster_results, user_question)
         print(f"[agg] 簇过滤完成，剩余 {len(cluster_results)} 个簇")
+
+        # An execution failure is not a successful SELECT with an empty result set.
+        if _all_clusters_failed(cluster_results):
+            error_message = "所有数据源查询均失败，请检查 SQL 或数据源配置"
+            clean_clusters = [{k: v for k, v in r.items() if not k.startswith('_')}
+                              for r in cluster_results]
+            payload = {
+                "clusters": _make_json_serializable(clean_clusters),
+                "final_rows": [],
+                "error": "ALL_CLUSTERS_FAILED",
+                "merge": {"strategy": merge_strategy, "entity_key": entity_key, "fusion_method": "none"},
+                "fill_warnings": [error_message],
+                "data_cards": _make_json_serializable(data_cards_info),
+            }
+            failed_cluster_sqls = [{
+                "datasource_ids": r.get("datasource_ids", []) or [],
+                "datasource_names": r.get("datasource_names", []) or [],
+                "table_names": r.get("table_names", []) or [],
+                "sql": r.get("target_sql") or "",
+                "fusion_strategy": merge_strategy,
+            } for r in cluster_results]
+            _log_query(
+                user_id=user_id, question=original_question,
+                sql=failed_cluster_sqls[0]["sql"],
+                source_datasource_ids=source_datasource_ids, source_datasource_names=source_datasource_names,
+                datasource_ids=datasource_ids, datasource_names=datasource_names, table_names=table_names,
+                metrics={**metrics, "total_duration_ms": int((time_module.time() - start_time) * 1000)},
+                tokens=tokens, quality=quality, result_count=0, merge_strategy=merge_strategy,
+                success=False, error_message=error_message, full_response_result=payload,
+                cluster_sqls=failed_cluster_sqls,
+                processed_question=user_question if term_rewrite_performed else None,
+            )
+            return format_response(payload, 422, error_message)
 
         # 5) 跨簇融合 - 尝试使用LLM智能融合（带关系卡片），失败则回退到规则融合
         # 注意：单簇场景也会走融合流程，但会被识别为无需融合，直接返回结果

@@ -89,3 +89,4 @@ ksycopg2==2.9.1  # 人大金仓 KingBase 驱动
 dmPython==2.5.38  # 达梦 DM 数据库驱动（Python 原生驱动，需配合达梦客户端动态库）
 dmSQLAlchemy==2.0.17  # 达梦 DM 数据库 SQLAlchemy 方言注册包（SQLAlchemy 2.0+，import 时使用 dmSQLAlchemy）
 APScheduler==3.10.4
+sqlglot==30.18.0  # PostgreSQL JOIN alias scope validation (read-only AST)
