@@ -91,81 +91,198 @@ def _sanitize_for_json(obj: Any) -> Any:
 
 # ========== SQL 执行异常友好提示 ==========
 
+# 错误信息长度控制（DB 字段 Text 不限长，但 UI 列表通常截断展示 30~50 字）
+_ERR_HINT_RAW_MAX_LEN = 150    # 原始 message 截短上限（字符）
+_ERR_HINT_TOTAL_MAX_LEN = 300  # 整条 error_message 截短上限（字符）
+
+# SQLAlchemy / DBAPI 常见异常类名 → 中文粗分类（用于"未匹配正则"时的兜底）
+# 注意：这里只列大类关键词，避免与具体正则分类（如 connection refused）冲突
+_SA_EXC_FAMILIES = (
+    ('ProgrammingError',  'SQL 编程错误（可能涉及表/列/语法）'),
+    ('OperationalError',  '数据库操作异常（连接/资源/锁问题）'),
+    ('IntegrityError',    '数据完整性错误（违反唯一/外键/非空约束）'),
+    ('DataError',         '数据错误（类型/范围/格式异常）'),
+    ('InternalError',     '数据库内部错误'),
+    ('InterfaceError',    '数据库驱动接口错误'),
+    ('TimeoutError',      '数据库操作超时'),
+    ('DisconnectionError', '数据库连接已断开'),
+)
+
+
+def _truncate(s: str, max_len: int) -> str:
+    """截断字符串，保留末尾 '...' 标记（按字符长度，不是字节）"""
+    if not s:
+        return ""
+    if len(s) <= max_len:
+        return s
+    return s[:max_len].rstrip() + "..."
+
+
 def _get_friendly_sql_error_message(e: Exception, rule: GovernanceRule = None) -> str:
-    """将 SQL 执行异常转换为面向用户的友好中文提示
+    """将 SQL 执行异常转换为友好的中文提示，并保留关键诊断信息。
+
+    设计原则：
+    1. 用户看到的第一行是【简短中文分类提示】，告诉用户错的大类
+    2. 同一行末尾追加【原始异常: <ClassName>: <截短消息>】，提供排查关键线索
+       （如具体的表名/列名/约束名/SQL 片段），但不暴露完整 traceback 堆栈
+    3. 完整 traceback 仍由调用方的 print_exc() 写到 stderr，DB 字段仅保留摘要
+    4. 整条长度上限 300 字符（DB Text 不限长，但 UI 列表展示通常截断 30~50 字）
+
+    输出格式：
+        "<分类提示> | 原始异常: <ClassName>: <消息前 N 字符>"
 
     Args:
         e: 捕获的原始异常
-        rule: 当前执行的规则（可选，用于补充上下文）
+        rule: 当前执行的规则（当前版本未使用，预留扩展位）
 
     Returns:
-        友好的中文提示字符串
+        友好的中文提示 + 关键原始信息（总长 ≤ 300 字符）
     """
-    err_msg = str(e)
-    err_lower = err_msg.lower()
+    # ---- 1. 提取异常类名与原始消息 ----
+    exc_type = type(e).__name__  # 例: ProgrammingError
+    raw_msg = (str(e) if e else "").strip()
+    raw_msg_short = _truncate(raw_msg, _ERR_HINT_RAW_MAX_LEN)
+    err_lower = raw_msg.lower()  # 用于关键词匹配的副本
 
-    # ---- 1. 表 / 视图 / 关系不存在 ----
-    if 'does not exist' in err_lower:
-        m = re.search(r'relation "?([^"]+?)"? does not exist', err_lower)
+    # ---- 2. 已知错误分类（按命中顺序匹配，先具体后宽泛） ----
+    hint = None
+
+    # 1) 函数 / 存储过程不存在（必须先于"表/视图不存在"匹配，
+    #    否则 'function data_audit(...) does not exist' 会被误判为表/视图）
+    if (('function' in err_lower or 'procedure' in err_lower or 'routine' in err_lower)
+            and ('does not exist' in err_lower or 'not found' in err_lower or "doesn't exist" in err_lower)):
+        hint = "执行失败，调用了不存在的函数或存储过程"
+
+    # 2) 表 / 视图 / 关系 / 序列 / Schema 不存在（覆盖 PG/MySQL/MSSQL/Oracle/Trino/SQLite 等说法）
+    elif re.search(
+        r'(?:relation|table|view|sequence|schema|object)\s*["\']?[^"\']*["\']?\s+'
+        r'(?:does not exist|doesn\'t exist|not found)',
+        err_lower
+    ) or 'invalid object name' in err_lower \
+            or 'no such table' in err_lower or 'no such view' in err_lower:
+        m = re.search(
+            r'(?:relation|table|view|sequence|schema|object)\s*["\']?([^"\']+?)["\']?\s+'
+            r'(?:does not exist|doesn\'t exist|not found)',
+            err_lower
+        )
         if not m:
-            m = re.search(r"table '?([^']+?)'? doesn't exist", err_lower)
+            # MSSQL "Invalid object name 'xxx'"
+            m = re.search(r'invalid object name\s+[\'"]?([^\'"]+?)[\'"]?', err_lower)
         if not m:
-            m = re.search(r"table '?([^']+?)'? does not exist", err_lower)
-        table_name = m.group(1) if m else None
-        hint = f"执行失败，目标表 '{table_name}' 不存在。" if table_name else "执行失败，目标表不存在。"
-        hint += " 请检查表名和 schema 是否正确，或确认该表是否已导入。"
-        return hint
+            # SQLite "no such table: xxx" / "no such view: xxx"
+            m = re.search(r'no such (?:table|view):\s*([^\s\'"]+)', err_lower)
+        target = m.group(1) if m else None
+        hint = (f"执行失败，目标表/视图/对象 '{target}' 不存在"
+                if target else "执行失败，目标表/视图不存在")
 
-    # ---- 2. 列不存在 ----
-    if 'column' in err_lower and ('does not exist' in err_lower or 'was not found' in err_lower):
-        m = re.search(r'column "?([^"]+?)"? (?:does not exist|was not found)', err_lower)
+    # 3) 列 / 字段不存在
+    elif (('column' in err_lower or 'field' in err_lower or 'ora-00904' in err_lower)
+            and ('does not exist' in err_lower or 'was not found' in err_lower
+                 or 'cannot be found' in err_lower or 'invalid identifier' in err_lower)):
+        m = re.search(
+            r'(?:column|field)\s*["\']?([^"\']+?)["\']?\s+'
+            r'(?:does not exist|was not found|cannot be found|invalid identifier)',
+            err_lower
+        )
+        # ORA-00904 错误码格式: ORA-00904: "XXX": invalid identifier
         if not m:
-            m = re.search(r"column '?([^']+?)'? (?:does not exist|was not found)", err_lower)
-        col_name = m.group(1) if m else None
-        hint = f"执行失败，列 '{col_name}' 不存在。" if col_name else "执行失败，目标列不存在。"
-        hint += " 请检查列名是否正确，或确认该字段是否存在于目标表中。"
-        return hint
+            m = re.search(r'ora-00904:\s*"?([^"\']+?)"?', err_lower)
+        target = m.group(1) if m else None
+        hint = (f"执行失败，列 '{target}' 不存在或不可访问"
+                if target else "执行失败，目标列不存在或为无效标识符")
 
-    # ---- 3. 除零错误 ----
-    if 'division by zero' in err_lower or 'divide by zero' in err_lower:
-        return ("执行失败，检测 SQL 存在除零运算。"
-                " 可能是分母为零（如某列全部为 0 导致除零），请检查阈值规则配置或目标列数据。")
+    # 4) 除零错误
+    elif ('division by zero' in err_lower or 'divide by zero' in err_lower
+          or 'divisor equal to zero' in err_lower or 'ora-01476' in err_lower):
+        hint = "执行失败，SQL 存在除零运算（可能是某列全为 0 或空导致分母为零）"
 
-    # ---- 4. SQL 语法错误 ----
-    if 'syntax error' in err_lower or 'you have an error in your sql syntax' in err_lower:
-        return ("执行失败，检测 SQL 存在语法错误。"
-                " 请检查规则条件表达式配置是否正确。")
+    # 5) SQL 语法错误（涵盖 MySQL / PG / Oracle / Trino / DM / MSSQL / SQLite 等错误码）
+    elif ('syntax error' in err_lower or 'syntax error at or near' in err_lower
+          or 'you have an error in your sql syntax' in err_lower
+          or 'incorrect syntax' in err_lower or 'syntax near' in err_lower
+          or 'ora-00900' in err_lower or 'ora-00907' in err_lower
+          or 'ora-00936' in err_lower
+          or 'unexpected end of sql' in err_lower):
+        hint = "执行失败，SQL 语法错误，请检查规则条件表达式或检测 SQL"
 
-    # ---- 5. 类型转换错误 ----
-    if ('invalid input syntax' in err_lower or 'cannot cast' in err_lower
-            or 'incorrect integer' in err_lower or 'incorrect decimal' in err_lower):
-        return ("执行失败，数据类型转换失败。"
-                " 请检查规则条件中字段的值类型是否与目标列类型匹配。")
+    # 6) 类型转换 / 数据格式错误（涵盖 MySQL Data too long、PG invalid input syntax、
+    #    Oracle ORA-01861/01722 等典型错误）
+    elif ('invalid input syntax' in err_lower or 'invalid input value' in err_lower
+          or 'invalid literal' in err_lower or 'invalid date format' in err_lower
+          or 'invalid timestamp' in err_lower or 'invalid character' in err_lower
+          or 'invalid format' in err_lower
+          or 'cannot cast' in err_lower or 'cannot be cast' in err_lower
+          or 'data too long' in err_lower or 'data truncation' in err_lower
+          or 'value too long' in err_lower or 'truncated' in err_lower
+          or 'incorrect integer' in err_lower or 'incorrect decimal' in err_lower
+          or 'incorrect string' in err_lower or 'incorrect datetime' in err_lower
+          or 'out of range value' in err_lower
+          or 'ora-01861' in err_lower or 'ora-01722' in err_lower):
+        hint = "执行失败，数据类型转换失败，字段值与目标列类型不匹配"
 
-    # ---- 6. 执行超时 ----
-    if 'canceling statement due to statement timeout' in err_lower:
-        return ("执行失败，SQL 执行超时。"
-                " 目标表数据量较大，建议优化规则条件或减少扫描范围。")
+    # 7) 执行超时（statement timeout / lock wait timeout）
+    elif ('canceling statement due to statement timeout' in err_lower
+          or 'statement timeout' in err_lower
+          or 'query timeout' in err_lower
+          or 'lock wait timeout' in err_lower or 'lock timeout' in err_lower
+          or 'ora-01013' in err_lower):
+        hint = "执行失败，SQL 执行超时（建议优化规则条件或减少扫描范围）"
 
-    # ---- 7. 权限不足 ----
-    if 'permission denied for' in err_lower or 'row-level security policy' in err_lower:
-        return ("执行失败，数据库权限不足，无法访问目标表或视图。"
-                " 请联系数据库管理员授予相应权限。")
+    # 8) 权限不足（覆盖 PG/MySQL/Oracle/MSSQL 错误码/关键字）
+    elif ('permission denied' in err_lower or 'access denied' in err_lower
+          or 'insufficient privilege' in err_lower or 'ora-01031' in err_lower
+          or 'ora-00942' in err_lower or '42501' in err_lower
+          or '1044' in err_lower or '1142' in err_lower or '1227' in err_lower
+          or 'row-level security' in err_lower or 'row level security' in err_lower):
+        hint = "执行失败，数据库权限不足，无法访问目标表/列"
 
-    # ---- 8. 数值溢出 ----
-    if 'overflow' in err_lower or 'numeric value out of range' in err_lower:
-        return ("执行失败，数值计算结果超出数据库允许范围。"
-                " 请检查规则配置中的阈值或条件表达式是否合理。")
+    # 9) 数值溢出
+    elif ('overflow' in err_lower or 'numeric value out of range' in err_lower
+          or 'value out of range' in err_lower or '22003' in err_lower
+          or 'ora-01426' in err_lower):
+        hint = "执行失败，数值计算结果超出数据库允许范围"
 
-    # ---- 9. 违反约束（如外键、唯一约束检查时目标表无权限）----
-    if 'violation' in err_lower or 'constraint' in err_lower:
-        return ("执行失败，违反数据库约束。"
-                " 请检查规则条件表达式配置是否合理。")
+    # 10) 违反完整性约束（唯一/外键/非空/CHECK）
+    #     中文关键词用于国产数据库（达梦 DM、KingBase 中文模式等）
+    elif ('violates' in err_lower or 'violation' in err_lower
+          or 'unique constraint' in err_lower or 'duplicate key' in err_lower
+          or 'duplicate entry' in err_lower
+          or 'foreign key' in err_lower or 'not null constraint' in err_lower
+          or 'check constraint' in err_lower
+          or '23502' in err_lower or '23503' in err_lower or '23505' in err_lower
+          or 'ora-00001' in err_lower or 'ora-02291' in err_lower or 'ora-02292' in err_lower
+          # 中文关键词（达梦 DM）
+          or '违反唯一约束' in err_lower or '违反外键约束' in err_lower
+          or '违反非空约束' in err_lower or '违反检查约束' in err_lower
+          or '违反完整性约束' in err_lower or '唯一约束条件' in err_lower):
+        hint = "执行失败，违反数据库完整性约束（唯一/外键/非空/CHECK）"
 
-    # ---- 兜底 ----
-    if len(err_msg) > 60:
-        return "执行失败，发生未知错误，请检查规则配置或联系管理员。"
-    return f"执行失败：{err_msg}"
+    # 11) 连接错误
+    elif ('connection refused' in err_lower or "can't connect" in err_lower
+          or 'could not connect' in err_lower or 'unable to connect' in err_lower
+          or 'connection reset' in err_lower or 'connection lost' in err_lower
+          or 'connection closed' in err_lower
+          or 'server closed the connection unexpectedly' in err_lower
+          or 'broken pipe' in err_lower):
+        hint = "执行失败，数据库连接异常（连接被拒/重置/断开）"
+
+    # ---- 3. 未匹配到任何已知分类：按 SQLAlchemy 异常类名兜底 ----
+    if hint is None:
+        for prefix, desc in _SA_EXC_FAMILIES:
+            if prefix in exc_type:
+                hint = f"执行失败，{desc}"
+                break
+        if hint is None:
+            hint = "执行失败，发生未分类异常"
+
+    # ---- 4. 拼装最终消息：分类提示 + 关键原始信息 ----
+    if raw_msg_short:
+        full = f"{hint} | 原始异常: {exc_type}: {raw_msg_short}"
+    else:
+        full = f"{hint} | 原始异常: {exc_type}"
+
+    # ---- 5. 总长度兜底截断 ----
+    return _truncate(full, _ERR_HINT_TOTAL_MAX_LEN)
 
 
 class RuleExecutor:
@@ -1210,9 +1327,12 @@ class RuleExecutor:
             print(f"[环节二 - 执行规则] ✅ {rule.rule_name} 执行完成 | status={result.status}")
 
         except Exception as e:
+            import traceback as _tb
             result.status = 'error'
             result.error_message = _get_friendly_sql_error_message(e, rule)
             result.execution_time_ms = None
+            # 完整堆栈写 stderr（不进 DB，运维可通过 grep 抓取）
+            _tb.print_exc()
             print(f"[环节二 - 执行规则] ❌ {rule.rule_name} 执行异常: {e}")
 
         print()
