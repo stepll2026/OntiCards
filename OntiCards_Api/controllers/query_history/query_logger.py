@@ -12,6 +12,8 @@ from sqlalchemy.dialects.postgresql import insert
 from extensions.ext_database import db
 from models.query_logs import QueryLog
 from models.query_stats_daily import QueryStatsDaily
+from core.log_sanitizer import sanitize_log_text
+from controllers.query.query_execution_log import sanitize_query_response
 
 
 class QueryLogger:
@@ -119,10 +121,10 @@ class QueryLogger:
             cards_selected=cards_selected,
             top1_rerank_score=top1_rerank_score,
             avg_rerank_score=avg_rerank_score,
-            full_response_result=full_response_result,
+            full_response_result=sanitize_query_response(full_response_result),
             fusion_strategy=fusion_strategy,
             api_key_id=api_key_id,
-            cluster_sqls=cluster_sqls,
+            cluster_sqls=sanitize_query_response(cluster_sqls),
             # === 新增字段 ===
             processed_question=processed_question if processed_question else None,
             term_rewrite_info=term_rewrite_info if term_rewrite_info else {}
@@ -156,7 +158,12 @@ class QueryLogger:
         source_datasource_names: list = None,
         datasource_ids: list = None,
         datasource_names: list = None,
-        api_key_id: str = None
+        api_key_id: str = None,
+        *, sql: str = None, table_names: list = None,
+        performance: dict = None, tokens: dict = None, quality: dict = None,
+        full_response_result: dict = None, cluster_sqls: list = None,
+        fusion_strategy: str = None, processed_question: str = None,
+        term_rewrite_info: dict = None
     ):
         """
         记录失败查询
@@ -172,12 +179,38 @@ class QueryLogger:
             datasource_names: 数据源名称列表
             api_key_id: API Key ID（如果通过API调用）
         """
+        performance = performance or {}
+        tokens = tokens or {}
+        quality = quality or {}
         query_log = QueryLog(
             user_id=user_id,
             question=question,
+            sql=sql,
             total_duration_ms=total_duration_ms,
             status='error',
-            error_message=error_message,
+            error_message=sanitize_log_text(error_message),
+            table_names=QueryLogger._normalize_jsonb_list(table_names),
+            vector_search_ms=performance.get('vector_search_ms'),
+            rerank_ms=performance.get('rerank_ms'),
+            llm_gen_sql_ms=performance.get('llm_gen_sql_ms'),
+            sql_execution_ms=performance.get('sql_execution_ms'),
+            fusion_ms=performance.get('llm_fusion_ms', 0),
+            embedding_tokens=tokens.get('embedding_tokens', 0),
+            rerank_tokens=tokens.get('rerank_tokens', 0),
+            llm_prompt_tokens=tokens.get('llm_prompt_tokens', 0),
+            llm_completion_tokens=tokens.get('llm_completion_tokens', 0),
+            total_tokens=tokens.get('total_tokens', 0),
+            result_count=0,
+            cards_recalled=quality.get('cards_recalled', 0),
+            cards_reranked=quality.get('cards_reranked', 0),
+            cards_selected=quality.get('cards_selected', 0),
+            top1_rerank_score=quality.get('top1_rerank_score'),
+            avg_rerank_score=quality.get('avg_rerank_score'),
+            full_response_result=sanitize_query_response(full_response_result),
+            cluster_sqls=sanitize_query_response(cluster_sqls),
+            fusion_strategy=fusion_strategy,
+            processed_question=processed_question if processed_question else None,
+            term_rewrite_info=term_rewrite_info if term_rewrite_info else {},
             # 规范化 JSONB 字段，确保存储为一维数组
             source_datasource_ids=QueryLogger._normalize_jsonb_list(source_datasource_ids),
             source_datasource_names=QueryLogger._normalize_jsonb_list(source_datasource_names),
@@ -191,8 +224,15 @@ class QueryLogger:
         QueryLogger._increment_daily_stats(
             user_id=user_id,
             is_success=False,
-            tokens={},
-            duration_ms=total_duration_ms
+            tokens=tokens,
+            duration_ms=total_duration_ms,
+            vector_search_ms=performance.get('vector_search_ms', 0),
+            rerank_ms=performance.get('rerank_ms', 0),
+            llm_gen_sql_ms=performance.get('llm_gen_sql_ms', 0),
+            sql_execution_ms=performance.get('sql_execution_ms', 0),
+            cards_recalled=quality.get('cards_recalled', 0),
+            cards_selected=quality.get('cards_selected', 0),
+            top1_rerank_score=quality.get('top1_rerank_score'),
         )
 
         return query_log

@@ -33,6 +33,10 @@ from controllers.query.sql_join_utils import (
 )
 from controllers.query.sql_from_guard import iter_from_table_refs
 from controllers.query.sql_join_scope import JoinAliasScopeError, validate_join_alias_scope
+from controllers.query.query_execution_log import (
+    append_execution_attempt, build_logged_cluster_sqls, sanitize_query_response,
+)
+from core.log_sanitizer import sanitize_log_text, sanitize_log_value
 from controllers.query.sql_prompt_loader import load_prompt, render_prompt
 from controllers.datacard.data_card_db_api import get_data_card_by_doc_id
 from controllers.weaviate_db_tool.weaviate_api import search_vector
@@ -140,8 +144,10 @@ def _retry_sql_generation(prompt: str, db_type: str, failed_sql: str, error_mess
                           llm_usage: dict, model_config_dict: dict = None,
                           retry_templates: dict = None,
                           template_name: str = "retry_execution_error.txt",
-                          template_values: dict = None) -> tuple[str | None, str | None]:
+                          template_values: dict = None, execution_attempts: list = None,
+                          attempt: int = 1) -> tuple[str | None, str | None]:
     """Return corrected SQL or a diagnostic, preserving the failed query on model errors."""
+    started = time_module.monotonic()
     try:
         if retry_templates is None:
             retry_template = load_prompt(template_name)
@@ -156,14 +162,32 @@ def _retry_sql_generation(prompt: str, db_type: str, failed_sql: str, error_mess
         # Count every returned generation, including a refusal/non-SQL response.
         for key in ("prompt_tokens", "completion_tokens", "total_tokens", "generation_ms"):
             llm_usage[key] = (llm_usage.get(key) or 0) + ((retry_usage or {}).get(key) or 0)
+        model_error = (retry_usage or {}).get("model_error")
+        if model_error:
+            message = model_error.get("message") or "模型 SQL 修正失败"
+            if model_error.get("http_status"):
+                message += f" (HTTP {model_error['http_status']})"
+            append_execution_attempt(execution_attempts, attempt=attempt, stage="retry", status="error",
+                                     error_code=model_error.get("code", "MODEL_REQUEST_ERROR"), message=message,
+                                     duration_ms=int((time_module.monotonic() - started) * 1000))
+            return None, sanitize_log_text(message)
         parsed_retry = _extract_sql_from_llm_text(content)
         if parsed_retry["kind"] == "sql":
             corrected_sql = _strip_code_fences(parsed_retry["text"])
             if corrected_sql:
+                append_execution_attempt(execution_attempts, attempt=attempt, stage="retry", status="success",
+                                         sql=corrected_sql, message="模型已生成修正 SQL",
+                                         duration_ms=int((time_module.monotonic() - started) * 1000))
                 return corrected_sql, None
+        append_execution_attempt(execution_attempts, attempt=attempt, stage="retry", status="error",
+                                 error_code="MODEL_SQL_MISSING", message="模型未返回可执行 SQL",
+                                 duration_ms=int((time_module.monotonic() - started) * 1000))
         return None, "模型未返回可执行 SQL，已停止自动修正"
     except Exception as exc:
         # Exception text from an HTTP client may contain credentials; retain its type only.
+        append_execution_attempt(execution_attempts, attempt=attempt, stage="retry", status="error",
+                                 error_code="MODEL_RETRY_ERROR", message=f"模型 SQL 修正失败（{type(exc).__name__}）",
+                                 duration_ms=int((time_module.monotonic() - started) * 1000))
         return None, f"模型 SQL 修正失败（{type(exc).__name__}）"
 
 
@@ -1843,13 +1867,28 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
     print(f"[_exec_cluster][{db_type}] 提示词总长度: {len(prompt)} 字符")
 
     print(f"[_exec_cluster][{db_type}] 开始调用LLM生成SQL...")
-    content, llm_usage = qian_wen_llm_with_usage(prompt, stream_type=False, model_config_dict=model_config_dict)
-    llm_usage = dict(llm_usage or {})
-    print(f"[_exec_cluster][{db_type}] LLM返回内容长度: {len(content)} 字符")
-
-    # 先解析 LLM 输出的"类型"
-    parsed = _extract_sql_from_llm_text(content)
+    execution_attempts = []
+    retry_attempts = 0
+    generation_started = time_module.monotonic()
+    try:
+        content, llm_usage = qian_wen_llm_with_usage(prompt, stream_type=False, model_config_dict=model_config_dict)
+        llm_usage = dict(llm_usage or {})
+        model_error = llm_usage.get("model_error")
+        parsed = _extract_sql_from_llm_text(content) if not model_error else {"kind": "text", "text": ""}
+    except Exception as exc:
+        llm_usage = {}
+        model_error = {"code": "MODEL_GENERATION_ERROR", "message": f"SQL 生成失败（{type(exc).__name__}）"}
+        parsed = {"kind": "text", "text": ""}
     print(f"[_exec_cluster][{db_type}] LLM返回类型: {parsed['kind']}")
+    generation_message = (model_error or {}).get("message") or "模型未返回可执行 SQL"
+    if (model_error or {}).get("http_status"):
+        generation_message += f" (HTTP {model_error['http_status']})"
+    append_execution_attempt(
+        execution_attempts, attempt=0, stage="generation", status="success" if parsed["kind"] == "sql" else "error",
+        sql=_strip_code_fences(parsed["text"]) if parsed["kind"] == "sql" else "",
+        error_code="" if parsed["kind"] == "sql" else (model_error or {}).get("code", "MODEL_SQL_MISSING"),
+        message="模型已生成 SQL" if parsed["kind"] == "sql" else generation_message,
+        duration_ms=int((time_module.monotonic() - generation_started) * 1000))
 
     # 不是 SQL：作为 warning 返回该簇空结果
     if parsed["kind"] != "sql":
@@ -1869,9 +1908,11 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
             "target_sql": "",
             "rows": [],
             "entity_ids": [],
-            "note": parsed.get("text", ""),
-            "error": "模型未返回可执行 SQL",
-            "error_code": "MODEL_SQL_MISSING",
+            "note": sanitize_log_text(generation_message),
+            "error": sanitize_log_text(generation_message),
+            "error_code": (model_error or {}).get("code", "MODEL_SQL_MISSING"),
+            "execution_attempts": execution_attempts,
+            "retry_count": retry_attempts,
             "warnings": ["模型未返回可执行 SQL（已跳过该簇）。"],
             "_llm_usage": llm_usage,  # LLM usage 信息
             "_sql_execution_ms": 0  # 未执行 SQL 时为 0
@@ -1927,6 +1968,8 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
 
     # 如果发现非白名单表，返回友好提示，不执行SQL
     if invalid_tables:
+        append_execution_attempt(execution_attempts, attempt=0, stage="validation", status="error", sql=sql_text,
+                                 error_code="SQL_TABLE_NOT_ALLOWED", message=f"SQL包含非白名单表: {', '.join(invalid_tables)}")
         print(f"[_exec_cluster][{db_type}] ⚠️ SQL包含非白名单表: {invalid_tables}")
         print(f"[_exec_cluster][{db_type}] 允许的表（规范化后）: {sorted(allowed_tables)}")
         print(f"[_exec_cluster][{db_type}] 允许的表（原始名称）: {[t.get('table_name') for t in tables]}")
@@ -1946,6 +1989,8 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
             "note": f"LLM生成的SQL使用了非白名单表 {', '.join(invalid_tables)}，当前白名单仅包含 {', '.join([t.get('table_name') for t in tables])}。可能需要其他数据源提供这些表的信息。",
             "error": f"SQL包含非白名单表: {', '.join(invalid_tables)}",
             "error_code": "SQL_TABLE_NOT_ALLOWED",
+            "execution_attempts": execution_attempts,
+            "retry_count": retry_attempts,
             "warnings": [f"SQL包含非白名单表: {', '.join(invalid_tables)}，已跳过执行。"],
             "_llm_usage": llm_usage,  # LLM usage 信息
             "_sql_execution_ms": 0  # 未执行 SQL 时为 0
@@ -1954,6 +1999,8 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
 
     # 如果 SQL 中没有 FROM/JOIN，直接视为无效，避免触发安全校验错误
     if not re.search(r"\bFROM\b", sql_text, re.IGNORECASE):
+        append_execution_attempt(execution_attempts, attempt=0, stage="validation", status="error", sql=sql_text,
+                                 error_code="SQL_FROM_MISSING", message="模型返回的 SQL 缺少 FROM/JOIN")
         print(f"[_exec_cluster][{db_type}] ⚠️ SQL缺少FROM子句，跳过执行")
         return {
             "db_type": db_type,
@@ -1970,12 +2017,27 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
             "note": "模型返回的 SQL 缺少 FROM/JOIN，已跳过该簇。",
             "error": "模型返回的 SQL 缺少 FROM/JOIN",
             "error_code": "SQL_FROM_MISSING",
+            "execution_attempts": execution_attempts,
+            "retry_count": retry_attempts,
             "warnings": ["模型未引用任何表（缺少 FROM/JOIN），已跳过该簇。"],
             "_llm_usage": llm_usage,  # LLM usage 信息
             "_sql_execution_ms": 0  # 未执行 SQL 时为 0
         }
 
-    engine = get_db_engine(connect_info, db_type=db_type)
+    try:
+        engine = get_db_engine(connect_info, db_type=db_type)
+    except Exception as exc:
+        message = f"数据源连接初始化失败（{type(exc).__name__}）"
+        append_execution_attempt(execution_attempts, attempt=0, stage="execution", status="error",
+                                 sql=sql_text, error_code="SQL_CONNECTION_ERROR", message=message)
+        return {
+            "db_type": db_type, "connect_info_safe": {"type": db_type, "database": db_name},
+            "tables": [{"table_name": t.get("table_name"), "alias": t.get("alias")} for t in tables],
+            "cluster_tables": cluster_tables, "target_sql": sql_text, "rows": [], "entity_ids": [],
+            "note": message, "error": message, "warnings": [message],
+            "execution_attempts": execution_attempts, "retry_count": 0,
+            "_llm_usage": llm_usage, "_sql_execution_ms": 0,
+        }
 
     # cluster_tables 已在预校验阶段定义，这里不需要重复定义
 
@@ -1984,13 +2046,13 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
     last_error = None
     final_sql = sql_text
     success = False
-    retry_attempts = 0
 
     for attempt in range(max_retries + 1):
         if attempt > 0:
             print(f"[_exec_cluster][{db_type}] 🔄 尝试第 {attempt} 次 SQL 修正...")
 
         print(f"[_exec_cluster][{db_type}] 开始执行SQL...")
+        attempt_started = time_module.monotonic()
         try:
             data, warnings, sql_exec_ms = run_sql_safe_new(
                 engine=engine,
@@ -1999,7 +2061,8 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                 db_type=db_type,
                 max_rows=1000,
                 allow_semicolon_terminator=True,
-                target_schema=db_name if db_type in ("oracle", "dm") else None
+                target_schema=db_name if db_type in ("oracle", "dm") else None,
+                execution_attempts=execution_attempts, attempt=attempt,
             )
             print(
                 f"[_exec_cluster][{db_type}] SQL执行成功，返回 {len(data) if isinstance(data, list) else data} 行数据，耗时 {sql_exec_ms}ms")
@@ -2109,6 +2172,9 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
         except ValueError as ve:
             # SQL安全校验失败
             error_msg = str(ve)
+            append_execution_attempt(execution_attempts, attempt=attempt, stage="validation", status="error",
+                                     sql=final_sql, error_code=getattr(ve, "code", "SQL_VALIDATION_ERROR"),
+                                     message=error_msg, duration_ms=int((time_module.monotonic() - attempt_started) * 1000))
             user_friendly_msg = "查询条件校验失败"
 
             # ========== 检查是否需要重试 ==========
@@ -2119,7 +2185,8 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                     retry_attempts += 1
                     corrected_sql, retry_error = _retry_sql_generation(
                         prompt, db_type, final_sql, error_msg, llm_usage,
-                        model_config_dict=model_config_dict, retry_templates=retry_templates)
+                        model_config_dict=model_config_dict, retry_templates=retry_templates,
+                        execution_attempts=execution_attempts, attempt=retry_attempts)
                     if corrected_sql is not None:
                         final_sql = corrected_sql
                         # Re-enter run_sql_safe_new: scope, read-only and whitelist checks all run again.
@@ -2149,6 +2216,7 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                         corrected_sql, retry_error = _retry_sql_generation(
                             prompt, db_type, final_sql, error_msg, llm_usage,
                             model_config_dict=model_config_dict, retry_templates=retry_templates,
+                            execution_attempts=execution_attempts, attempt=retry_attempts,
                             template_name="retry_whitelist_error.txt",
                             template_values={
                                 "invalid_table_alias": invalid_table_alias,
@@ -2183,7 +2251,9 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                 "rows": [],
                 "entity_ids": [],
                 "note": user_friendly_msg,
-                "error": error_msg,
+                "error": sanitize_log_text(error_msg),
+                "execution_attempts": execution_attempts,
+                "retry_count": retry_attempts,
                 "warnings": [f"查询执行失败，已重试 {retry_attempts} 次"],
                 "_llm_usage": llm_usage,
                 "_sql_execution_ms": 0
@@ -2193,6 +2263,9 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
             # SQL执行异常
             error_info = _classify_sql_execution_error(e, db_type)
             error_msg = error_info["message"]
+            append_execution_attempt(execution_attempts, attempt=attempt, stage="execution", status="error",
+                                     sql=final_sql, error_code=error_info["code"], message=error_msg,
+                                     duration_ms=int((time_module.monotonic() - attempt_started) * 1000))
             user_friendly_msg = "查询执行失败"
 
             # 解析常见的PostgreSQL错误
@@ -2220,7 +2293,8 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                 retry_attempts += 1
                 corrected_sql, retry_error = _retry_sql_generation(
                     prompt, db_type, final_sql, error_msg, llm_usage,
-                    model_config_dict=model_config_dict, retry_templates=retry_templates)
+                    model_config_dict=model_config_dict, retry_templates=retry_templates,
+                    execution_attempts=execution_attempts, attempt=retry_attempts)
                 if corrected_sql is not None:
                     final_sql = corrected_sql
                     print(f"[_exec_cluster][{db_type}] 🔄 重试 SQL 长度: {len(final_sql)} 字符")
@@ -2242,7 +2316,9 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                 "rows": [],
                 "entity_ids": [],
                 "note": user_friendly_msg,
-                "error": error_msg,
+                "error": sanitize_log_text(error_msg),
+                "execution_attempts": execution_attempts,
+                "retry_count": retry_attempts,
                 "warnings": [f"查询执行失败，已重试 {retry_attempts} 次"],
                 "_llm_usage": llm_usage,
                 "_sql_execution_ms": 0
@@ -2267,6 +2343,8 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
         "entity_ids": eids,
         "note": "",
         "warnings": warnings or [],
+        "execution_attempts": execution_attempts,
+        "retry_count": retry_attempts,
         "_llm_usage": llm_usage,  # LLM usage 信息
         "_sql_execution_ms": sql_exec_ms  # SQL 执行时间
     }
@@ -2290,6 +2368,8 @@ def run_sql_safe_new(
         max_rows: int = 1000,
         allow_semicolon_terminator: bool = True,
         target_schema: str | None = None,
+        execution_attempts: list = None,
+        attempt: int = 0,
 ):
     """
     多表白名单 + 安全校验 + 执行。
@@ -2316,6 +2396,7 @@ def run_sql_safe_new(
       - 抛出 ValueError（非法/危险/超出白名单）
     """
 
+    validation_started = time_module.monotonic()
     warnings: list[str] = []
 
     # ---------- 0) 预处理：去两端空白 ----------
@@ -2580,6 +2661,9 @@ def run_sql_safe_new(
         warnings.append(f"未检测到行数限制，若结果过大将只返回前 {max_rows} 行。")
 
     # ---------- 6) 执行 ----------
+    append_execution_attempt(execution_attempts, attempt=attempt, stage="validation", status="success",
+                             sql=sql_stripped, message="SQL 安全和作用域校验通过",
+                             duration_ms=int((time_module.monotonic() - validation_started) * 1000))
     exec_start = time_module.time()
     with engine.connect() as conn:
         # Oracle 特殊处理：如果有 target_schema，需要先切换 session schema
@@ -2611,8 +2695,13 @@ def run_sql_safe_new(
 
             if len(rows) > max_rows:
                 warnings.append(f"结果行数 {len(rows)} 超过上限 {max_rows}，已截断返回。")
+            append_execution_attempt(execution_attempts, attempt=attempt, stage="execution", status="success",
+                                     sql=sql_stripped, message=f"SQL 执行成功，返回 {len(data)} 行",
+                                     duration_ms=int((time_module.time() - exec_start) * 1000))
             return data, warnings, sql_execution_ms
         else:
+            append_execution_attempt(execution_attempts, attempt=attempt, stage="execution", status="success",
+                                     sql=sql_stripped, message="SQL 执行成功", duration_ms=sql_execution_ms)
             return {"rowcount": result.rowcount}, warnings, sql_execution_ms
 
 
@@ -2692,12 +2781,13 @@ def _log_query(
     将查询性能、Token消耗、召回质量等指标记录到数据库。
     """
     try:
-        # 计算总耗时
-        metrics['total_duration_ms'] = metrics.get('vector_search_ms', 0) + \
-                                       metrics.get('rerank_ms', 0) + \
-                                       metrics.get('llm_gen_sql_ms', 0) + \
-                                       metrics.get('llm_fusion_ms', 0) + \
-                                       metrics.get('sql_execution_ms', 0)
+        # Parallel stage durations overlap: preserve the caller's wall-clock total.
+        metrics = dict(metrics or {})
+        if metrics.get('total_duration_ms') is None:
+            metrics['total_duration_ms'] = sum(metrics.get(key, 0) or 0 for key in (
+                'vector_search_ms', 'rerank_ms', 'llm_gen_sql_ms', 'llm_fusion_ms', 'sql_execution_ms'))
+        full_response_result = sanitize_query_response(full_response_result)
+        cluster_sqls = build_logged_cluster_sqls(full_response_result, cluster_sqls)
 
         if success:
             QueryLogger.log_success(
@@ -2733,15 +2823,18 @@ def _log_query(
                 source_datasource_ids=source_datasource_ids,
                 source_datasource_names=source_datasource_names,
                 datasource_ids=datasource_ids,
-                datasource_names=datasource_names
+                datasource_names=datasource_names,
+                sql=sql, table_names=table_names, performance=metrics, tokens=tokens, quality=quality,
+                full_response_result=full_response_result, cluster_sqls=cluster_sqls,
+                fusion_strategy=merge_strategy, processed_question=processed_question,
+                term_rewrite_info=term_rewrite_info,
             )
 
         db.session.commit()
         print(f"[查询日志] 记录成功: user_id={user_id}, status={'success' if success else 'error'}")
     except Exception as e:
-        import traceback
-        print(f"[查询日志] 记录失败: {str(e)}")
-        print(f"[查询日志] 详细错误: {traceback.format_exc()}")
+        # SQLAlchemy exceptions can embed JSON/SQL parameters and connection credentials.
+        print(f"[查询日志] 记录失败: {type(e).__name__}")
         try:
             db.session.rollback()
         except Exception:

@@ -32,6 +32,8 @@ def load_module(name, relative_path):
 
 SCOPE = load_module("isolated_sql_join_scope", "controllers/query/sql_join_scope.py")
 FROM_GUARD = load_module("isolated_sql_from_guard", "controllers/query/sql_from_guard.py")
+SANITIZER = load_module("core.log_sanitizer", "core/log_sanitizer.py")
+EXECUTION_LOG = load_module("isolated_query_execution_log", "controllers/query/query_execution_log.py")
 
 
 def isolated_functions():
@@ -56,6 +58,11 @@ def isolated_functions():
         "JoinAliasScopeError": SCOPE.JoinAliasScopeError,
         "validate_join_alias_scope": SCOPE.validate_join_alias_scope,
         "iter_from_table_refs": FROM_GUARD.iter_from_table_refs,
+        "append_execution_attempt": EXECUTION_LOG.append_execution_attempt,
+        "build_logged_cluster_sqls": EXECUTION_LOG.build_logged_cluster_sqls,
+        "sanitize_query_response": EXECUTION_LOG.sanitize_query_response,
+        "sanitize_log_text": SANITIZER.sanitize_log_text,
+        "sanitize_log_value": SANITIZER.sanitize_log_value,
         "text": lambda sql: sql,
         "_make_json_serializable": lambda value: value,
         "_collect_entity_ids": lambda rows, key: set(),

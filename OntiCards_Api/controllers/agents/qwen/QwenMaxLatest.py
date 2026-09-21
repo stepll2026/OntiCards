@@ -2,10 +2,12 @@
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from urllib3.exceptions import TimeoutError as Urllib3TimeoutError
 from models.model_config import Model_configuration
 from flask import current_app
 import time
 import logging
+from core.log_sanitizer import sanitize_log_value
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +60,22 @@ def _get_session(timeout=180, max_retries=3, backoff_factor=1.0):
     return _http_session
 
 
+def _is_model_timeout(error):
+    """Requests may wrap urllib3 retry-exhausted timeouts in ConnectionError."""
+    pending = [error]
+    seen = set()
+    while pending and len(seen) < 16:
+        current = pending.pop()
+        if not isinstance(current, BaseException) or id(current) in seen:
+            continue
+        seen.add(id(current))
+        if isinstance(current, (requests.exceptions.Timeout, Urllib3TimeoutError, TimeoutError)):
+            return True
+        pending.extend([getattr(current, "__cause__", None), getattr(current, "__context__", None),
+                        getattr(current, "reason", None), *current.args])
+    return False
+
+
 def _request_with_timing(method, url, timeout, max_retries, backoff_factor, **kwargs):
     """
     执行带详细计时的 HTTP 请求
@@ -87,22 +105,63 @@ def _request_with_timing(method, url, timeout, max_retries, backoff_factor, **kw
             return response.json(), timing
         except Exception:
             # 非 JSON 响应，包装成统一格式
+            timing["error_code"] = "MODEL_INVALID_RESPONSE"
             return {"error": f"非 JSON 响应 (status={response.status_code})", "text": response.text[:500]}, timing
 
     except requests.exceptions.Timeout:
         timing["total_ms"] = int((time.time() - start_time) * 1000)
         timing["error"] = "请求超时"
+        timing["error_code"] = "MODEL_TIMEOUT"
         return {"error": "LLM 请求超时，请稍后重试", "timeout_seconds": timeout}, timing
 
     except requests.exceptions.ConnectionError as e:
         timing["total_ms"] = int((time.time() - start_time) * 1000)
+        if _is_model_timeout(e):
+            timing["error"] = "请求超时"
+            timing["error_code"] = "MODEL_TIMEOUT"
+            return {"error": "LLM 请求超时，请稍后重试", "timeout_seconds": timeout}, timing
         timing["error"] = "连接错误"
+        timing["error_code"] = "MODEL_CONNECTION_ERROR"
         return {"error": f"LLM 服务连接失败: {str(e)[:100]}", "connection_error": True}, timing
 
     except Exception as e:
         timing["total_ms"] = int((time.time() - start_time) * 1000)
         timing["error"] = str(e)
+        timing["error_code"] = "MODEL_REQUEST_ERROR"
         return {"error": f"LLM 请求异常: {str(e)[:100]}"}, timing
+
+
+def _model_error_diagnostic(response, timing=None):
+    """Expose only a stable category/status; never upstream bodies, URLs or credentials."""
+    timing = timing or {}
+    status = timing.get("final_status_code")
+    code = timing.get("error_code")
+    messages = {
+        "MODEL_TIMEOUT": "模型请求超时",
+        "MODEL_CONNECTION_ERROR": "无法连接模型服务",
+        "MODEL_REQUEST_ERROR": "模型请求失败",
+        "MODEL_INVALID_RESPONSE": "模型响应格式不正确",
+        "MODEL_HTTP_ERROR": "模型服务返回 HTTP 错误",
+        "MODEL_UPSTREAM_ERROR": "模型服务返回错误",
+    }
+    if status is not None and status != 200:
+        code = "MODEL_HTTP_ERROR"
+    elif not code and (not isinstance(response, dict) or not isinstance(response.get("choices"), list)
+                       or not response.get("choices")):
+        code = "MODEL_UPSTREAM_ERROR" if isinstance(response, dict) and response.get("error") else "MODEL_INVALID_RESPONSE"
+    elif not code and isinstance(response, dict) and response.get("error"):
+        code = "MODEL_UPSTREAM_ERROR"
+    elif not code:
+        choice = response["choices"][0]
+        message = choice.get("message") if isinstance(choice, dict) else None
+        if not isinstance(message, dict) or not isinstance(message.get("content"), str):
+            code = "MODEL_INVALID_RESPONSE"
+        elif choice.get("finish_reason") == "error":
+            code = "MODEL_UPSTREAM_ERROR"
+    if not code:
+        return None
+    return {"code": code, "message": messages.get(code, "模型请求失败"),
+            "http_status": status if isinstance(status, int) else None}
 
 
 def qian_wen_llm(text, stream_type, model_config_dict=None):
@@ -192,12 +251,17 @@ def qian_wen_llm(text, stream_type, model_config_dict=None):
     else:
         logger.info(f"[LLM] 请求成功, 耗时: {timing['total_ms']}ms")
 
+    model_error = _model_error_diagnostic(response, timing)
+    if not isinstance(response, dict):
+        response = {"error": "模型响应格式不正确"}
+
     # 如果返回的是错误响应（非 200），包装成与原来一致的格式
     if timing.get("final_status_code") and timing["final_status_code"] != 200:
         # 模拟原来的 requests.post().json() 返回格式
         error_msg = response.get("error", f"HTTP {timing['final_status_code']}")
         return {
             "error": error_msg,
+            "_model_error": model_error,
             "choices": [{"message": {"content": f"请求失败: {error_msg}"}, "finish_reason": "error"}],
             "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
         }
@@ -206,10 +270,13 @@ def qian_wen_llm(text, stream_type, model_config_dict=None):
     if "error" in response and "choices" not in response:
         return {
             "error": response.get("error", "未知错误"),
+            "_model_error": model_error,
             "choices": [{"message": {"content": response.get("error", "未知错误")}, "finish_reason": "error"}],
             "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
         }
 
+    if model_error:
+        response = {**response, "_model_error": model_error}
     return response
 
 
@@ -240,23 +307,30 @@ def qian_wen_llm_with_usage(text, stream_type=False, model_config_dict=None):
     start_time = time.time()
 
     response = qian_wen_llm(text, stream_type, model_config_dict)
+    if not isinstance(response, dict):
+        response = {"error": "模型响应格式不正确"}
 
     # 提取 content（兼容错误响应格式）
     choices = response.get("choices", [{}])
-    if choices and isinstance(choices[0], dict):
+    if isinstance(choices, list) and choices and isinstance(choices[0], dict):
         message = choices[0].get("message", {})
         content = message.get("content", "") if isinstance(message, dict) else str(message)
     else:
         content = ""
 
     # 提取 usage
-    usage = response.get("usage", {})
+    usage = response.get("usage") or {}
+    if not isinstance(usage, dict):
+        usage = {}
     usage_dict = {
         "prompt_tokens": usage.get("prompt_tokens", 0),
         "completion_tokens": usage.get("completion_tokens", 0),
         "total_tokens": usage.get("total_tokens", 0),
         "generation_ms": int((time.time() - start_time) * 1000)
     }
+    model_error = response.get("_model_error") or _model_error_diagnostic(response)
+    if model_error:
+        usage_dict["model_error"] = sanitize_log_value(model_error)
 
     return content, usage_dict
 
