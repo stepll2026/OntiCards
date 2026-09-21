@@ -74,6 +74,7 @@
 - 白名单中的表名已经包含正确的schema前缀
 - **必须**使用白名单中的完整表名（包括schema前缀）
 - **绝对禁止**只使用表名部分，必须包含schema前缀
+- **⚠️ 重要：如果schema名称包含连字符（如 `yx-data`），白名单中的表名已使用双引号包裹（如 `"yx-data".orders`），生成SQL时必须原样保留双引号**
 - 字段引用必须使用双引号：`"field_name"`（PostgreSQL区分大小写）
 
 可用表与字段白名单（格式：别名.字段名 [数据类型] (字段注释)）：
@@ -178,7 +179,7 @@ SUM(CASE WHEN t2."quantity" > 0 THEN t2."quantity" ELSE 0 END)       -- ✅ 正�
 **错误示例3：对布尔表达式使用SUM**（会导致SQL执行失败）⭐⭐⭐
 ❌ 错误（PostgreSQL不支持）：
 ```sql
-SELECT 
+SELECT
     t1."product_name" AS product_name,
     SUM(t3."shipment_status" = 'shipped') AS quantity_sold  -- 错误：布尔表达式不能直接SUM
 FROM products AS t1
@@ -190,7 +191,7 @@ GROUP BY t1."product_name"
 
 ✅ 正确方式1（使用CASE WHEN）：
 ```sql
-SELECT 
+SELECT
     t1."product_name" AS product_name,
     SUM(CASE WHEN t3."shipment_status" = 'shipped' THEN 1 ELSE 0 END) AS quantity_sold
 FROM products AS t1
@@ -201,7 +202,7 @@ GROUP BY t1."product_name"
 
 ✅ 正确方式2（使用COUNT + CASE WHEN）：
 ```sql
-SELECT 
+SELECT
     t1."product_name" AS product_name,
     COUNT(CASE WHEN t3."shipment_status" = 'shipped' THEN 1 END) AS quantity_sold
 FROM products AS t1
@@ -353,35 +354,35 @@ WHERE order_date >= CURRENT_DATE - INTERVAL '30 days'
          * **关键**：让其他数据源（如sales_orders表）通过销量排序后，系统自动融合出正确结果
 
    - **报文方向识别** ⭐⭐⭐（特别重要，用于支付/通信系统）：
-     
+
      ⚠️⚠️⚠️ **极其重要：必须先检查白名单** ⚠️⚠️⚠️
      **前置条件：**
      1. 首先在白名单中查找是否存在报文方向相关字段
      2. 常见字段名包括：`AHIO_FLAG`、`IO_FLAG`、`MSG_DIRECTION`、`DIRECTION` 等
      3. **如果白名单中不存在任何报文方向字段，则不要添加方向筛选条件**
      4. **绝对不能使用下面示例中的字段名，除非它们在白名单中存在**
-     
+
      * **关键字段**（仅供参考，必须以白名单为准）：
        - 常见名称：`AHIO_FLAG`、`IO_FLAG`、`MSG_DIRECTION` 等
        - 通常为字符串类型（varchar、char）
-     
+
      * **发出/发送/输出报文**：
        - 关键词："发出"、"发送"、"输出"、"outgoing"、"sent"、"output"
        - 映射逻辑（假设白名单中有相关字段）：`WHERE "AHIO_FLAG" = 'O'`
        - 示例（仅当白名单中有相关字段时）：
          `WHERE "CREATED_TIME" >= CURRENT_DATE - INTERVAL '3 years' AND "AHIO_FLAG" = 'O'`
-     
+
      * **接收/输入报文**：
        - 关键词："接收"、"收到"、"输入"、"incoming"、"received"、"input"、"收入"
        - 映射逻辑（假设白名单中有相关字段）：`WHERE "AHIO_FLAG" = 'I'`
        - 示例（仅当白名单中有相关字段时）：
          `WHERE DATE("CREATED_TIME") = CURRENT_DATE AND "AHIO_FLAG" = 'I'`
          `WHERE EXTRACT(YEAR FROM "CREATE_TIME") = EXTRACT(YEAR FROM CURRENT_DATE) AND "AHIO_FLAG" = 'I' AND "IR_MSG_TYPE" = '103'`
-     
+
      * **典型枚举值**（以字段注释为准）：
        - 'O'/'OUT'/'1' → 输出/发出
        - 'I'/'IN'/'0' → 输入/接收
-     
+
      * **重要注意事项**：
        - ⚠️ **如果白名单中没有报文方向相关字段，则不要添加方向筛选条件**
        - ⚠️ **上面的 AHIO_FLAG、IO_FLAG 只是示例，不能直接使用**
@@ -417,12 +418,12 @@ WHERE order_date >= CURRENT_DATE - INTERVAL '30 days'
 5. **查询类型识别** ⭐⭐⭐（特别重要）
    - **统计数量查询**：当用户问及数量、统计、计数时：
      * "有多少" → `SELECT COUNT(*) AS count`
-     * "数量是" → `SELECT COUNT(*) AS count` 
+     * "数量是" → `SELECT COUNT(*) AS count`
      * "统计...的数量" → `SELECT COUNT(*) AS count`
      * "...有几个" → `SELECT COUNT(*) AS count`
      * **示例**: "状态为已归档的缺陷单有多少？" → `SELECT COUNT(*) AS defect_count FROM sp_pd_defect_03 WHERE "STATE" = 6`
      * **重要**: 聚合查询只返回聚合结果，除非用户明确要求按某个维度分组包含任何其他字段，**不要使用GROUP BY**，**不要包含{{entity_key}}字段**
-   
+
    - **聚合统计查询**：
      * "总金额" → `SELECT SUM(amount) AS total_amount`
      * "平均价格" → `SELECT AVG(price) AS avg_price`
@@ -433,13 +434,13 @@ WHERE order_date >= CURRENT_DATE - INTERVAL '30 days'
      * 当用户问及"分布情况"、"分布统计"、"各地区分布"时，这是**地理分布查询**
      * **优先级规则**：
        1. **地市局分布**：如果有 `"BUREAU_NAME"`（地市局）字段，优先按地市局分组
-       2. **省份分布**：如果没有地市局字段，按 `"PROVINCE_NAME"`（省份）分组  
+       2. **省份分布**：如果没有地市局字段，按 `"PROVINCE_NAME"`（省份）分组
        3. **城市分布**：按 `"CITY_NAME"`（城市）等地理字段分组
-     * **示例**: 
+     * **示例**:
        - "统计广东的缺陷分布情况" → `SELECT "BUREAU_NAME", COUNT(*) AS defect_count FROM sp_pd_defect_03 WHERE "PROVINCE_NAME" LIKE '%广东%' GROUP BY "BUREAU_NAME" ORDER BY defect_count DESC`
        - "各省份的设备分布" → `SELECT "PROVINCE_NAME", COUNT(*) AS device_count FROM devices GROUP BY "PROVINCE_NAME"`
      * **重要**: 分布查询必须包含 `GROUP BY` 和地理维度字段，**不要按业务类型字段分组**（如缺陷类型、设备类型等）
-   
+
    - **详细记录查询**：当用户需要具体记录信息时：
      * "显示详细信息" → `SELECT 具体字段`
      * "列出所有" → `SELECT 具体字段`
@@ -507,7 +508,7 @@ WHERE order_date >= CURRENT_DATE - INTERVAL '30 days'
   ```sql
   -- ✅ 正确：动态获取当前年份
   WHERE EXTRACT(YEAR FROM "FIND_TIME") = EXTRACT(YEAR FROM CURRENT_DATE)
-  
+
   -- ❌ 错误：硬编码年份
   WHERE "FIND_TIME" >= '2024-01-01' AND "FIND_TIME" < '2025-01-01'
   ```
@@ -516,7 +517,7 @@ WHERE order_date >= CURRENT_DATE - INTERVAL '30 days'
   ```sql
   -- ✅ 正确：动态获取当前日期
   WHERE DATE("CREATE_TIME") = CURRENT_DATE
-  
+
   -- ❌ 错误：硬编码日期
   WHERE "CREATE_TIME" >= '2024-11-24'
   ```
@@ -525,9 +526,9 @@ WHERE order_date >= CURRENT_DATE - INTERVAL '30 days'
   ```sql
   -- 如果指当前年份
   WHERE EXTRACT(YEAR FROM "字段") = EXTRACT(YEAR FROM CURRENT_DATE)
-  
+
   -- 如果指当前月份
-  WHERE EXTRACT(YEAR FROM "字段") = EXTRACT(YEAR FROM CURRENT_DATE) 
+  WHERE EXTRACT(YEAR FROM "字段") = EXTRACT(YEAR FROM CURRENT_DATE)
     AND EXTRACT(MONTH FROM "字段") = EXTRACT(MONTH FROM CURRENT_DATE)
   ```
 
@@ -600,16 +601,16 @@ WHERE DATE("字段") >= CURRENT_DATE - INTERVAL '30 days'
 
    ✅ **方式1：单一比例统计**（适用于全局统计）
    ```sql
-   SELECT 
+   SELECT
        CONCAT(ROUND(COUNT(CASE WHEN "STATE" = 4 THEN 1 END) * 1.0 / COUNT(*), 2)::TEXT, '%') AS fix_ratio,
        CONCAT(ROUND(COUNT(CASE WHEN "STATE" = 4 THEN 1 END) * 100.0 / COUNT(*), 2)::TEXT, '%') AS fix_percentage
    FROM sp_pd_defect_03
    WHERE "PROVINCE_NAME" LIKE '%广东%'
    ```
-   
+
    ✅ **方式2：按维度分组统计比例**（推荐，适用于分组统计）
    ```sql
-   SELECT 
+   SELECT
        "BUREAU_NAME",
        COUNT(*) AS total_count,
        COUNT(CASE WHEN "STATE" = 4 THEN 1 END) AS target_count,
@@ -619,10 +620,10 @@ WHERE DATE("字段") >= CURRENT_DATE - INTERVAL '30 days'
    GROUP BY "BUREAU_NAME"
    ORDER BY ROUND(COUNT(CASE WHEN "STATE" = 4 THEN 1 END) * 1.0 / COUNT(*), 2) DESC
    ```
-   
+
    ✅ **方式3：使用窗口函数计算分组百分比**（适用于类别占比）
    ```sql
-   SELECT 
+   SELECT
        "DEFECT_TYPE",
        COUNT(*) AS cnt,
        CONCAT(ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 2)::TEXT, '%') AS pct
@@ -643,7 +644,7 @@ WHERE DATE("字段") >= CURRENT_DATE - INTERVAL '30 days'
    **场景1：各地市局的消缺比例统计**
    用户问："各地市局的消缺比例统计（消缺比例=已安排消缺数量/总数）"
    ```sql
-   SELECT 
+   SELECT
        "BUREAU_NAME",
        COUNT(*) AS total_defects,
        COUNT(CASE WHEN "STATE" = 4 THEN 1 END) AS fixed_count,
@@ -652,11 +653,11 @@ WHERE DATE("字段") >= CURRENT_DATE - INTERVAL '30 days'
    GROUP BY "BUREAU_NAME"
    ORDER BY ROUND(COUNT(CASE WHEN "STATE" = 4 THEN 1 END) * 100.0 / COUNT(*), 2) DESC
    ```
-   
+
    **场景2：及时消缺率统计**
    用户问："各地市局的及时消缺率（7天内消缺算及时）"
    ```sql
-   SELECT 
+   SELECT
        "BUREAU_NAME",
        COUNT(*) AS total_fixed,
        COUNT(CASE WHEN ("FIX_TIME" - "FIND_TIME") <= INTERVAL '7 days' THEN 1 END) AS timely_count,
@@ -666,11 +667,11 @@ WHERE DATE("字段") >= CURRENT_DATE - INTERVAL '30 days'
    GROUP BY "BUREAU_NAME"
    ORDER BY ROUND(COUNT(CASE WHEN ("FIX_TIME" - "FIND_TIME") <= INTERVAL '7 days' THEN 1 END) * 100.0 / COUNT(*), 2) DESC
    ```
-   
+
    **场景3：某类别占总体的比例**
    用户问："广东各类型缺陷的占比"
    ```sql
-   SELECT 
+   SELECT
        "DEFECT_TYPE",
        COUNT(*) AS defect_count,
        CONCAT(ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 2)::TEXT, '%') AS type_percentage
@@ -717,7 +718,7 @@ WHERE DATE("字段") >= CURRENT_DATE - INTERVAL '30 days'
 
 2. **常见状态映射示例**：
    - "待上报" → 1
-   - "待审批" → 2  
+   - "待审批" → 2
    - "待安排消缺" → 3
    - "已安排消缺" → 4
    - "待验收" → 5
@@ -747,15 +748,15 @@ WHERE DATE("字段") >= CURRENT_DATE - INTERVAL '30 days'
      * 用户问"最严重的缺陷" → 使用 `MIN("DEFECT_LEVEL")` 取最小值
      * 用户问"最轻微的缺陷" → 使用 `MAX("DEFECT_LEVEL")` 取最大值
      * 用户问"紧急缺陷" → 使用 `WHERE "DEFECT_LEVEL" = 1`
-   - **示例**: "统计广东2025年6月份最严重的缺陷数量" → 
+   - **示例**: "统计广东2025年6月份最严重的缺陷数量" →
      ```sql
-     SELECT COUNT(*) AS defect_count 
-     FROM sp_pd_defect_03 
-     WHERE "PROVINCE_NAME" LIKE '%广东%' 
+     SELECT COUNT(*) AS defect_count
+     FROM sp_pd_defect_03
+     WHERE "PROVINCE_NAME" LIKE '%广东%'
        AND EXTRACT(YEAR FROM "FIND_TIME") = 2025 AND EXTRACT(MONTH FROM "FIND_TIME") = 6
        AND "DEFECT_LEVEL" = (
-         SELECT MIN("DEFECT_LEVEL") FROM sp_pd_defect_03 
-         WHERE "PROVINCE_NAME" LIKE '%广东%' 
+         SELECT MIN("DEFECT_LEVEL") FROM sp_pd_defect_03
+         WHERE "PROVINCE_NAME" LIKE '%广东%'
            AND EXTRACT(YEAR FROM "FIND_TIME") = 2025 AND EXTRACT(MONTH FROM "FIND_TIME") = 6
        )
      ```
@@ -848,7 +849,7 @@ WHERE DATE("字段") >= CURRENT_DATE - INTERVAL '30 days'
 2) **报文类型查询特别说明** ⭐⭐⭐：
    - **报文类型字段**：通常为 `IR_MSG_TYPE`、`AH_MT`、`MSG_TYPE` 等字符串字段
    - **查询方式**：`WHERE "IR_MSG_TYPE" = '103'` 或 `WHERE "AH_MT" = 'MT103'`
-   - **完整示例**："今年所有收入103报文" → 
+   - **完整示例**："今年所有收入103报文" →
      ```sql
      SELECT t1."MSG_NO", t1."IR_MSG_TYPE", t1."CREATE_TIME", t1."AHIO_FLAG"
      FROM "REMIT_INWARD_MASTER_SWIFT" AS t1

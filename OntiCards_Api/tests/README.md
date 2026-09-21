@@ -20,6 +20,7 @@ python -m pytest -q OntiCards_Api/tests
 
 - `test_sql_join_scope.py`：别名可见范围、相关子查询、CTE、逗号连接、LATERAL、表函数、WITH ORDINALITY、TABLESAMPLE 和括号连接。
 - `test_join_scope_retry.py`：从实际源文件抽取函数，隔离应用初始化，用模拟模型与数据库 I/O 检查重试次数、重新执行安全校验、提示词快照、token/耗时累计和错误返回。
+- `test_join_scope_main_compat.py`：验证 schema 引号处理和 `REPLACE()` 与 JOIN 校验、自动重试的兼容性；覆盖主接口和 plugin 的只读拦截，并检查已带引号的 schema 不会被重复包装。
 - `test_sql_join_scope_postgres.py`：默认跳过，按下节启用真实 PostgreSQL 对照。
 
 ## 运行真实 PostgreSQL 对照
@@ -41,7 +42,7 @@ python -m pytest -q OntiCards_Api/tests
 
 测试自行创建并清理临时 PostgreSQL 容器，关闭容器网络、不映射端口，使用内存中的合成数据。
 不会读取应用 `.env`，也不接收业务数据库连接串。
-通过 `BEGIN READ ONLY; EXPLAIN ...` 比较校验器与 PostgreSQL 的接受/拒绝结果；另验证 LEFT JOIN 保留未匹配主表记录。
+通过 `BEGIN READ ONLY; EXPLAIN ...` 比较校验器与 PostgreSQL 的接受/拒绝结果；另验证 LEFT JOIN 保留未匹配主表记录，以及带连字符 schema 中的 `REPLACE()` 查询结果。后者在临时容器内创建合成表，并回滚测试事务。
 启用后，Docker 或镜像不可用会让测试失败。
 可用 `ONTICARDS_TEST_POSTGRES_IMAGE=postgres:15-alpine` 指定其他已准备好的 PostgreSQL 镜像进行版本兼容检查；默认使用 `postgres:16`。
 
@@ -62,8 +63,13 @@ TABLESAMPLE 表达式解析使用本模块内的 PostgreSQL 解析器子类，�
 
 ## 已完成的验证
 
-在现有 API 镜像的 Python 3.10.21 环境中，117 项作用域测试、23 项隔离集成测试和
-42 项真实 PostgreSQL 16 对照全部通过，共 182 项；同样的 42 项数据库对照在 PostgreSQL 15 中再次全部通过。
+同步主干 schema 与 `REPLACE()` 修复后，在现有 API 镜像的 Python 3.10.21 环境中，
+117 项作用域测试、23 项隔离集成测试、30 项交叉兼容测试和 49 项真实 PostgreSQL 16 对照
+全部通过，共 219 项；同样的 49 项数据库对照在 PostgreSQL 15 中再次全部通过。
+本地离线测试为 170 项通过、49 项数据库测试按配置跳过。
+
+交叉回归发现并补充修复了已带引号 schema 被再次包装的问题：`"yx-data".orders` 保持原样。
+相应 8 项兼容用例在修复前失败，修复后通过；未改变其他方言或表名前缀处理路径。
 
 另在独立隔离环境中，用实际查询函数、原模型 HTTP wrapper、SQLAlchemy 和临时 PostgreSQL
 串联验证了以下 5 个场景。模型由本地可控 HTTP 服务模拟，500 和缺少 `choices` 的响应是测试主动注入的。

@@ -35,6 +35,8 @@ CASES = [
     ("valid_left_chain", True, "SELECT a.id FROM a LEFT JOIN b ON b.id=a.id LEFT JOIN c ON c.id=b.id"),
     ("five_table_wrong", False, "SELECT t2.id FROM a t2 LEFT JOIN b t4 ON t4.id=t2.id LEFT JOIN d t1 ON t1.id=t4.id LEFT JOIN e t5 ON t5.id=t3.id LEFT JOIN c t3 ON t3.id=t2.id"),
     ("five_table_correct", True, "SELECT t2.id FROM a t2 LEFT JOIN b t4 ON t4.id=t2.id LEFT JOIN c t3 ON t3.id=t2.id LEFT JOIN d t1 ON t1.id=t4.id LEFT JOIN e t5 ON t5.id=t3.id"),
+    ("replace_valid_join", True, "SELECT REPLACE(t1.id::text, '-', '') FROM a t1 LEFT JOIN b t2 ON REPLACE(t2.id::text, '-', '')=t1.id::text"),
+    ("replace_forward_join", False, "SELECT t1.id FROM a t1 LEFT JOIN b t2 ON REPLACE(t3.id::text, '-', '')=t2.id::text LEFT JOIN c t3 ON t3.id=t1.id"),
     ("where_after_joins", True, "SELECT a.id FROM a JOIN b ON b.id=a.id JOIN c ON c.id=a.id WHERE c.id=1"),
     ("comma_previous_hidden", False, "SELECT a.id FROM a, b JOIN c ON c.id=a.id"),
     ("comma_current_visible", True, "SELECT a.id FROM a, b LEFT JOIN c ON c.id=b.id WHERE a.id=b.id"),
@@ -134,3 +136,21 @@ def test_correct_left_join_retains_unmatched_record(postgres):
     result = postgres(sql)
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip().splitlines() == ["1|1|1", "2||"]
+
+
+@pytest.mark.parametrize("raw_table", [
+    "orders", "database.orders", "yx-data.orders", '"yx-data".orders', '"yx-data"."orders"',
+])
+def test_card_schema_and_replace_execute_in_postgresql(postgres, raw_table):
+    from test_join_scope_main_compat import _card_table, _runtime
+
+    table = _card_table(_runtime(), raw_table)
+    sql = f'SELECT REPLACE(t1.status, \'-\', \'\') FROM {table["table_name"]} AS t1'
+    SCOPE.validate_join_alias_scope(sql, "postgresql")
+    result = postgres(
+        'BEGIN; CREATE SCHEMA "yx-data"; '
+        'CREATE TABLE "yx-data".orders(id integer, status text); '
+        'INSERT INTO "yx-data".orders VALUES (1, \'old-state\'); '
+        + sql + '; ROLLBACK;')
+    assert result.returncode == 0, result.stderr
+    assert "oldstate" in result.stdout.splitlines()

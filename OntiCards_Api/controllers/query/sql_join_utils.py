@@ -11,6 +11,7 @@ import json
 
 from core.connect_info_encryptor import decrypt_connect_info
 
+
 # -------- 数据卡解析 --------
 
 def card_to_table_obj(schema_row, card_obj: dict, connect_info: str, ds_schema_name: str = None) -> dict:
@@ -79,11 +80,24 @@ def card_to_table_obj(schema_row, card_obj: dict, connect_info: str, ds_schema_n
             if parts[0] == database_name:
                 # 错误格式：database.table，需要改为 schema.table
                 schema_to_use = schema_name or "public"
-                full_table_name = f"{schema_to_use}.{parts[1]}"
-                print(f"[card_to_table_obj] {db_type}表名格式错误(database.table)，已修正: {table_name_raw} -> {full_table_name}")
+                # ⚠️ 如果 schema 名称包含连字符，必须加双引号
+                needs_quote = schema_to_use and (not schema_to_use.replace('_', '').isalnum())
+                if needs_quote:
+                    full_table_name = f'"{schema_to_use}".{parts[1]}'
+                else:
+                    full_table_name = f"{schema_to_use}.{parts[1]}"
+                print(
+                    f"[card_to_table_obj] {db_type}表名格式错误(database.table)，已修正: {table_name_raw} -> {full_table_name}")
             else:
                 # 假设已经是正确的 schema.table 格式
-                full_table_name = table_name_raw
+                # ⚠️ 检查 schema 部分是否需要加引号
+                schema_part = parts[0]
+                already_quoted = schema_part.startswith('"') and schema_part.endswith('"')
+                needs_quote = schema_part and not already_quoted and (not schema_part.replace('_', '').isalnum())
+                if needs_quote:
+                    full_table_name = f'"{schema_part}".{parts[1]}'
+                else:
+                    full_table_name = table_name_raw
                 print(f"[card_to_table_obj] {db_type}表名已包含schema前缀: {full_table_name}")
 
         elif db_type in ("mysql", "mariadb", "oceanbase") and len(parts) == 2:
@@ -101,22 +115,39 @@ def card_to_table_obj(schema_row, card_obj: dict, connect_info: str, ds_schema_n
         if db_type in ("postgresql", "kingbase"):
             # PostgreSQL/KingBase: 使用 schema.table 格式
             # 优先使用 schema_name，如果没有则使用默认值 public
+            # ⚠️ 重要：如果 schema 名称包含连字符（如 yx-data），必须加双引号
+            # 否则 SQL 解析器会把 yx-data.table_name 理解为 yx 减去 data.table_name
             schema_to_use = schema_name or "public"
-            full_table_name = f"{schema_to_use}.{table_name_raw}"
+            # 检测是否需要引号：schema名包含特殊字符（连字符、空格等）
+            needs_quote = schema_to_use and (not schema_to_use.replace('_', '').isalnum())
+            if needs_quote:
+                full_table_name = f'"{schema_to_use}".{table_name_raw}'
+            else:
+                full_table_name = f"{schema_to_use}.{table_name_raw}"
             print(f"[card_to_table_obj] {db_type}表添加schema前缀: {table_name_raw} -> {full_table_name}")
 
         elif db_type == "mssql":
             # SQL Server: 使用 schema.table 格式
             # 优先使用 schema_name，如果没有则使用默认值 dbo
+            # ⚠️ 重要：如果 schema 名称包含连字符（如 yx-data），必须加方括号
             schema_to_use = schema_name or "dbo"
-            full_table_name = f"{schema_to_use}.{table_name_raw}"
+            needs_bracket = schema_to_use and (not schema_to_use.replace('_', '').isalnum())
+            if needs_bracket:
+                full_table_name = f"[{schema_to_use}].{table_name_raw}"
+            else:
+                full_table_name = f"{schema_to_use}.{table_name_raw}"
             print(f"[card_to_table_obj] MSSQL表添加schema前缀: {table_name_raw} -> {full_table_name}")
 
         elif db_type == "oracle" or db_type == "dm":
             # Oracle / 达梦 DM: 使用 schema.table 格式
             # schema通常是用户名（大写），优先使用 schema_name
             if schema_name:
-                full_table_name = f"{schema_name}.{table_name_raw}"
+                # ⚠️ 重要：如果 schema 名称包含连字符，必须加双引号
+                needs_quote = not schema_name.replace('_', '').isalnum()
+                if needs_quote:
+                    full_table_name = f'"{schema_name}".{table_name_raw}'
+                else:
+                    full_table_name = f"{schema_name}.{table_name_raw}"
                 label = "达梦 DM" if db_type == "dm" else "Oracle"
                 print(f"[card_to_table_obj] {label}表添加schema前缀: {table_name_raw} -> {full_table_name}")
             else:
@@ -129,7 +160,8 @@ def card_to_table_obj(schema_row, card_obj: dict, connect_info: str, ds_schema_n
             # MySQL/MariaDB/OceanBase: 通常只需要表名，因为连接时已经指定了database
             # database_name和schema_name在MySQL中是等价的，通常不需要前缀
             full_table_name = table_name_raw
-            print(f"[card_to_table_obj] MySQL表使用原始表名: {table_name_raw} (database={database_name or schema_name})")
+            print(
+                f"[card_to_table_obj] MySQL表使用原始表名: {table_name_raw} (database={database_name or schema_name})")
 
         elif db_type == "trino":
             # Trino: catalog.schema.table 格式在专门的Trino处理逻辑中处理
@@ -148,14 +180,15 @@ def card_to_table_obj(schema_row, card_obj: dict, connect_info: str, ds_schema_n
         "schema_name": schema_name,
         "table_name": full_table_name,  # 对于PostgreSQL可能包含schema前缀
         "table_name_raw": table_name_raw,  # 保留原始表名
-        "columns": cols,                 # 用于白名单 & 实体键推断
-        "foreign_keys": fks,             # 用于 JOIN 关系抽取
-        "schema": card_obj,              # 原始卡片（保留以便其他信息取用）
+        "columns": cols,  # 用于白名单 & 实体键推断
+        "foreign_keys": fks,  # 用于 JOIN 关系抽取
+        "schema": card_obj,  # 原始卡片（保留以便其他信息取用）
         "connect_name": (card_obj.get("DocInfo") or {}).get("connect_name"),
         "connect_info": connect_info,
         "schema_row_id": str(schema_row.id),
         "doc_id": (card_obj.get("DocInfo") or {}).get("doc_id"),
     }
+
 
 # 优先使用外键，否则则推断
 def guess_relations(tables: List[dict]) -> List[Tuple[str, str, str, str]]:
@@ -196,7 +229,7 @@ def guess_relations(tables: List[dict]) -> List[Tuple[str, str, str, str]]:
     for col_l, hits in index.items():
         if len(hits) >= 2:
             for i in range(len(hits)):
-                for j in range(i+1, len(hits)):
+                for j in range(i + 1, len(hits)):
                     lt, lc = hits[i]
                     rt, rc = hits[j]
                     if lt != rt:
@@ -217,6 +250,7 @@ def guess_relations(tables: List[dict]) -> List[Tuple[str, str, str, str]]:
                 rels.append((a["table_name"], ida, b["table_name"], idb))
 
     return rels
+
 
 # 基于卡片内容推断实体主键
 def infer_entity_key_from_cards(table_objs: list[dict]) -> str:
@@ -288,9 +322,9 @@ def infer_entity_key_from_cards(table_objs: list[dict]) -> str:
 # -------- 连接信息 --------
 
 def map_connect_name_to_connect_info(
-    connect_name: str,
-    datasource_info_model,
-    user_id: str = None
+        connect_name: str,
+        datasource_info_model,
+        user_id: str = None
 ) -> str | None:
     """
     通过 connect_name 在 datasource_info 中找到 connect_info。
@@ -316,6 +350,7 @@ def map_connect_name_to_connect_info(
     # 注意：数据库中存储的是加密后的 connect_info，需要解密后再返回
     return decrypt_connect_info(row.connect_info) if row else None
 
+
 # -------- 分簇（db_type + connect_info） --------
 
 def build_clusters(table_objs: List[dict]) -> Dict[Tuple[str, str], List[dict]]:
@@ -325,10 +360,12 @@ def build_clusters(table_objs: List[dict]) -> Dict[Tuple[str, str], List[dict]]:
         clusters[key].append(t)
     return clusters
 
+
 # -------- 表别名与白名单渲染（给提示词看） --------
 
 def alias_tables(tables: List[dict]) -> Dict[str, str]:
-    return { t["table_name"]: f"t{i+1}" for i, t in enumerate(tables) }
+    return {t["table_name"]: f"t{i + 1}" for i, t in enumerate(tables)}
+
 
 def render_whitelist_for_prompt(db_type: str, t: dict, alias: str) -> str:
     """
@@ -337,7 +374,7 @@ def render_whitelist_for_prompt(db_type: str, t: dict, alias: str) -> str:
     columns = [c for c in (t.get("columns") or []) if c.get("name")]
     if not columns:
         return "(无)"
-    
+
     # 根据数据库类型选择引用符
     # 人大金仓（KingBase）基于 PostgreSQL，复用 PostgreSQL 的引用符
     # OceanBase MySQL 模式与 MySQL 行为一致，使用反引号
@@ -350,27 +387,28 @@ def render_whitelist_for_prompt(db_type: str, t: dict, alias: str) -> str:
         quote = '"'
     else:
         quote = '"'  # 默认双引号
-    
+
     # 格式：alias.column_name [类型] (注释)
     col_strs = []
     for c in columns:
         col_name = c["name"]
         col_type = c.get("type", "unknown")
         col_comment = c.get("comment", "")
-        
+
         # 构建字段描述
         if db_type_lower == "mssql":
             col_desc = f'{alias}.[{col_name}] [{col_type}]'
         else:
             col_desc = f'{alias}.{quote}{col_name}{quote} [{col_type}]'
-        
+
         # 如果有注释，添加到描述中，特别关注包含枚举值的注释
         if col_comment and col_comment.strip():
             col_desc += f' ({col_comment.strip()})'
-        
+
         col_strs.append(col_desc)
-    
+
     return ", ".join(col_strs)
+
 
 def make_tables_block(db_type: str, tables: List[dict]) -> str:
     """
@@ -399,6 +437,7 @@ def make_tables_block(db_type: str, tables: List[dict]) -> str:
 
         lines.append(f"- 表 {t['table_name']} AS {aliases[t['table_name']]} {table_title}: {wl}")
     return "\n".join(lines)
+
 
 def make_rels_block(tables: List[dict]) -> str:
     aliases = alias_tables(tables)
@@ -762,7 +801,8 @@ def make_rels_block_with_relationship_cards(tables: List[dict], relationship_dat
                 print(f"[make_rels_block] 跳过非白名单表的JOIN建议: {from_table} (不在当前簇白名单)")
                 continue
             if to_table not in whitelist_table_names:
-                print(f"[make_rels_block] 跳过非白名单表的JOIN建议: {from_table} -> {to_table} ({to_table}不在当前簇白名单)")
+                print(
+                    f"[make_rels_block] 跳过非白名单表的JOIN建议: {from_table} -> {to_table} ({to_table}不在当前簇白名单)")
                 continue
 
             from_alias = table_name_to_alias[from_table]
