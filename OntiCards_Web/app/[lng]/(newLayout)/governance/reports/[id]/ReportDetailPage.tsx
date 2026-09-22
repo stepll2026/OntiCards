@@ -79,6 +79,7 @@ const ruleTypeLabels: Record<string, string> = {
   'value_distribution': '值分布',
   'composite': '复合规则',
   'basic_null_check': '基础质检',
+  'multi_column_compare': '多列比对',
   'table_stats': '表级统计',
 }
 
