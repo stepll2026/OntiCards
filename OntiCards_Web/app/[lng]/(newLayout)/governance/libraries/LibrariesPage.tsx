@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next-nprogress-bar'
 import {
   ArrowLeft,
@@ -25,6 +25,7 @@ import {
   Check,
   Code2,
   MessageSquare,
+  Search,
 } from 'lucide-react'
 import { message, Modal, Input, Select, Tooltip } from 'antd'
 import {
@@ -108,12 +109,12 @@ const severityOptions = [
 ]
 
 const EmptyStateCard = ({
-  icon,
-  title,
-  description,
-  buttonText,
-  onButtonClick,
-}: {
+                          icon,
+                          title,
+                          description,
+                          buttonText,
+                          onButtonClick,
+                        }: {
   icon: React.ReactNode
   title: string
   description: string
@@ -139,11 +140,11 @@ const EmptyStateCard = ({
 )
 
 const LibraryCard = ({
-  library,
-  isSelected,
-  onClick,
-  onDelete,
-}: {
+                       library,
+                       isSelected,
+                       onClick,
+                       onDelete,
+                     }: {
   library: GovernanceLibrary
   isSelected: boolean
   onClick: () => void
@@ -163,6 +164,9 @@ const LibraryCard = ({
     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <h3 style={{ fontWeight: 600, fontSize: 14, color: 'rgb(var(--theme-text))', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{library.name}</h3>
+        {library.description && (
+          <p style={{ fontSize: 12, color: 'rgb(var(--theme-text-secondary))', margin: '4px 0 0', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{library.description}</p>
+        )}
         {(library.connect_name || library.database_name || library.datasource_db_type || library.datasource?.connect_name || library.datasource?.database_name || library.datasource?.db_type) && (
           <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {(library.connect_name || library.datasource?.connect_name) && <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 9999, fontSize: 11, fontWeight: 500, backgroundColor: 'rgba(24, 144, 255, 0.12)', color: '#1677ff' }}>数据源 · {library.connect_name || library.datasource?.connect_name}</span>}
@@ -430,6 +434,7 @@ function LibrariesPageContent({ lng }: { lng: string }) {
   const [allRules, setAllRules] = useState<GovernanceRule[]>([])
   const [ruleSourceFilter, setRuleSourceFilter] = useState<'all' | RuleCreateSource>('all')
   const [severityFilter, setSeverityFilter] = useState<'all' | SeverityLevel>('all')
+  const [ruleSearchKeyword, setRuleSearchKeyword] = useState('')
   const [loading, setLoading] = useState(true)
   // 规则视图状态：'idle'未选择, 'loading'加载中, 'loaded'已加载, 'empty'无数据
   const [rulesViewStatus, setRulesViewStatus] = useState<'idle' | 'loading' | 'loaded' | 'empty'>('idle')
@@ -810,13 +815,13 @@ function LibrariesPageContent({ lng }: { lng: string }) {
       isCompositeRule,
       payload: isCompositeRule
         ? {
-            ...basePayload,
-            target_column: undefined,
-          }
+          ...basePayload,
+          target_column: undefined,
+        }
         : {
-            ...basePayload,
-            target_column: ruleForm.target_column || null,
-          },
+          ...basePayload,
+          target_column: ruleForm.target_column || null,
+        },
     }
   }
 
@@ -978,14 +983,15 @@ function LibrariesPageContent({ lng }: { lng: string }) {
     if (!libraryIdFromUrl) return
     const matchedLibrary = libraries.find((item) => item.id === libraryIdFromUrl)
     if (!matchedLibrary) return
-    
+
     setSelectedLibrary(matchedLibrary)
+    setRuleSearchKeyword('')
     setRuleSourceFilter('all')
     setSeverityFilter('all')
     setAllRules([])
     setRules([])
     setRulesViewStatus('loading')
-    
+
     // 延迟调用 API，确保状态更新先触发渲染
     setTimeout(() => {
       fetchRules(matchedLibrary.id)
@@ -1022,36 +1028,41 @@ function LibrariesPageContent({ lng }: { lng: string }) {
     }
   }
 
-  // 前端筛选规则
-  const applyFilters = useCallback(() => {
-    let filtered = [...allRules]
+  // 前端筛选规则（实时随输入更新）
+  const filteredRules = useMemo(() => {
+    let result = [...allRules]
+
+    // 按搜索关键词筛选（匹配规则名称或描述）
+    if (ruleSearchKeyword.trim()) {
+      const keyword = ruleSearchKeyword.toLowerCase()
+      result = result.filter(rule =>
+        rule.rule_name?.toLowerCase().includes(keyword) ||
+        rule.description?.toLowerCase().includes(keyword)
+      )
+    }
 
     // 按来源筛选
     if (ruleSourceFilter !== 'all') {
-      filtered = filtered.filter(rule => rule.create_source === ruleSourceFilter)
+      result = result.filter(rule => rule.create_source === ruleSourceFilter)
     }
 
     // 按严重程度筛选
     if (severityFilter !== 'all') {
-      filtered = filtered.filter(rule => rule.severity === severityFilter)
+      result = result.filter(rule => rule.severity === severityFilter)
     }
 
-    setRules(filtered)
-    
-    // 根据筛选结果更新状态（只有在数据已加载后才更新）
-    if (rulesViewStatus === 'loaded') {
-      setRulesViewStatus(filtered.length === 0 ? 'empty' : 'loaded')
-    }
-  }, [allRules, ruleSourceFilter, severityFilter, rulesViewStatus])
+    return result
+  }, [allRules, ruleSearchKeyword, ruleSourceFilter, severityFilter])
 
-  useEffect(() => {
-    // 只有在非加载状态下才执行筛选
-    if (rulesViewStatus === 'loading') return
-    applyFilters()
-  }, [allRules, ruleSourceFilter, severityFilter, applyFilters, rulesViewStatus])
+  // 判断当前是否有任意筛选条件激活
+  const hasActiveFilter =
+    ruleSearchKeyword.trim().length > 0 ||
+    ruleSourceFilter !== 'all' ||
+    severityFilter !== 'all'
 
   const handleSelectLibrary = (library: GovernanceLibrary) => {
     setSelectedLibrary(library)
+    setRuleSearchKeyword('')
     setRuleSourceFilter('all')
     setSeverityFilter('all')
     // 清空当前数据
@@ -2142,7 +2153,7 @@ function LibrariesPageContent({ lng }: { lng: string }) {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
                     <h3 style={{ fontSize: 15, fontWeight: 600, color: 'rgb(var(--theme-text))', margin: 0 }}>{selectedLibrary?.name || '规则库'}</h3>
-                    {selectedLibrary?.description && <p style={{ fontSize: 13, color: 'rgb(var(--theme-text-secondary))', marginTop: 2 }}>{selectedLibrary.description}</p>}
+                    {isLibraryViewMode && selectedLibrary?.description && <p style={{ fontSize: 13, color: 'rgb(var(--theme-text-secondary))', marginTop: 2 }}>{selectedLibrary.description}</p>}
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     <button onClick={() => {
@@ -2150,6 +2161,14 @@ function LibrariesPageContent({ lng }: { lng: string }) {
                       setRulesViewStatus('loading')
                       fetchRules(selectedLibrary.id)
                     }} title="刷新规则列表" style={{ padding: 6, borderRadius: 6, backgroundColor: 'transparent', border: 'none', cursor: 'pointer', color: 'rgb(var(--theme-text-secondary))', display: 'flex', alignItems: 'center' }}><RefreshCw style={{ width: 14, height: 14 }} /></button>
+                    <Input
+                      placeholder="搜索规则..."
+                      value={ruleSearchKeyword}
+                      onChange={(e) => setRuleSearchKeyword(e.target.value)}
+                      allowClear
+                      style={{ width: 160 }}
+                      prefix={<span style={{ color: 'rgb(var(--theme-text-muted))', fontSize: 12 }}>🔍</span>}
+                    />
                     <Select value={ruleSourceFilter} onChange={(value) => setRuleSourceFilter(value as 'all' | RuleCreateSource)} options={[{ value: 'all', label: '全部来源' }, { value: 'manual', label: '手动配置' }, { value: 'ai', label: 'AI智能解析' }, { value: 'template', label: '模板导入' }]} style={{ width: 160 }} />
                     <Select value={severityFilter} onChange={(value) => setSeverityFilter(value as 'all' | SeverityLevel)} options={[{ value: 'all', label: '全部程度' }, { value: 'critical', label: '严重' }, { value: 'warning', label: '警告' }, { value: 'info', label: '信息' }]} style={{ width: 140 }} />
                     {/* <button onClick={openImportModal} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 8, fontSize: 13, fontWeight: 500, color: 'rgb(var(--theme-text))', backgroundColor: 'transparent', border: '1px solid rgb(var(--theme-border))', cursor: 'pointer' }}><Upload style={{ width: 14, height: 14 }} />批量导入模板</button> */}
@@ -2161,10 +2180,26 @@ function LibrariesPageContent({ lng }: { lng: string }) {
               <div style={{ flex: 1, overflow: 'auto', padding: 12 }}>
                 {rulesViewStatus === 'loading' ? (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><Loader2 style={{ width: 36, height: 36, color: 'rgb(var(--theme-primary))', animation: 'spin 1s linear infinite' }} /></div>
-                ) : rulesViewStatus === 'empty' ? (
+                ) : rulesViewStatus === 'loaded' && allRules.length === 0 ? (
                   <EmptyStateCard icon={<Shield />} title="暂无规则" description="添加规则来执行数据质量检测" buttonText="新建规则" onButtonClick={() => openRuleModal()} />
+                ) : rulesViewStatus === 'loaded' && filteredRules.length === 0 && hasActiveFilter ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: 40 }}>
+                    <Search className="w-12 h-12 mb-4" style={{ color: 'rgb(var(--theme-text-muted))' }} />
+                    <h4 style={{ fontSize: 16, fontWeight: 600, color: 'rgb(var(--theme-text))', marginBottom: 8 }}>未找到匹配的规则</h4>
+                    <p style={{ fontSize: 13, color: 'rgb(var(--theme-text-muted))', marginBottom: 16 }}>
+                      {ruleSearchKeyword.trim() ? `未找到包含"${ruleSearchKeyword.trim()}"的规则` : '当前筛选条件下没有匹配的规则'}
+                    </p>
+                    <button
+                      onClick={() => {
+                        setRuleSearchKeyword('')
+                        setRuleSourceFilter('all')
+                        setSeverityFilter('all')
+                      }}
+                      style={{ padding: '6px 16px', fontSize: 13, borderRadius: 9999, border: '1px solid rgb(var(--theme-border))', backgroundColor: 'transparent', color: 'rgb(var(--theme-text))', cursor: 'pointer' }}
+                    >清空筛选</button>
+                  </div>
                 ) : rulesViewStatus === 'loaded' ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{rules.map((rule) => <RuleCard key={rule.id} rule={rule} onEdit={() => openRuleModal(rule)} onDelete={() => handleDeleteRule(rule)} onToggle={() => handleToggleRule(rule)} />)}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{filteredRules.map((rule) => <RuleCard key={rule.id} rule={rule} onEdit={() => openRuleModal(rule)} onDelete={() => handleDeleteRule(rule)} onToggle={() => handleToggleRule(rule)} />)}</div>
                 ) : null}
               </div>
             </>
@@ -2411,12 +2446,12 @@ function LibrariesPageContent({ lng }: { lng: string }) {
                             </span>
                           )}
                         </div>
-                    {showSqlPreview && (
-                      <div>
-                        <div style={{ fontSize: 11, fontWeight: 500, color: '#1677ff', marginBottom: 4 }}>SQL预览：</div>
-                        <pre style={{ margin: 0, padding: '8px 10px', borderRadius: 6, backgroundColor: 'rgba(15,23,42,0.04)', fontSize: 10, color: 'rgb(var(--theme-text-secondary))', overflow: 'auto', maxHeight: 80 }}>{rulePreviewSql}</pre>
-                      </div>
-                    )}
+                        {showSqlPreview && (
+                          <div>
+                            <div style={{ fontSize: 11, fontWeight: 500, color: '#1677ff', marginBottom: 4 }}>SQL预览：</div>
+                            <pre style={{ margin: 0, padding: '8px 10px', borderRadius: 6, backgroundColor: 'rgba(15,23,42,0.04)', fontSize: 10, color: 'rgb(var(--theme-text-secondary))', overflow: 'auto', maxHeight: 80 }}>{rulePreviewSql}</pre>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -2723,11 +2758,11 @@ function LibrariesPageContent({ lng }: { lng: string }) {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 10, borderRadius: 8, backgroundColor: 'rgb(var(--theme-bg-secondary))', border: '1px solid rgba(24,144,255,0.18)', overflow: 'hidden' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minWidth: 0 }}>
                           <div style={{ fontSize: 12, fontWeight: 600, color: 'rgb(var(--theme-text))', flexShrink: 0 }}>复合条件（可编辑）</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                              <span style={{ fontSize: 11, color: 'rgb(var(--theme-text-secondary))' }}>连接方式：</span>
-                              <button onClick={() => { const originalMode = parsedPrimaryResult?.condition_mode || (originalEditingRule ? getRuleConditionMode(originalEditingRule) || 'AND' : 'AND'); const newMode = 'AND'; setConditionMode(newMode); setAiConditionEdited((prev) => prev || newMode !== originalMode || newMode !== conditionMode) }} style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid', borderColor: conditionMode === 'AND' ? '#1677ff' : 'rgb(var(--theme-border))', backgroundColor: conditionMode === 'AND' ? 'rgba(24,144,255,0.12)' : 'white', color: conditionMode === 'AND' ? '#1677ff' : 'rgb(var(--theme-text-secondary))', cursor: 'pointer', fontSize: 11 }}>AND</button>
-                              <button onClick={() => { const originalMode = parsedPrimaryResult?.condition_mode || (originalEditingRule ? getRuleConditionMode(originalEditingRule) || 'AND' : 'AND'); const newMode = 'OR'; setConditionMode(newMode); setAiConditionEdited((prev) => prev || newMode !== originalMode || newMode !== conditionMode) }} style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid', borderColor: conditionMode === 'OR' ? '#1677ff' : 'rgb(var(--theme-border))', backgroundColor: conditionMode === 'OR' ? 'rgba(24,144,255,0.12)' : 'white', color: conditionMode === 'OR' ? '#1677ff' : 'rgb(var(--theme-text-secondary))', cursor: 'pointer', fontSize: 11 }}>OR</button>
-                            </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                            <span style={{ fontSize: 11, color: 'rgb(var(--theme-text-secondary))' }}>连接方式：</span>
+                            <button onClick={() => { const originalMode = parsedPrimaryResult?.condition_mode || (originalEditingRule ? getRuleConditionMode(originalEditingRule) || 'AND' : 'AND'); const newMode = 'AND'; setConditionMode(newMode); setAiConditionEdited((prev) => prev || newMode !== originalMode || newMode !== conditionMode) }} style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid', borderColor: conditionMode === 'AND' ? '#1677ff' : 'rgb(var(--theme-border))', backgroundColor: conditionMode === 'AND' ? 'rgba(24,144,255,0.12)' : 'white', color: conditionMode === 'AND' ? '#1677ff' : 'rgb(var(--theme-text-secondary))', cursor: 'pointer', fontSize: 11 }}>AND</button>
+                            <button onClick={() => { const originalMode = parsedPrimaryResult?.condition_mode || (originalEditingRule ? getRuleConditionMode(originalEditingRule) || 'AND' : 'AND'); const newMode = 'OR'; setConditionMode(newMode); setAiConditionEdited((prev) => prev || newMode !== originalMode || newMode !== conditionMode) }} style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid', borderColor: conditionMode === 'OR' ? '#1677ff' : 'rgb(var(--theme-border))', backgroundColor: conditionMode === 'OR' ? 'rgba(24,144,255,0.12)' : 'white', color: conditionMode === 'OR' ? '#1677ff' : 'rgb(var(--theme-text-secondary))', cursor: 'pointer', fontSize: 11 }}>OR</button>
+                          </div>
                         </div>
                         <div style={{ display: 'grid', gap: 6, minWidth: 0 }}>
                           {compositeConditions.map((cond, idx) => (
@@ -2749,13 +2784,13 @@ function LibrariesPageContent({ lng }: { lng: string }) {
                   </div>
                 )}
 
-              {/* SQL预览区域（非自然语言模式） */}
-              {showSqlPreview && rulePreviewSql && !parsedPrimaryResult && !parseNeedsConfirmation && (
-                <div style={{ padding: 12, borderRadius: 12, border: '1px solid rgb(var(--theme-border))', backgroundColor: 'rgb(var(--theme-bg))' }}>
-                  <div style={{ fontWeight: 500, color: 'rgb(var(--theme-text))', marginBottom: 8 }}>SQL 预览{previewScope ? `（${previewScope === 'column' ? '列级' : previewScope === 'table' ? '表级' : '全局'}）` : ''}</div>
-                  <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: 12, color: 'rgb(var(--theme-text-secondary))' }}>{rulePreviewSql}</pre>
-                </div>
-              )}
+                {/* SQL预览区域（非自然语言模式） */}
+                {showSqlPreview && rulePreviewSql && !parsedPrimaryResult && !parseNeedsConfirmation && (
+                  <div style={{ padding: 12, borderRadius: 12, border: '1px solid rgb(var(--theme-border))', backgroundColor: 'rgb(var(--theme-bg))' }}>
+                    <div style={{ fontWeight: 500, color: 'rgb(var(--theme-text))', marginBottom: 8 }}>SQL 预览{previewScope ? `（${previewScope === 'column' ? '列级' : previewScope === 'table' ? '表级' : '全局'}）` : ''}</div>
+                    <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: 12, color: 'rgb(var(--theme-text-secondary))' }}>{rulePreviewSql}</pre>
+                  </div>
+                )}
               </div>
             )}
 
@@ -2908,17 +2943,17 @@ function LibrariesPageContent({ lng }: { lng: string }) {
                         notFoundContent={
                           !ruleForm.target_table ? null
                             : columnOptionsLoading && columnOptionsTable === ruleForm.target_table ? (
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-                                <Loader2 style={{ width: 18, height: 18, color: 'rgb(var(--theme-primary))', animation: 'spin 1s linear infinite' }} />
-                                <span style={{ marginLeft: 8, color: 'rgb(var(--theme-text-secondary))' }}>加载字段中...</span>
-                              </div>
-                            )
-                            : (selectedTemplateDetail ? getFilteredColumnOptions(ruleForm.target_table) : getColumnSelectOptions(ruleForm.target_table)).length === 0 ? (
-                              <div style={{ padding: 12, textAlign: 'center', color: 'rgb(var(--theme-text-muted))' }}>
-                                没有找到符合条件的列
-                              </div>
-                            )
-                            : null
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+                                  <Loader2 style={{ width: 18, height: 18, color: 'rgb(var(--theme-primary))', animation: 'spin 1s linear infinite' }} />
+                                  <span style={{ marginLeft: 8, color: 'rgb(var(--theme-text-secondary))' }}>加载字段中...</span>
+                                </div>
+                              )
+                              : (selectedTemplateDetail ? getFilteredColumnOptions(ruleForm.target_table) : getColumnSelectOptions(ruleForm.target_table)).length === 0 ? (
+                                  <div style={{ padding: 12, textAlign: 'center', color: 'rgb(var(--theme-text-muted))' }}>
+                                    没有找到符合条件的列
+                                  </div>
+                                )
+                                : null
                         }
                       />
                       {selectedTemplateDetail?.applicable_columns_list?.length > 0 && ruleForm.target_table && (
@@ -3220,83 +3255,83 @@ function LibrariesPageContent({ lng }: { lng: string }) {
                 ) : previewConfirmed ? (editingRule ? '已完成预览，可直接保存' : '已完成预览确认，可直接创建规则') : '请先完成 SQL 预览并确认，再保存规则'}
               </div>
             )}
-              {/* AI模式编辑时：条件表达式已变化但尚未解析，提示用户进行AI解析 */}
-              {ruleCreationMode === 'ai' && editingRule && (ruleForm.condition_expr || '') !== (originalEditingRule?.condition_expr || '') && !parsedPrimaryResult && (
-                <div style={{ fontSize: 12, color: 'rgb(var(--theme-text-secondary))', flex: 1, minWidth: 220 }}>
-                  条件表达式已修改，请点击"AI解析"重新生成校验规则
-                </div>
+            {/* AI模式编辑时：条件表达式已变化但尚未解析，提示用户进行AI解析 */}
+            {ruleCreationMode === 'ai' && editingRule && (ruleForm.condition_expr || '') !== (originalEditingRule?.condition_expr || '') && !parsedPrimaryResult && (
+              <div style={{ fontSize: 12, color: 'rgb(var(--theme-text-secondary))', flex: 1, minWidth: 220 }}>
+                条件表达式已修改，请点击"AI解析"重新生成校验规则
+              </div>
+            )}
+            {/* AI模式编辑时：复合规则条件或连接方式已变化，提示用户进行SQL预览 */}
+            {ruleCreationMode === 'ai' && editingRule && ruleForm.rule_type === 'composite' && (
+              (() => {
+                const originalConditions = originalEditingRule ? parseRuleConditions(originalEditingRule) : []
+                const originalMode = originalEditingRule ? getRuleConditionMode(originalEditingRule) : undefined
+                const compositeChanged = JSON.stringify(compositeConditions) !== JSON.stringify(originalConditions)
+                const modeChanged = conditionMode !== originalMode
+                if (compositeChanged || modeChanged) {
+                  return (
+                    <div style={{ fontSize: 12, color: 'rgb(var(--theme-text-secondary))', flex: 1, minWidth: 220 }}>
+                      复合规则条件{compositeChanged ? '已修改' : ''}{compositeChanged && modeChanged ? '，' : ''}{modeChanged ? '连接方式已切换' : ''}，请先点击"SQL预览"确认后再保存
+                    </div>
+                  )
+                }
+                return null
+              })()
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap', marginLeft: 'auto', paddingTop: 2 }}>
+              {(ruleCreationMode === 'manual' || ruleCreationMode === 'template') && (
+                <button onClick={handlePreviewRule} disabled={previewLoading} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid rgb(var(--theme-border))', backgroundColor: 'transparent', cursor: previewLoading ? 'not-allowed' : 'pointer' }}>{previewLoading ? '预览中...' : 'SQL预览'}</button>
               )}
-              {/* AI模式编辑时：复合规则条件或连接方式已变化，提示用户进行SQL预览 */}
-              {ruleCreationMode === 'ai' && editingRule && ruleForm.rule_type === 'composite' && (
+              {/* AI模式新建时：用户编辑了条件表达式，显示SQL预览按钮 */}
+              {ruleCreationMode === 'ai' && !editingRule && parsedPrimaryResult && aiConditionEdited && (
+                <button onClick={handlePreviewRule} disabled={previewLoading} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid rgb(var(--theme-border))', backgroundColor: 'transparent', cursor: previewLoading ? 'not-allowed' : 'pointer' }}>{previewLoading ? '预览中...' : 'SQL预览'}</button>
+              )}
+              {/* AI模式编辑时：用户编辑了条件表达式，显示SQL预览按钮（无论是否已完成AI解析） */}
+              {ruleCreationMode === 'ai' && editingRule && (
                 (() => {
-                  const originalConditions = originalEditingRule ? parseRuleConditions(originalEditingRule) : []
-                  const originalMode = originalEditingRule ? getRuleConditionMode(originalEditingRule) : undefined
-                  const compositeChanged = JSON.stringify(compositeConditions) !== JSON.stringify(originalConditions)
-                  const modeChanged = conditionMode !== originalMode
-                  if (compositeChanged || modeChanged) {
+                  // 已完成AI解析：用户编辑了条件表达式（aiConditionEdited）
+                  if (parsedPrimaryResult && aiConditionEdited) {
                     return (
-                      <div style={{ fontSize: 12, color: 'rgb(var(--theme-text-secondary))', flex: 1, minWidth: 220 }}>
-                        复合规则条件{compositeChanged ? '已修改' : ''}{compositeChanged && modeChanged ? '，' : ''}{modeChanged ? '连接方式已切换' : ''}，请先点击"SQL预览"确认后再保存
-                      </div>
+                      <button onClick={handlePreviewRule} disabled={previewLoading} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid rgb(var(--theme-border))', backgroundColor: 'transparent', cursor: previewLoading ? 'not-allowed' : 'pointer' }}>{previewLoading ? '预览中...' : 'SQL预览'}</button>
+                    )
+                  }
+                  // 尚未完成AI解析：用户直接编辑了condition_expr
+                  if (!parsedPrimaryResult && (ruleForm.condition_expr || '') !== (originalEditingRule?.condition_expr || '')) {
+                    return (
+                      <button onClick={handlePreviewRule} disabled={previewLoading} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid rgb(var(--theme-border))', backgroundColor: 'transparent', cursor: previewLoading ? 'not-allowed' : 'pointer' }}>{previewLoading ? '预览中...' : 'SQL预览'}</button>
                     )
                   }
                   return null
                 })()
               )}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'wrap', marginLeft: 'auto', paddingTop: 2 }}>
-                {(ruleCreationMode === 'manual' || ruleCreationMode === 'template') && (
-                  <button onClick={handlePreviewRule} disabled={previewLoading} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid rgb(var(--theme-border))', backgroundColor: 'transparent', cursor: previewLoading ? 'not-allowed' : 'pointer' }}>{previewLoading ? '预览中...' : 'SQL预览'}</button>
-                )}
-                {/* AI模式新建时：用户编辑了条件表达式，显示SQL预览按钮 */}
-                {ruleCreationMode === 'ai' && !editingRule && parsedPrimaryResult && aiConditionEdited && (
-                  <button onClick={handlePreviewRule} disabled={previewLoading} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid rgb(var(--theme-border))', backgroundColor: 'transparent', cursor: previewLoading ? 'not-allowed' : 'pointer' }}>{previewLoading ? '预览中...' : 'SQL预览'}</button>
-                )}
-                {/* AI模式编辑时：用户编辑了条件表达式，显示SQL预览按钮（无论是否已完成AI解析） */}
-                {ruleCreationMode === 'ai' && editingRule && (
-                  (() => {
-                    // 已完成AI解析：用户编辑了条件表达式（aiConditionEdited）
-                    if (parsedPrimaryResult && aiConditionEdited) {
-                      return (
-                        <button onClick={handlePreviewRule} disabled={previewLoading} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid rgb(var(--theme-border))', backgroundColor: 'transparent', cursor: previewLoading ? 'not-allowed' : 'pointer' }}>{previewLoading ? '预览中...' : 'SQL预览'}</button>
-                      )
-                    }
-                    // 尚未完成AI解析：用户直接编辑了condition_expr
-                    if (!parsedPrimaryResult && (ruleForm.condition_expr || '') !== (originalEditingRule?.condition_expr || '')) {
-                      return (
-                        <button onClick={handlePreviewRule} disabled={previewLoading} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid rgb(var(--theme-border))', backgroundColor: 'transparent', cursor: previewLoading ? 'not-allowed' : 'pointer' }}>{previewLoading ? '预览中...' : 'SQL预览'}</button>
-                      )
-                    }
-                    return null
-                  })()
-                )}
-                {/* AI模式编辑时：复合规则条件或连接方式已变化，显示SQL预览按钮 */}
-                {ruleCreationMode === 'ai' && editingRule && ruleForm.rule_type === 'composite' && aiConditionEdited && (
-                  <button onClick={handlePreviewRule} disabled={previewLoading} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid rgb(var(--theme-border))', backgroundColor: 'transparent', cursor: previewLoading ? 'not-allowed' : 'pointer' }}>{previewLoading ? '预览中...' : 'SQL预览'}</button>
-                )}
-                {/* AI模式：解析成功后（parsedPrimaryResult 存在）且尚未确认，显示"确认解析结果"按钮，新建和编辑模式均适用 */}
-                {ruleCreationMode === 'ai' && !parseNeedsConfirmation && parsedPrimaryResult && !previewConfirmed && (
-                  <button onClick={() => {
-                    // 如果用户编辑了条件表达式或复合条件，必须先点击 SQL 预览
-                    if (aiConditionEdited) {
-                      message.warning('条件表达式已修改，请先点击 "SQL 预览" 生成新的校验 SQL')
-                      return
-                    }
-                    setPreviewConfirmed(true)
-                    setAiConditionEdited(false) // 确认后重置
-                    // 将 SQL 预览同步到 ruleForm.sql_text，方便用户继续编辑
-                    if (rulePreviewSql) {
-                      setRuleForm((prev) => ({ ...prev, sql_text: rulePreviewSql }))
-                    }
-                    // 编辑模式下：同步 originalEditingRule，重置 conditionExprChanged
-                    if (editingRule) {
-                      setOriginalEditingRule((prev) => prev ? { ...prev, condition_expr: parsedPrimaryResult?.condition_expr || prev.condition_expr, description: naturalLanguageInput || prev.description } : prev)
-                    }
-                    message.success('已确认解析结果，可以直接保存')
-                  }} style={{ padding: '7px 14px', borderRadius: 8, border: 'none', color: 'white', backgroundColor: '#389e0d', cursor: 'pointer' }}>确认解析结果</button>
-                )}
-              </div>
-              <button onClick={handleCreateRule} style={{ padding: '7px 16px', borderRadius: 8, fontSize: 14, fontWeight: 500, color: 'white', backgroundColor: 'rgb(var(--theme-primary))', border: 'none', cursor: 'pointer' }}>{editingRule ? '保存' : '创建'}</button>
-        </div>
+              {/* AI模式编辑时：复合规则条件或连接方式已变化，显示SQL预览按钮 */}
+              {ruleCreationMode === 'ai' && editingRule && ruleForm.rule_type === 'composite' && aiConditionEdited && (
+                <button onClick={handlePreviewRule} disabled={previewLoading} style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid rgb(var(--theme-border))', backgroundColor: 'transparent', cursor: previewLoading ? 'not-allowed' : 'pointer' }}>{previewLoading ? '预览中...' : 'SQL预览'}</button>
+              )}
+              {/* AI模式：解析成功后（parsedPrimaryResult 存在）且尚未确认，显示"确认解析结果"按钮，新建和编辑模式均适用 */}
+              {ruleCreationMode === 'ai' && !parseNeedsConfirmation && parsedPrimaryResult && !previewConfirmed && (
+                <button onClick={() => {
+                  // 如果用户编辑了条件表达式或复合条件，必须先点击 SQL 预览
+                  if (aiConditionEdited) {
+                    message.warning('条件表达式已修改，请先点击 "SQL 预览" 生成新的校验 SQL')
+                    return
+                  }
+                  setPreviewConfirmed(true)
+                  setAiConditionEdited(false) // 确认后重置
+                  // 将 SQL 预览同步到 ruleForm.sql_text，方便用户继续编辑
+                  if (rulePreviewSql) {
+                    setRuleForm((prev) => ({ ...prev, sql_text: rulePreviewSql }))
+                  }
+                  // 编辑模式下：同步 originalEditingRule，重置 conditionExprChanged
+                  if (editingRule) {
+                    setOriginalEditingRule((prev) => prev ? { ...prev, condition_expr: parsedPrimaryResult?.condition_expr || prev.condition_expr, description: naturalLanguageInput || prev.description } : prev)
+                  }
+                  message.success('已确认解析结果，可以直接保存')
+                }} style={{ padding: '7px 14px', borderRadius: 8, border: 'none', color: 'white', backgroundColor: '#389e0d', cursor: 'pointer' }}>确认解析结果</button>
+              )}
+            </div>
+            <button onClick={handleCreateRule} style={{ padding: '7px 16px', borderRadius: 8, fontSize: 14, fontWeight: 500, color: 'white', backgroundColor: 'rgb(var(--theme-primary))', border: 'none', cursor: 'pointer' }}>{editingRule ? '保存' : '创建'}</button>
+          </div>
         </div>
       </Modal>
 
@@ -3532,7 +3567,7 @@ function CandidateCard({ candidate, type, isLoading, selectedColumns = [], onTog
               </span>
             ) : (
               <span style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(82,196,26,0.3)', color: '#389e0d', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
-                onClick={() => onToggleColumn?.(candidate.name)}>
+                    onClick={() => onToggleColumn?.(candidate.name)}>
                 选择
               </span>
             )
