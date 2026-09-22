@@ -92,7 +92,8 @@ def card_to_table_obj(schema_row, card_obj: dict, connect_info: str, ds_schema_n
                 # 假设已经是正确的 schema.table 格式
                 # ⚠️ 检查 schema 部分是否需要加引号
                 schema_part = parts[0]
-                needs_quote = schema_part and (not schema_part.replace('_', '').isalnum())
+                already_quoted = schema_part.startswith('"') and schema_part.endswith('"')
+                needs_quote = schema_part and not already_quoted and (not schema_part.replace('_', '').isalnum())
                 if needs_quote:
                     full_table_name = f'"{schema_part}".{parts[1]}'
                 else:
