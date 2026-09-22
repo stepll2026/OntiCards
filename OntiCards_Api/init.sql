@@ -3,7 +3,7 @@
 
     注意：
     (1) 若需手动执行，则需要先创建数据库，后再执行
-    (2) Line 25 注意改为实际的数据库用户名
+    (2) 类型归属当前执行初始化的数据库用户。
 */
 
 
@@ -21,9 +21,8 @@ CREATE TYPE "public"."call_status_enum" AS ENUM (
   'failed'
 );
 
--- !!!!!!!!!!!!!!!!!!!!!!!!!!!! 【需填成实际数据库用户名】 !!!!!!!!!!!!!!!!!!!!!!!!!!!!
-ALTER TYPE "public"."call_status_enum" OWNER TO "postgres";
--- !!!!!!!!!!!!!!!!!!!!!!!!!!!! 【需填成实际数据库用户名】 !!!!!!!!!!!!!!!!!!!!!!!!!!!!
+-- 类型归属当前数据库用户，支持自定义 DB_USERNAME。
+ALTER TYPE "public"."call_status_enum" OWNER TO CURRENT_USER;
 
 -- ----------------------------
 -- Sequence structure for change_logs_id_seq

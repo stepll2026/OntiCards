@@ -12,8 +12,7 @@ from flask import Flask, g, request, Response
 # 禁用 Flask 写入 session cookie 的机制
 from flask.sessions import SecureCookieSessionInterface
 from flask_cors import CORS
-from sqlalchemy import func, text
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import func
 
 import views
 from config import Config
@@ -22,6 +21,7 @@ from controllers.weaviate_db_tool.weaviate_api import ensure_user_collection_exi
 from core import log
 from extensions import ext_database, ext_migrate, ext_login
 from extensions.ext_database import db
+from extensions.schema_migrations import upgrade_schema
 
 # ===== 修复 Windows 控制台中文乱码问题 =====
 if sys.platform == 'win32':
@@ -135,7 +135,7 @@ def create_app():
     ext_database.init_app(app)
     ext_login.init_app(app)
     # ext_weaviate.init_app(app)
-    ensure_database_initialized(app)  # 项目启动阶段：检查数据库是否为空，为空则执行 init.sql 脚本
+    ensure_database_initialized(app)  # Apply pending schema versions before serving requests.
     views.init(app)
     ensure_default_user(app)  # 项目启动阶段：校验是否有用户信息，没有则创建默认用户（管理员角色） -> 针对部署场景
 
@@ -265,156 +265,10 @@ def create_app():
 
     return app
 
-def check_database_has_tables(app):
-    """检查数据库中是否存在表（PostgreSQL）"""
-    try:
-        with app.app_context():
-            # 使用 PostgreSQL 的 information_schema 查询表数量
-            result = db.session.execute(text("""
-                SELECT COUNT(*) as table_count
-                FROM information_schema.tables
-                WHERE table_schema = 'public'
-                AND table_type = 'BASE TABLE'
-            """))
-            count = result.scalar() or 0
-            app.logger.info(f"数据库表数量检查: {count} 个表")
-            return count > 0
-    except SQLAlchemyError as e:
-        app.logger.error(f"检查数据库表时出错: {e}", exc_info=True)
-        # 如果检查失败，假设有表存在，避免重复执行初始化脚本
-        return True
-    except Exception as e:
-        app.logger.error(f"检查数据库表时发生未知错误: {e}", exc_info=True)
-        return True
-
-def execute_init_sql(app):
-    """执行 init.sql 脚本"""
-    app_path = os.path.dirname(os.path.abspath(__file__))
-    init_sql_path = os.path.join(app_path, 'init.sql')
-    
-    if not os.path.exists(init_sql_path):
-        app.logger.warning(f"未找到 init.sql 文件: {init_sql_path}")
-        return False
-    
-    try:
-        with open(init_sql_path, 'r', encoding='utf-8') as f:
-            sql_content = f.read()
-        
-        # 处理 SQL 内容：移除 # 注释（PostgreSQL 不支持 # 作为注释）
-        lines = sql_content.split('\n')
-        cleaned_lines = []
-        for line in lines:
-            # 如果整行是 # 开头的注释，则跳过
-            stripped = line.strip()
-            if stripped.startswith('#'):
-                # 检查是否是行内注释（# 后面有内容，且不在字符串中）
-                # 简单处理：如果整行以 # 开头，则跳过
-                continue
-            # 移除行尾的 # 注释（简单处理：如果行中包含 # 且不在引号中）
-            # 为了安全，这里只处理整行注释的情况
-            cleaned_lines.append(line)
-        
-        sql_content = '\n'.join(cleaned_lines)
-        
-        # 使用更简单可靠的方式分割 SQL 语句
-        # 按分号分割，但需要处理多行语句和字符串中的分号
-        statements = []
-        current_statement = []
-        
-        # 简单的状态机：跟踪是否在字符串中
-        in_single_quote = False
-        in_double_quote = False
-        
-        for line in sql_content.split('\n'):
-            # 检查行中是否有分号（不在字符串中）
-            line_chars = list(line)
-            semicolon_pos = -1
-            
-            for i, char in enumerate(line_chars):
-                if char == "'" and (i == 0 or line_chars[i-1] != '\\'):
-                    in_single_quote = not in_single_quote
-                elif char == '"' and (i == 0 or line_chars[i-1] != '\\'):
-                    in_double_quote = not in_double_quote
-                elif char == ';' and not in_single_quote and not in_double_quote:
-                    semicolon_pos = i
-                    break
-            
-            current_statement.append(line)
-            
-            # 如果找到分号且不在字符串中，说明语句结束
-            if semicolon_pos >= 0:
-                statement = '\n'.join(current_statement).strip()
-                if statement:
-                    statements.append(statement)
-                current_statement = []
-                # 重置字符串状态（新语句开始）
-                in_single_quote = False
-                in_double_quote = False
-        
-        # 处理最后一个语句（可能没有分号结尾）
-        if current_statement:
-            statement = '\n'.join(current_statement).strip()
-            if statement:
-                statements.append(statement)
-        
-        # 过滤空语句和纯注释语句
-        filtered_statements = []
-        for stmt in statements:
-            # 移除注释和空行后检查
-            lines = [l for l in stmt.split('\n') 
-                    if l.strip() and not l.strip().startswith('--')]
-            if lines:
-                filtered_statements.append(stmt)
-        
-        if not filtered_statements:
-            app.logger.warning("init.sql 文件中没有找到可执行的 SQL 语句")
-            return False
-        
-        app.logger.info(f"准备执行 {len(filtered_statements)} 条 SQL 语句")
-        
-        with app.app_context():
-            with db.engine.begin() as conn:
-                for i, statement in enumerate(filtered_statements, 1):
-                    try:
-                        # 跳过空语句
-                        if not statement.strip():
-                            continue
-                        # 执行 SQL 语句
-                        conn.execute(text(statement))
-                        app.logger.debug(f"已执行第 {i}/{len(filtered_statements)} 条 SQL 语句")
-                    except Exception as e:
-                        app.logger.error(f"执行第 {i} 条 SQL 语句时出错: {e}")
-                        # 显示问题语句的前300个字符
-                        preview = statement[:300].replace('\n', ' ')
-                        app.logger.error(f"问题语句预览: {preview}...")
-                        # 继续执行下一条语句，不中断整个初始化过程
-                        continue
-        
-        app.logger.info("init.sql 脚本执行完成")
-        return True
-        
-    except Exception as e:
-        app.logger.error(f"执行 init.sql 脚本时出错: {e}", exc_info=True)
-        return False
-
-
 def ensure_database_initialized(app):
-    """检查数据库是否为空，为空则执行 init.sql 脚本"""
+    """Initialize or upgrade the internal database before application startup."""
     with app.app_context():
-        # 检查数据库中是否存在表
-        has_tables = check_database_has_tables(app)
-        
-        if has_tables:
-            app.logger.info("数据库已存在表，跳过 init.sql 脚本执行")
-            return
-        
-        app.logger.info("数据库为空，开始执行 init.sql 脚本...")
-        success = execute_init_sql(app)
-        
-        if success:
-            app.logger.info("数据库初始化完成")
-        else:
-            app.logger.error("数据库初始化失败，请检查 init.sql 脚本和数据库连接")
+        upgrade_schema(db.engine, logger=app.logger)
 
 
 def ensure_default_user(app):
