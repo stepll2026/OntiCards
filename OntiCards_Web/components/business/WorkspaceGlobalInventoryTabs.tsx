@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Tabs, Table, Card, Descriptions, Empty, Spin, Modal, Tag, Tooltip, Progress, Button, Input, message } from 'antd';
 import { DatabaseOutlined, TableOutlined, LinkOutlined, InfoCircleOutlined, ApartmentOutlined, DeleteOutlined } from '@ant-design/icons';
 import { Search } from 'lucide-react';
@@ -67,113 +67,6 @@ const CARDINALITY_CONFIG: Record<string, { label: string; color: string }> = {
   many_to_many: { label: 'N:N', color: 'orange' },
 };
 
-// 虚拟列表行高
-const RELATIONSHIP_ROW_HEIGHT = 180;
-const VISIBLE_ROWS = 3;
-
-// 虚拟列表组件
-const VirtualRelationshipList: React.FC<{
-  relationships: any[];
-  isDark: boolean;
-}> = ({ relationships, isDark }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [scrollTop, setScrollTop] = useState(0);
-  const [containerHeight, setContainerHeight] = useState(RELATIONSHIP_ROW_HEIGHT * VISIBLE_ROWS);
-
-  const totalHeight = relationships.length * RELATIONSHIP_ROW_HEIGHT;
-
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    setScrollTop(e.currentTarget.scrollTop);
-  }, []);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setContainerHeight(entry.contentRect.height);
-      }
-    });
-
-    resizeObserver.observe(container);
-    return () => resizeObserver.disconnect();
-  }, []);
-
-  const startIndex = Math.max(0, Math.floor(scrollTop / RELATIONSHIP_ROW_HEIGHT) - 1);
-  const endIndex = Math.min(
-    relationships.length,
-    Math.ceil((scrollTop + containerHeight) / RELATIONSHIP_ROW_HEIGHT) + 1
-  );
-
-  const visibleItems = relationships.slice(startIndex, endIndex);
-  const offsetY = startIndex * RELATIONSHIP_ROW_HEIGHT;
-
-  return (
-    <div
-      ref={containerRef}
-      className="overflow-y-auto"
-      onScroll={handleScroll}
-      style={{ maxHeight: RELATIONSHIP_ROW_HEIGHT * VISIBLE_ROWS }}
-    >
-      <div style={{ height: totalHeight, position: 'relative' }}>
-        <div style={{ transform: `translateY(${offsetY}px)` }}>
-          {visibleItems.map((rel, idx) => {
-            const actualIndex = startIndex + idx;
-            return (
-              <div
-                key={actualIndex}
-                style={{
-                  height: RELATIONSHIP_ROW_HEIGHT - 8,
-                  marginBottom: 8,
-                  border: `1px solid ${rel.is_cross_source ? (isDark ? 'rgba(251, 146, 60, 0.5)' : '#fb923c') : (isDark ? '#334155' : '#e5e7eb')}`,
-                  borderRadius: '8px',
-                  padding: '12px',
-                  background: rel.is_cross_source ? (isDark ? 'rgba(251, 146, 60, 0.1)' : 'rgba(254, 215, 170, 0.3)') : (isDark ? '#1e293b' : '#ffffff'),
-                  overflow: 'hidden'
-                }}
-              >
-                <div className="flex items-center justify-between mb-2" style={{ flexWrap: 'wrap', gap: '4px' }}>
-                  <div className="flex items-center gap-2">
-                    {rel.is_cross_source ? <Tag color="orange">跨源</Tag> : <Tag color="blue">同源</Tag>}
-                    <Tag color="green">{rel.related_table}</Tag>
-                    {rel.related_datasource_name && <Tag color="cyan" icon={<DatabaseOutlined />}>{rel.related_datasource_name}</Tag>}
-                    <Tag color={CARDINALITY_CONFIG[rel.relationship_type]?.color || 'default'}>
-                      {CARDINALITY_CONFIG[rel.relationship_type]?.label || rel.relationship_type}
-                    </Tag>
-                  </div>
-                  <Progress percent={Math.round((rel.confidence || 0) * 100)} size="small" style={{ width: 80 }} strokeColor={(rel.confidence || 0) >= 0.85 ? '#52c41a' : (rel.confidence || 0) >= 0.6 ? '#faad14' : '#ff4d4f'} />
-                </div>
-                {rel.join_fields?.length > 0 && (
-                  <div className="mb-2" style={{ overflow: 'hidden' }}>
-                    <div className="text-xs mb-1" style={{ color: isDark ? '#94a8b8' : '#6b7280' }}>JOIN 字段：</div>
-                    <div className="flex items-center gap-1 text-xs flex-wrap">
-                      {rel.join_fields.slice(0, 3).map((field: any, fidx: number) => (
-                        <span key={fidx} className="flex items-center gap-1 px-1.5 py-0.5 rounded" style={{ background: isDark ? '#1e293b' : '#f9fafb' }}>
-                          <span className="font-mono" style={{ color: isDark ? '#60a5fa' : '#2563eb' }}>{field.local_field}</span>
-                          <span style={{ color: isDark ? '#475569' : '#9ca3af' }}>=</span>
-                          <span className="font-mono" style={{ color: isDark ? '#4ade80' : '#16a34a' }}>{field.remote_field}</span>
-                          <Tag style={{ margin: 0, fontSize: '10px' }}>{RELATIONSHIP_TYPE_CONFIG[field.relationship_type]?.text || field.relationship_type}</Tag>
-                        </span>
-                      ))}
-                      {rel.join_fields.length > 3 && <Tag>+{rel.join_fields.length - 3}</Tag>}
-                    </div>
-                  </div>
-                )}
-                {(rel.join_suggestion?.sample_sql || rel.business_relation?.relation_description) && (
-                  <div className="text-xs truncate" style={{ color: isDark ? '#64748b' : '#9ca3af' }}>
-                    {rel.business_relation?.relation_description || rel.join_suggestion?.join_condition || ''}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-};
-
 interface WorkspaceGlobalInventoryTabsProps {
   datasourceId: string;
   datasourceName: string;
@@ -188,15 +81,15 @@ interface WorkspaceGlobalInventoryTabsProps {
 }
 
 const WorkspaceGlobalInventoryTabs: React.FC<WorkspaceGlobalInventoryTabsProps> = ({
-  datasourceId,
-  datasourceName,
-  datasourceNameMap: datasourceNameMapProp,
-  relationshipCards,
-  tableRelationships,
-  graphData,
-  loading,
-  onRefresh,
-}) => {
+                                                                                     datasourceId,
+                                                                                     datasourceName,
+                                                                                     datasourceNameMap: datasourceNameMapProp,
+                                                                                     relationshipCards,
+                                                                                     tableRelationships,
+                                                                                     graphData,
+                                                                                     loading,
+                                                                                     onRefresh,
+                                                                                   }) => {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedCardDetail, setSelectedCardDetail] = useState<RelationshipCard | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -638,42 +531,39 @@ const WorkspaceGlobalInventoryTabs: React.FC<WorkspaceGlobalInventoryTabsProps> 
             )}
             {selectedCardDetail.Relationships && selectedCardDetail.Relationships.length > 0 && (
               <Card size="small" title={`关联关系 (${selectedCardDetail.Relationships.length})`}>
-                {selectedCardDetail.Relationships.length > 10 ? (
-                  <VirtualRelationshipList relationships={selectedCardDetail.Relationships} isDark={isDark} />
-                ) : (
-                  <div className="space-y-4">
-                    {selectedCardDetail.Relationships.map((rel: any, idx: number) => (
-                      <div
-                        key={idx}
-                        style={{
-                          border: `1px solid ${rel.is_cross_source ? (isDark ? 'rgba(251, 146, 60, 0.5)' : '#fb923c') : (isDark ? '#334155' : '#e5e7eb')}`,
-                          borderRadius: '8px',
-                          padding: '16px',
-                          background: rel.is_cross_source ? (isDark ? 'rgba(251, 146, 60, 0.1)' : 'rgba(254, 215, 170, 0.3)') : (isDark ? '#1e293b' : '#ffffff')
-                        }}
-                      >
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            {rel.is_cross_source ? <Tag color="orange">跨源</Tag> : <Tag color="blue">同源</Tag>}
-                            <Tag color="green">{rel.related_table}</Tag>
-                            {rel.related_datasource_name && <Tag color="cyan" icon={<DatabaseOutlined />}>{rel.related_datasource_name}</Tag>}
-                            <Tag color={CARDINALITY_CONFIG[rel.relationship_type]?.color || 'default'}>
-                              {CARDINALITY_CONFIG[rel.relationship_type]?.label || rel.relationship_type}
-                            </Tag>
-                          </div>
-                          <Progress percent={Math.round((rel.confidence || 0) * 100)} size="small" style={{ width: 100 }} strokeColor={(rel.confidence || 0) >= 0.85 ? '#52c41a' : (rel.confidence || 0) >= 0.6 ? '#faad14' : '#ff4d4f'} />
+                <div className="space-y-4">
+                  {selectedCardDetail.Relationships.map((rel: any, idx: number) => (
+                    <div
+                      key={idx}
+                      style={{
+                        border: `1px solid ${rel.is_cross_source ? (isDark ? 'rgba(251, 146, 60, 0.5)' : '#fb923c') : (isDark ? '#334155' : '#e5e7eb')}`,
+                        borderRadius: '8px',
+                        padding: '16px',
+                        background: rel.is_cross_source ? (isDark ? 'rgba(251, 146, 60, 0.1)' : 'rgba(254, 215, 170, 0.3)') : (isDark ? '#1e293b' : '#ffffff')
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {rel.is_cross_source ? <Tag color="orange">跨源</Tag> : <Tag color="blue">同源</Tag>}
+                          <Tag color="green">{rel.related_table}</Tag>
+                          {rel.related_datasource_name && <Tag color="cyan" icon={<DatabaseOutlined />}>{rel.related_datasource_name}</Tag>}
+                          <Tag color={CARDINALITY_CONFIG[rel.relationship_type]?.color || 'default'}>
+                            {CARDINALITY_CONFIG[rel.relationship_type]?.label || rel.relationship_type}
+                          </Tag>
                         </div>
-                        {rel.join_fields?.length > 0 && (
-                          <div className="mb-3">
-                            <div className="text-sm mb-1" style={{ color: isDark ? '#94a3b8' : '#6b7280' }}>JOIN 字段：</div>
-                            {rel.join_fields.map((field: any, fidx: number) => (
-                              <div key={fidx} className="flex items-center gap-2 text-sm p-2 rounded" style={{ background: isDark ? '#1e293b' : '#f9fafb' }}>
-                                <span className="font-mono" style={{ color: isDark ? '#60a5fa' : '#2563eb' }}>{field.local_field}</span>
-                                <span style={{ color: isDark ? '#475569' : '#9ca3af' }}>=</span>
-                                <span className="font-mono" style={{ color: isDark ? '#4ade80' : '#16a34a' }}>{field.remote_field}</span>
-                                <Tag>{RELATIONSHIP_TYPE_CONFIG[field.relationship_type]?.text || field.relationship_type}</Tag>
-                              </div>
-                            ))}
+                        <Progress percent={Math.round((rel.confidence || 0) * 100)} size="small" style={{ width: 100 }} strokeColor={(rel.confidence || 0) >= 0.85 ? '#52c41a' : (rel.confidence || 0) >= 0.6 ? '#faad14' : '#ff4d4f'} />
+                      </div>
+                      {rel.join_fields?.length > 0 && (
+                        <div className="mb-3">
+                          <div className="text-sm mb-1" style={{ color: isDark ? '#94a3b8' : '#6b7280' }}>JOIN 字段：</div>
+                          {rel.join_fields.map((field: any, fidx: number) => (
+                            <div key={fidx} className="flex items-center gap-2 text-sm p-2 rounded" style={{ background: isDark ? '#1e293b' : '#f9fafb' }}>
+                              <span className="font-mono" style={{ color: isDark ? '#60a5fa' : '#2563eb' }}>{field.local_field}</span>
+                              <span style={{ color: isDark ? '#475569' : '#9ca3af' }}>=</span>
+                              <span className="font-mono" style={{ color: isDark ? '#4ade80' : '#16a34a' }}>{field.remote_field}</span>
+                              <Tag>{RELATIONSHIP_TYPE_CONFIG[field.relationship_type]?.text || field.relationship_type}</Tag>
+                            </div>
+                          ))}
                         </div>
                       )}
                       {rel.join_suggestion && (rel.join_suggestion.join_type || rel.join_suggestion.join_condition || rel.join_suggestion.sample_sql || (rel.join_suggestion.use_cases && rel.join_suggestion.use_cases.length > 0)) && (
@@ -741,7 +631,6 @@ const WorkspaceGlobalInventoryTabs: React.FC<WorkspaceGlobalInventoryTabsProps> 
                     </div>
                   ))}
                 </div>
-                )}
               </Card>
             )}
             {selectedCardDetail.FusionHints && (selectedCardDetail.FusionHints.as_master?.length > 0 || selectedCardDetail.FusionHints.as_detail?.length > 0 || selectedCardDetail.FusionHints.common_joins?.length > 0) && (
