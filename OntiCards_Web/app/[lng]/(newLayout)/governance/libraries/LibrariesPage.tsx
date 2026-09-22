@@ -123,7 +123,12 @@ const EmptyStateCard = ({
 }) => (
   <div style={{ textAlign: 'center', padding: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 200 }}>
     <div style={{ color: 'rgb(var(--theme-text-muted))', opacity: 0.4 }}>
-      {React.cloneElement(icon as React.ReactElement, { style: { width: 48, height: 48 } })}
+      {icon && (icon as React.ReactElement<{ style?: React.CSSProperties }>).props
+        ? (() => {
+          const IconComponent = (icon as React.ReactElement).type as React.ComponentType<{ style?: React.CSSProperties; className?: string }>;
+          return <IconComponent style={{ width: 48, height: 48 }} />;
+        })()
+        : icon}
     </div>
     <p style={{ fontWeight: 500, marginTop: 12, fontSize: 15, color: 'rgb(var(--theme-text))' }}>{title}</p>
     <p style={{ fontSize: 13, marginTop: 4, color: 'rgb(var(--theme-text-secondary))' }}>{description}</p>
