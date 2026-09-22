@@ -1157,6 +1157,7 @@ class MonitoringRealtimeResource(Resource):
                     "id": str(q.id),
                     "question": q.question[:50] + "..." if q.question and len(q.question) > 50 else q.question,
                     "duration_ms": q.total_duration_ms,
+                    "tokens": q.total_tokens,
                     "error_type": q.status,
                     "error_message": q.error_message[:30] + "..." if q.error_message and len(q.error_message) > 30 else q.error_message,
                     "datasources": q.source_datasource_names if q.source_datasource_names else [],

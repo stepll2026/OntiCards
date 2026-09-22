@@ -396,6 +396,11 @@ const formatTokens = (n: number) => {
   return n.toString();
 };
 
+// Older responses can omit usage; historical rows can also contain NULL.
+const formatTokenCount = (tokens?: number | null) => (
+  typeof tokens === 'number' && Number.isFinite(tokens) ? tokens.toLocaleString() : '—'
+);
+
 // 格式化变化率，处理 N/A 情况
 const formatChangeRate = (rate: string | null | undefined, context?: string) => {
   if (rate === 'N/A' || rate === null || rate === undefined) {
@@ -2012,7 +2017,7 @@ function RealtimeTab({ realtime }: { realtime: MonitoringRealtimeResponse['data'
                       <td style={{ ...styles.tableCellRight, color: 'rgb(22, 163, 74)', fontWeight: 500 }}>
                         {formatDuration(item.duration_ms)}
                       </td>
-                      <td style={{ ...styles.tableCellRight }}>{item.tokens.toLocaleString()}</td>
+                      <td style={{ ...styles.tableCellRight }}>{formatTokenCount(item.tokens)}</td>
                       <td style={{ ...styles.tableCellRight, color: 'rgb(var(--theme-text-muted))' }}>{item.time}</td>
                     </tr>
                   ))}
@@ -2032,7 +2037,7 @@ function RealtimeTab({ realtime }: { realtime: MonitoringRealtimeResponse['data'
                       <td style={{ ...styles.tableCellRight, color: 'rgb(239, 68, 68)', fontWeight: 500 }}>
                         {formatDuration(item.duration_ms)}
                       </td>
-                      <td style={{ ...styles.tableCellRight }}>{item.tokens.toLocaleString()}</td>
+                      <td style={{ ...styles.tableCellRight }}>{formatTokenCount(item.tokens)}</td>
                       <td style={{ ...styles.tableCellRight, color: 'rgb(var(--theme-text-muted))' }}>{item.time}</td>
                     </tr>
                   ))}
@@ -2436,7 +2441,7 @@ function PerformanceTab({ performance, days, setDays }: {
                         <Timer size={14} /> {formatDuration(item.duration_ms)}
                       </span>
                     </td>
-                    <td style={{ ...styles.tableCellRight }}>{item.tokens.toLocaleString()}</td>
+                    <td style={{ ...styles.tableCellRight }}>{formatTokenCount(item.tokens)}</td>
                     <td style={{ ...styles.tableCellRight, color: 'rgb(var(--theme-text-muted))' }}>
                       {new Date(item.created_at).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </td>

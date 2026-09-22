@@ -21,6 +21,7 @@ import {
   Coins,
   BookOpen,
   Shield,
+  FileText,
 } from "lucide-react";
 import ChangelogModal from "@/components/changelogModal/ChangelogModal";
 import HelpModal from "@/components/helpModal/HelpModal";
@@ -101,6 +102,7 @@ export default function NewLayout({
     if (short.startsWith("/changelog")) return "查看更新日志";
     if (short.startsWith("/explore")) return "进入探索";
     if (short.startsWith("/monitoring")) return "进入监控中心";
+    if (short.startsWith("/log-center")) return "查看日志中心";
     if (short.startsWith("/cost-config")) return "进入成本管理";
     if (short.startsWith("/business-terms")) return "业务术语库";
     return "";
@@ -329,6 +331,7 @@ export default function NewLayout({
                 <SideLink href="/business-terms" label="业务术语" icon={<BookOpen className="w-4 h-4" />} collapsed={sidebarCollapsed} />
                 <SideLink href="/governance" label="数据质检" icon={<Shield className="w-4 h-4" />} collapsed={sidebarCollapsed} />
                 <SideLink href="/monitoring" label="监控中心" icon={<Activity className="w-4 h-4" />} collapsed={sidebarCollapsed} />
+                <SideLink href="/log-center" label="日志中心" icon={<FileText className="w-4 h-4" />} collapsed={sidebarCollapsed} />
                 <SideLink href="/cost-config" label="成本管理" icon={<Coins className="w-4 h-4" />} collapsed={sidebarCollapsed} />
                 {/* <SideLink href="/explore" label="探索" icon={<Search className="w-4 h-4" />} collapsed={sidebarCollapsed} />
               <SideLink href="/ask" label="智能问数" icon={<MessageSquare className="w-4 h-4" />} collapsed={sidebarCollapsed} /> */}

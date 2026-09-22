@@ -31,6 +31,7 @@ from controllers.global_inventory.global_inventory_tool import global_inventory_
 
 # 查询历史与监控模块
 from controllers.query_history.query_history_api import query_history_api
+from controllers.log_center.system_log_api import log_center_api
 from controllers.monitoring.monitoring_api import monitoring_api
 from controllers.system_config.system_config_api import system_config_api
 from controllers.prompt_config.prompt_config_api import prompt_config_api
@@ -71,6 +72,7 @@ def init_app(app):
 
     # 查询历史与监控模块
     app.register_blueprint(query_history_api, url_prefix='/console/api/query_history')
+    app.register_blueprint(log_center_api, url_prefix='/console/api/log_center')
     app.register_blueprint(monitoring_api, url_prefix='/console/api/monitoring')
     app.register_blueprint(system_config_api, url_prefix='/console/api/system_config')
     app.register_blueprint(prompt_config_api, url_prefix='/console/api/prompt_config')

@@ -246,6 +246,8 @@ def create_app():
 
     @app.errorhandler(Exception)
     def internalError(e):
+        from core.system_logs import note_request_exception
+        note_request_exception(e)
         app.logger.error(traceback.format_exc())
 
         # 根据异常类型返回更友好的错误信息

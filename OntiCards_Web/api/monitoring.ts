@@ -297,7 +297,7 @@ export interface QuerySample {
   id: string
   question: string
   duration_ms: number
-  tokens: number
+  tokens?: number | null
   datasources?: string[]
   status?: 'success' | 'error'
   error_type?: string
@@ -360,7 +360,7 @@ export interface SlowQueryItem {
   id: string
   question: string
   duration_ms: number
-  tokens: number
+  tokens?: number | null
   created_at: string
 }
 

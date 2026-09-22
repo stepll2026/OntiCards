@@ -55,6 +55,8 @@ export interface QueryHistoryItem {
   total_duration_ms: number
   total_tokens: number
   status: 'success' | 'error' | 'timeout'
+  error_message?: string | null
+  retry_count?: number | null
   result_count: number
   fusion_strategy: string
   created_at: string
@@ -138,6 +140,26 @@ export interface QueryHistoryDetailData {
   created_at: string
   // 完整响应结果（包含数据卡片和查询结果）
   full_response_result?: FullResponseResult
+  execution_logs?: QueryExecutionLog[]
+}
+
+export type QueryExecutionAttempt = {
+  attempt: number
+  stage: string
+  status: string
+  sql?: string | null
+  error_code?: string | null
+  message?: string | null
+  duration_ms?: number | null
+  created_at?: string | null
+}
+
+export type QueryExecutionLog = {
+  db_type: string
+  table_names: string[]
+  sql?: string | null
+  attempts: QueryExecutionAttempt[]
+  retry_count: number
 }
 
 /**

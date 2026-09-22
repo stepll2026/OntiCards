@@ -33,5 +33,10 @@ def init(app: Flask):
     app.logger.addHandler(stream_handler)
     app.logger.setLevel(logging.DEBUG)
 
+    # This separate stream only collects request metadata and WARNING/ERROR events.
+    # Existing verbose INFO logs never enter the administrator system log API.
+    from core.system_logs import init_app as init_system_logs
+    init_system_logs(app, directory=app.config.get('SYSTEM_LOG_DIR', log_dir))
+
 if __name__ == '__main__':
     pass

@@ -5,17 +5,20 @@
 @Create: 2026-03-30
 """
 
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+import logging
 from uuid import UUID
 from typing import Any, Dict, Tuple
 
 from flask import Blueprint, request
+from flask_login import current_user, login_required
 from flask_restful import Api, Resource
 from sqlalchemy.dialects.postgresql import JSONB
 
 from extensions.ext_database import db
 from models.query_logs import QueryLog
 from controllers.query_history.query_logger import QueryLogger
+from core.log_sanitizer import sanitize_log_text, sanitize_log_value
 
 query_history_api = Blueprint("query_history_api", __name__)
 api = Api(query_history_api)
@@ -37,6 +40,54 @@ def _is_uuid(v: str) -> bool:
         return True
     except Exception:
         return False
+
+
+@login_required
+def _authorize_history():
+    supplied = request.args.get('user_id', '')
+    if supplied and supplied != str(current_user.id):
+        return resp(403, "只能查看和管理自己的查询日志", None, 403)
+
+
+@query_history_api.before_request
+def authorize_query_history():
+    if request.method != 'OPTIONS':
+        return _authorize_history()
+
+
+def _execution_logs(record):
+    """Read bounded diagnostics from new and historical JSONB layouts."""
+    clusters = record.cluster_sqls
+    if not isinstance(clusters, list) or not any(
+            isinstance(item, dict) and item.get('attempts') for item in clusters):
+        full = record.full_response_result
+        clusters = full.get('clusters', []) if isinstance(full, dict) else []
+    result = []
+    for cluster in clusters[:100] if isinstance(clusters, list) else []:
+        if not isinstance(cluster, dict):
+            continue
+        attempts = cluster.get('attempts', cluster.get('execution_attempts', []))
+        if not isinstance(attempts, list) or not attempts:
+            continue
+        try:
+            retries = max(0, min(int(cluster.get('retry_count', 0)), 2))
+        except (ValueError, TypeError):
+            retries = 0
+        result.append(sanitize_log_value({
+            'db_type': cluster.get('db_type'),
+            'table_names': cluster.get('table_names', []),
+            'sql': cluster.get('sql', cluster.get('target_sql')),
+            'retry_count': retries,
+            'attempts': [{key: item.get(key) for key in (
+                'attempt', 'stage', 'status', 'sql', 'error_code', 'message', 'duration_ms', 'created_at'
+            )} for item in attempts[:24] if isinstance(item, dict)],
+        }))
+    return result
+
+
+def _history_error(message, exc):
+    logging.getLogger(__name__).warning('Query history operation failed: %s', type(exc).__name__)
+    return resp(500, message, None, 500)
 
 
 class QueryHistoryListResource(Resource):
@@ -63,13 +114,18 @@ class QueryHistoryListResource(Resource):
         """
         try:
             # 获取请求参数
-            page = int(request.args.get('page', 1))
-            page_size = int(request.args.get('page_size', 20))
-            keyword = request.args.get('keyword', '').strip()
+            try:
+                page = int(request.args.get('page', 1))
+                page_size = int(request.args.get('page_size', 20))
+            except ValueError:
+                return resp(400, "页码和每页条数必须是整数", None, 400)
+            keyword = request.args.get('keyword', '').strip()[:200]
             status = request.args.get('status', 'all')
+            if status not in ('all', 'success', 'error', 'timeout'):
+                return resp(400, "查询状态无效", None, 400)
             start_date = request.args.get('start_date', '')
             end_date = request.args.get('end_date', '')
-            user_id = request.args.get('user_id', '')
+            user_id = str(current_user.id)
             source_datasource_id = request.args.get('source_datasource_id', '').strip()
 
             # 参数校验
@@ -106,7 +162,8 @@ class QueryHistoryListResource(Resource):
                 query = query.filter(
                     db.or_(
                         QueryLog.question.ilike(f'%{keyword}%'),
-                        QueryLog.sql.ilike(f'%{keyword}%')
+                        QueryLog.sql.ilike(f'%{keyword}%'),
+                        QueryLog.error_message.ilike(f'%{keyword}%')
                     )
                 )
 
@@ -117,16 +174,16 @@ class QueryHistoryListResource(Resource):
             # 日期范围筛选
             if start_date:
                 try:
-                    start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+                    start_dt = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=timezone(timedelta(hours=8)))
                     query = query.filter(QueryLog.created_at >= start_dt)
                 except ValueError:
                     return resp(400, "start_date 格式错误，需为 YYYY-MM-DD", None, 400)
 
             if end_date:
                 try:
-                    end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+                    end_dt = datetime.strptime(end_date, '%Y-%m-%d').replace(tzinfo=timezone(timedelta(hours=8)))
                     # 设置为当天结束
-                    end_dt = end_dt.replace(hour=23, minute=59, second=59)
+                    end_dt = end_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
                     query = query.filter(QueryLog.created_at <= end_dt)
                 except ValueError:
                     return resp(400, "end_date 格式错误，需为 YYYY-MM-DD", None, 400)
@@ -142,12 +199,15 @@ class QueryHistoryListResource(Resource):
             # 格式化返回
             result_items = []
             for item in items:
+                execution_logs = _execution_logs(item)
                 result_items.append({
                     "id": str(item.id),
                     "question": item.question,
                     "processed_question": item.processed_question,
                     "term_rewrite_info": item.term_rewrite_info,
                     "sql": item.sql,
+                    "error_message": sanitize_log_text(item.error_message) if item.error_message else None,
+                    "retry_count": sum(cluster['retry_count'] for cluster in execution_logs) if execution_logs else None,
                     "cluster_sqls": item.cluster_sqls,
                     "source_datasource_ids": item.source_datasource_ids,
                     "source_datasource_names": item.source_datasource_names,
@@ -171,7 +231,7 @@ class QueryHistoryListResource(Resource):
             })
 
         except Exception as e:
-            return resp(500, f"查询失败: {str(e)}", None, 500)
+            return _history_error("查询失败，请稍后重试", e)
 
 
 class QueryHistoryDetailResource(Resource):
@@ -191,7 +251,7 @@ class QueryHistoryDetailResource(Resource):
             - user_id: 用户ID（UUID），必填
         """
         try:
-            user_id = request.args.get('user_id', '')
+            user_id = str(current_user.id)
 
             if not user_id:
                 return resp(400, "user_id 不能为空", None, 400)
@@ -220,6 +280,7 @@ class QueryHistoryDetailResource(Resource):
                 "processed_question": query_log.processed_question,
                 "term_rewrite_info": query_log.term_rewrite_info,
                 "sql": query_log.sql,
+                "execution_logs": _execution_logs(query_log),
                 "cluster_sqls": query_log.cluster_sqls,
                 "source_datasource_ids": query_log.source_datasource_ids,
                 "source_datasource_names": query_log.source_datasource_names,
@@ -252,14 +313,14 @@ class QueryHistoryDetailResource(Resource):
                     "avg_rerank_score": query_log.avg_rerank_score
                 },
                 "status": query_log.status,
-                "error_message": query_log.error_message,
+                "error_message": sanitize_log_text(query_log.error_message) if query_log.error_message else None,
                 "fusion_strategy": query_log.fusion_strategy,
                 "full_response_result": query_log.full_response_result,
                 "created_at": query_log.created_at.isoformat() if query_log.created_at else None
             })
 
         except Exception as e:
-            return resp(500, f"查询详情失败: {str(e)}", None, 500)
+            return _history_error("查询详情失败，请稍后重试", e)
 
 
 class QueryHistoryDeleteResource(Resource):
@@ -282,7 +343,7 @@ class QueryHistoryDeleteResource(Resource):
             删除时会级联更新 query_stats_daily 聚合表，确保数据一致性。
         """
         try:
-            user_id = request.args.get('user_id', '')
+            user_id = str(current_user.id)
 
             if not user_id:
                 return resp(400, "user_id 不能为空", None, 400)
@@ -311,7 +372,7 @@ class QueryHistoryDeleteResource(Resource):
                 return resp(500, "删除失败", None, 500)
 
         except Exception as e:
-            return resp(500, f"删除失败: {str(e)}", None, 500)
+            return _history_error("删除失败，请稍后重试", e)
 
 
 class QueryHistoryBatchDeleteResource(Resource):
@@ -335,7 +396,7 @@ class QueryHistoryBatchDeleteResource(Resource):
             - 删除时会级联更新 query_stats_daily 聚合表
         """
         try:
-            user_id = request.args.get('user_id', '')
+            user_id = str(current_user.id)
             query_ids_str = request.args.get('query_ids', '')
             before_date_str = request.args.get('before_date', '')
             keep_days_str = request.args.get('keep_days', '')
@@ -409,7 +470,7 @@ class QueryHistoryBatchDeleteResource(Resource):
             })
 
         except Exception as e:
-            return resp(500, f"批量删除失败: {str(e)}", None, 500)
+            return _history_error("批量删除失败，请稍后重试", e)
 
 
 class QueryHistoryStatsResource(Resource):
@@ -431,7 +492,7 @@ class QueryHistoryStatsResource(Resource):
             - workspace_id: 工作区ID（UUID），可选，仅作兼容
         """
         try:
-            user_id = request.args.get('user_id', '')
+            user_id = str(current_user.id)
             source_datasource_id = request.args.get('source_datasource_id', '').strip()
             start_date = request.args.get('start_date', '')
             end_date = request.args.get('end_date', '')
@@ -445,7 +506,7 @@ class QueryHistoryStatsResource(Resource):
             # 日期范围处理 - 不传时查询所有时间
             if start_date:
                 try:
-                    start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+                    start_dt = datetime.strptime(start_date, '%Y-%m-%d').replace(tzinfo=timezone(timedelta(hours=8)))
                 except ValueError:
                     return resp(400, "start_date 格式错误，需为 YYYY-MM-DD", None, 400)
             else:
@@ -453,8 +514,8 @@ class QueryHistoryStatsResource(Resource):
 
             if end_date:
                 try:
-                    end_dt = datetime.strptime(end_date, '%Y-%m-%d')
-                    end_dt = end_dt.replace(hour=23, minute=59, second=59)
+                    end_dt = datetime.strptime(end_date, '%Y-%m-%d').replace(tzinfo=timezone(timedelta(hours=8)))
+                    end_dt = end_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
                 except ValueError:
                     return resp(400, "end_date 格式错误，需为 YYYY-MM-DD", None, 400)
             else:
@@ -521,7 +582,7 @@ class QueryHistoryStatsResource(Resource):
             })
 
         except Exception as e:
-            return resp(500, f"查询统计失败: {str(e)}", None, 500)
+            return _history_error("查询统计失败，请稍后重试", e)
 
 
 # 路由注册
