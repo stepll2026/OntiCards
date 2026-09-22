@@ -723,9 +723,9 @@ function ReportDetailPageContent() {
 
   const [report, setReport] = useState<ExtendedGovernanceReportDetail | null>(null)
   const [loading, setLoading] = useState(true)
-  const [basicAuditExpanded, setBasicAuditExpanded] = useState(true)
-  const [basicAuditDetailExpanded, setBasicAuditDetailExpanded] = useState(true)
-  const [qualityAuditExpanded, setQualityAuditExpanded] = useState(true)
+  const [basicAuditExpanded, setBasicAuditExpanded] = useState(false)
+  const [basicAuditDetailExpanded, setBasicAuditDetailExpanded] = useState(false)
+  const [qualityAuditExpanded, setQualityAuditExpanded] = useState(false)
   const [relationExpanded, setRelationExpanded] = useState(true)
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const [selectedRelation, setSelectedRelation] = useState<any>(null)
@@ -759,7 +759,7 @@ function ReportDetailPageContent() {
 
   const [reExportConfirmOpen, setReExportConfirmOpen] = useState(false)
   const [historyFiles, setHistoryFiles] = useState<HistoryFile[]>([])
-  const [historyFilesExpanded, setHistoryFilesExpanded] = useState(true)
+  const [historyFilesExpanded, setHistoryFilesExpanded] = useState(false)
 
   const isFromAudit = searchParams.get('from') === 'audit'
 
