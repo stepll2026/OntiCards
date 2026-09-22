@@ -1106,29 +1106,29 @@ function DataCardDetailModal({
             {(sqlMeta?.foreign_keys ?? []).length > 0 && (
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: 'rgb(var(--theme-text-muted))' }}>外键关联关系</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="flex flex-wrap gap-3">
                   {(sqlMeta?.foreign_keys ?? []).map((fk: any, idx: number) => (
-                    <div key={idx} className="border p-4"
-                         style={{ borderRadius: '14px', borderColor: 'rgba(245, 158, 11, 0.3)', backgroundColor: 'rgba(245, 158, 11, 0.05)' }}
+                    <div key={idx} className="border p-4 flex-shrink-0"
+                         style={{ borderRadius: '14px', borderColor: 'rgba(245, 158, 11, 0.3)', backgroundColor: 'rgba(245, 158, 11, 0.05)', minWidth: '320px', maxWidth: '100%' }}
                     >
                       <div className="flex items-center gap-2 mb-2">
-                        <Link2 className="w-4 h-4" style={{ color: 'rgb(245, 158, 11)' }} />
-                        <span className="font-semibold text-sm" style={{ color: 'rgb(217, 119, 6)' }}>{fk.name || '外键'}</span>
+                        <Link2 className="w-4 h-4 flex-shrink-0" style={{ color: 'rgb(245, 158, 11)' }} />
+                        <span className="font-semibold text-sm whitespace-nowrap" style={{ color: 'rgb(217, 119, 6)' }}>{fk.name || '外键'}</span>
                       </div>
                       <div className="space-y-2 text-xs">
                         {/* 关联关系展示 */}
-                        <div className="flex items-center justify-between p-2 border"
+                        <div className="flex items-center justify-between p-2 border flex-wrap gap-2"
                              style={{ borderRadius: '8px', borderColor: 'rgba(245, 158, 11, 0.3)', backgroundColor: 'rgb(var(--theme-bg))' }}
                         >
-                          <span className="font-mono text-xs" style={{ color: 'rgb(var(--theme-text))' }}>{(fk.columns ?? []).join(', ')}</span>
-                          <ArrowRight className="w-3 h-3 mx-1" style={{ color: 'rgb(245, 158, 11)' }} />
-                          <span className="font-mono font-semibold text-xs" style={{ color: 'rgb(217, 119, 6)' }}>{fk.referenced_table}.{(fk.referenced_columns ?? []).join(', ')}</span>
+                          <span className="font-mono text-xs break-all" style={{ color: 'rgb(var(--theme-text))' }}>{(fk.columns ?? []).join(', ')}</span>
+                          <ArrowRight className="w-3 h-3 flex-shrink-0" style={{ color: 'rgb(245, 158, 11)' }} />
+                          <span className="font-mono font-semibold text-xs break-all" style={{ color: 'rgb(217, 119, 6)' }}>{fk.referenced_table}.{(fk.referenced_columns ?? []).join(', ')}</span>
                         </div>
                         {/* 详细信息 */}
-                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] pt-1" style={{ color: 'rgb(var(--theme-text-muted))' }}>
-                          <span>源字段: <span className="font-mono" style={{ color: 'rgb(var(--theme-text))' }}>{(fk.columns ?? []).join(', ')}</span></span>
-                          <span>目标: <span className="font-mono" style={{ color: 'rgb(217, 119, 6)' }}>{fk.referenced_table}</span></span>
-                          <span>目标字段: <span className="font-mono" style={{ color: 'rgb(var(--theme-text))' }}>{(fk.referenced_columns ?? []).join(', ')}</span></span>
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] pt-1 break-all" style={{ color: 'rgb(var(--theme-text-muted))' }}>
+                          <span>源字段: <span className="font-mono break-all" style={{ color: 'rgb(var(--theme-text))' }}>{(fk.columns ?? []).join(', ')}</span></span>
+                          <span>目标: <span className="font-mono break-all" style={{ color: 'rgb(217, 119, 6)' }}>{fk.referenced_table}</span></span>
+                          <span>目标字段: <span className="font-mono break-all" style={{ color: 'rgb(var(--theme-text))' }}>{(fk.referenced_columns ?? []).join(', ')}</span></span>
                         </div>
                         {(fk.on_update || fk.on_delete) && (
                           <div
