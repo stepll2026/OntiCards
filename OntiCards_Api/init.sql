@@ -289,6 +289,9 @@ CREATE TABLE "public"."model_config" (
   "updated_at" timestamptz(6) DEFAULT CURRENT_TIMESTAMP,
   "model_class" varchar(255) COLLATE "pg_catalog"."default" NOT NULL,
   "url" varchar(255) COLLATE "pg_catalog"."default" NOT NULL,
+  "api_protocol" varchar(32) NOT NULL DEFAULT 'auto',
+  "embedding_dimensions" integer,
+  "api_options" jsonb,
   PRIMARY KEY ("id")
 );
 COMMENT ON COLUMN "public"."model_config"."id" IS '模型id';

@@ -40,14 +40,14 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { getApiKeysByUserId, createApiKey, updateApiKey, deleteApiKey, ApiKeyItem } from '@/api/apiKey';
-import { getModelConfigs, createModelConfig, updateModelConfig, deleteModelConfig, ModelConfigItem, ModelClassType } from '@/api/modelConfig';
+import { getModelConfigs, createModelConfig, updateModelConfig, deleteModelConfig, readAvailableModels, testModelConnection, ModelConfigItem, ModelClassType, ModelCatalogItem, ModelProtocol, ModelApiOptions, MODEL_PROTOCOL_OPTIONS } from '@/api/modelConfig';
 import { getChangelog, createChangelog, updateChangelog, deleteChangelog, ChangelogItem } from '@/api/changeLog';
 import { getAllUsers, updateUser, deleteUser, createUser, editUser } from '@/api/user';
 import { getDataRetention, updateDataRetention, DataRetentionConfig, UpdateDataRetentionParams } from '@/api/systemConfig';
 import { useUserInfo, resetGlobalUserInfo } from '@/hooks';
 import { notifyChangelogChanged } from '@/hooks/useDataSources';
 import { setLoggingOut } from '@/api/base';
-import { App, Switch, Form, Input, Select, message } from 'antd';
+import { App, Switch, Form, Input, Select, AutoComplete, message } from 'antd';
 import ReactMarkdown from '@/components/reactMarkdown/ReactMarkdown';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -1714,6 +1714,17 @@ const ModelConfigTab = () => {
   const [addingModelClass, setAddingModelClass] = useState<ModelClassType | null>(null);
   const [saving, setSaving] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [availableModels, setAvailableModels] = useState<ModelCatalogItem[]>([]);
+  const [showAllModels, setShowAllModels] = useState(false);
+  const [testingModel, setTestingModel] = useState(false);
+  const [testMessage, setTestMessage] = useState('');
+  const [testError, setTestError] = useState(false);
+  const [testedModelClass, setTestedModelClass] = useState<ModelClassType | null>(null);
+  const modelTestRequestRef = useRef(0);
+  const [readingModels, setReadingModels] = useState(false);
+  const [modelListMessage, setModelListMessage] = useState('');
+  const [modelListError, setModelListError] = useState(false);
+  const modelListRequestRef = useRef(0);
   const { modal, message: messageApi } = App.useApp();
 
   const [formData, setFormData] = useState({
@@ -1721,8 +1732,134 @@ const ModelConfigTab = () => {
     model_name: '',
     model_api_key: '',
     url: '',
-    model_class: 'base' as ModelClassType
+    model_class: 'base' as ModelClassType,
+    api_protocol: 'auto' as ModelProtocol,
+    embedding_dimensions: '',
+    api_options: {} as ModelApiOptions,
   });
+
+  const resetModelTest = () => {
+    modelTestRequestRef.current += 1;
+    setTestingModel(false);
+    setTestMessage('');
+    setTestError(false);
+    setTestedModelClass(null);
+  };
+
+  const resetModelDiscovery = () => {
+    modelListRequestRef.current += 1;
+    setAvailableModels([]);
+    setReadingModels(false);
+    setModelListMessage('');
+    setModelListError(false);
+    setShowAllModels(false);
+    resetModelTest();
+  };
+
+  useEffect(() => () => { modelListRequestRef.current += 1; modelTestRequestRef.current += 1; }, []);
+
+  const updateConnection = (field: 'url' | 'model_api_key' | 'api_protocol', value: string) => {
+    resetModelDiscovery();
+    setFormData(previous => ({ ...previous, [field]: value }));
+  };
+
+  const isViking = formData.api_protocol === 'viking' || (formData.api_protocol === 'auto' && /api-knowledgebase\.|\/api\/knowledge\/service\/rerank/.test(formData.url));
+  const updateApiOption = (field: keyof ModelApiOptions, value: string) => {
+    resetModelTest();
+    setFormData(previous => {
+      const options = { ...previous.api_options, [field]: field === 'max_tokens' ? Number(value) : value };
+      if (!value) delete options[field];
+      return { ...previous, api_options: options };
+    });
+  };
+
+  const handleReadModels = async () => {
+    if (!validateUrl(formData.url)) {
+      messageApi.error('请先填写合法的 HTTP 或 HTTPS 接口地址');
+      return;
+    }
+    const requestId = ++modelListRequestRef.current;
+    setReadingModels(true);
+    setModelListMessage('');
+    setModelListError(false);
+    try {
+      const response = await readAvailableModels({ url: formData.url.trim(), model_api_key: formData.model_api_key.trim(), api_protocol: formData.api_protocol });
+      if (requestId !== modelListRequestRef.current) return;
+      if (response.code === 200 && response.data) {
+        setAvailableModels(response.data.models);
+        setModelListMessage(response.data.message || `已读取 ${response.data.models.length} 个模型，可搜索选择或手动填写。`);
+      } else {
+        setAvailableModels([]);
+        setModelListError(true);
+        setModelListMessage(response.msg || '无法读取模型列表，可继续手动填写模型名称。');
+      }
+    } catch {
+      if (requestId !== modelListRequestRef.current) return;
+      setAvailableModels([]);
+      setModelListError(true);
+      setModelListMessage('无法读取模型列表，请检查网络；可继续手动填写模型名称。');
+    } finally {
+      if (requestId === modelListRequestRef.current) setReadingModels(false);
+    }
+  };
+
+  const purposeLabel = (model: ModelCatalogItem) => {
+    const labels = (model.capabilities || []).map(kind => MODEL_CLASS_META.find(meta => meta.key === kind)?.label || '其他用途');
+    return labels.length ? `${labels.join(' / ')} · ${model.capability_source === 'metadata' ? '服务商信息' : '名称推测'}` : '用途未知';
+  };
+
+  const visibleModels = availableModels
+    .filter(model => showAllModels || !model.capabilities?.length || model.capabilities.includes(formData.model_class))
+    .sort((a, b) => Number(b.capabilities?.includes(formData.model_class) || false) - Number(a.capabilities?.includes(formData.model_class) || false));
+  const selectedCatalogModel = availableModels.find(model => model.id === formData.model_name.trim());
+  const selectedMismatch = selectedCatalogModel?.capabilities?.length && !selectedCatalogModel.capabilities.includes(formData.model_class);
+
+  const draftPayload = () => ({
+    model_name: formData.model_name.trim(),
+    model_type: formData.model_type.trim() || '自定义',
+    model_api_key: formData.model_api_key.trim(),
+    url: formData.url.trim(),
+    model_class: formData.model_class,
+    api_protocol: formData.api_protocol,
+    embedding_dimensions: formData.model_class === 'embedding' && formData.embedding_dimensions !== '' ? Number(formData.embedding_dimensions) : null,
+    api_options: formData.api_options,
+  });
+
+  const validDimensions = () => formData.model_class !== 'embedding' || formData.embedding_dimensions === '' || (
+    Number.isInteger(Number(formData.embedding_dimensions)) && Number(formData.embedding_dimensions) >= 1 && Number(formData.embedding_dimensions) <= 65536
+  );
+
+  const handleTestModel = async (stream = false) => {
+    if (!validateUrl(formData.url) || !formData.model_name.trim() || !validDimensions()) {
+      messageApi.error('请填写合法的地址、模型名称及向量维数');
+      return;
+    }
+    const requestId = ++modelTestRequestRef.current;
+    setTestingModel(true);
+    setTestedModelClass(null);
+    setTestMessage('正在使用少量测试文本验证模型…');
+    setTestError(false);
+    try {
+      const response = await testModelConnection({ ...draftPayload(), test_stream: stream });
+      if (requestId !== modelTestRequestRef.current) return;
+      if (response.code === 200 && response.data?.success) {
+        const result = response.data;
+        setTestedModelClass(formData.model_class);
+        const protocolName = MODEL_PROTOCOL_OPTIONS.find(option => option.value === result.protocol)?.label || result.protocol;
+        const detail = result.dimensions ? `，返回 ${result.dimensions} 维向量` : result.ranked_documents ? `，返回 ${result.ranked_documents} 条有效排序结果` : stream ? '，已收到对话文本流' : '，已收到对话文本';
+        setTestMessage(`测试通过：${protocolName}${detail}，耗时 ${result.latency_ms} ms。`);
+      } else {
+        setTestError(true);
+        setTestMessage(response.msg || '测试失败，请核对模型用途及协议。');
+      }
+    } catch {
+      if (requestId !== modelTestRequestRef.current) return;
+      setTestError(true);
+      setTestMessage('测试请求失败，请检查网络后重试。');
+    } finally {
+      if (requestId === modelTestRequestRef.current) setTestingModel(false);
+    }
+  };
 
   const fetchModels = async () => {
     setLoading(true);
@@ -1757,6 +1894,7 @@ const ModelConfigTab = () => {
   }, [groupedByClass]);
 
   const openAddModal = (modelClass: ModelClassType) => {
+    resetModelDiscovery();
     setAddingModelClass(modelClass);
     setEditingModel(null);
     setFormData({
@@ -1764,13 +1902,17 @@ const ModelConfigTab = () => {
       model_name: '',
       model_api_key: '',
       url: '',
-      model_class: modelClass
+      model_class: modelClass,
+      api_protocol: 'auto',
+      embedding_dimensions: '',
+      api_options: {},
     });
     setShowApiKey(false);
     setShowCreateModal(true);
   };
 
   const openEdit = (model: ModelConfigItem) => {
+    resetModelDiscovery();
     // 从最新 models 列表中查找，避免使用闭包捕获的旧数据
     const latest = models.find(m => m.id === model.id);
     const target = latest || model;
@@ -1779,19 +1921,23 @@ const ModelConfigTab = () => {
     setFormData({
       model_type: target.model_type,
       model_name: target.model_name,
-      model_api_key: target.model_api_key,
+      model_api_key: target.model_api_key || '',
       url: target.url,
-      model_class: target.model_class
+      model_class: target.model_class,
+      api_protocol: target.api_protocol || 'auto',
+      embedding_dimensions: target.embedding_dimensions?.toString() || '',
+      api_options: target.api_options || {},
     });
     setShowApiKey(false);
     setShowCreateModal(true);
   };
 
   const closeModal = () => {
+    resetModelDiscovery();
     setShowCreateModal(false);
     setEditingModel(null);
     setAddingModelClass(null);
-    setFormData({ model_type: '', model_name: '', model_api_key: '', url: '', model_class: 'base' });
+    setFormData({ model_type: '', model_name: '', model_api_key: '', url: '', model_class: 'base', api_protocol: 'auto', embedding_dimensions: '', api_options: {} });
   };
 
   const getModalTitle = () => {
@@ -1803,8 +1949,8 @@ const ModelConfigTab = () => {
   const validateUrl = (url: string) => {
     if (!url.trim()) return false;
     try {
-      new URL(url.trim());
-      return true;
+      const parsed = new URL(url.trim());
+      return ['http:', 'https:'].includes(parsed.protocol) && !parsed.username && !parsed.password && !parsed.hash;
     } catch { return false; }
   };
 
@@ -1821,15 +1967,13 @@ const ModelConfigTab = () => {
       messageApi.error('请输入合法的 URL 地址');
       return;
     }
+    if (!validDimensions()) {
+      messageApi.error('向量维数须为 1 到 65536 的整数，或留空');
+      return;
+    }
     setSaving(true);
     try {
-      const payload = {
-        model_name: formData.model_name.trim(),
-        model_type: formData.model_type.trim() || 'gpt-4',
-        model_api_key: formData.model_api_key.trim(),
-        url: formData.url.trim(),
-        model_class: formData.model_class
-      };
+      const payload = draftPayload();
       if (editingModel) {
         const res = await updateModelConfig({ id: editingModel.id, ...payload });
         if (res.code === 200) {
@@ -1977,7 +2121,7 @@ const ModelConfigTab = () => {
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">模型类别（便于识别，如 DeepSeek、通义千问、豆包）</label>
+                <label className="block text-sm font-medium text-slate-700 mb-2">服务商或备注（如 DeepSeek、通义千问、豆包）</label>
                 <input
                   type="text"
                   value={formData.model_type}
@@ -1988,24 +2132,34 @@ const ModelConfigTab = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2"><span className="text-red-500">*</span> 模型名称（唯一标识）</label>
-                <input
-                  type="text"
-                  value={formData.model_name}
-                  onChange={(e) => setFormData({ ...formData, model_name: e.target.value })}
-                  placeholder="例如：qwen3.7-max"
-                  maxLength={128}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-[12px] text-sm"
-                />
+                <label htmlFor="model-service-protocol" className="block text-sm font-medium text-slate-700 mb-2">接口协议</label>
+                <select id="model-service-protocol" value={formData.api_protocol} onChange={e => updateConnection('api_protocol', e.target.value)}
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-[12px] text-sm">
+                  {MODEL_PROTOCOL_OPTIONS.map(option => <option key={option.value} value={option.value} disabled={!option.kinds.includes(formData.model_class)}>{option.label}</option>)}
+                </select>
+                <p className="mt-2 text-xs text-slate-500">支持自动识别或手动选择协议；自定义接口请填写完整地址。</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">API Key</label>
+                <label htmlFor="model-service-url" className="block text-sm font-medium text-slate-700 mb-2"><span className="text-red-500">*</span> 接口地址 URL</label>
+                <input
+                  id="model-service-url"
+                  type="text"
+                  value={formData.url}
+                  onChange={(e) => updateConnection('url', e.target.value)}
+                  placeholder="例如：https://dashscope.aliyuncs.com/compatible-mode/v1"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-[12px] text-sm"
+                />
+                <p className="mt-2 text-xs text-slate-500">支持基础地址（/v1）或完整接口地址，自动补全调用路径。</p>
+              </div>
+              <div>
+                <label htmlFor="model-service-key" className="block text-sm font-medium text-slate-700 mb-2">{isViking ? 'Secret Access Key' : 'API Key'}</label>
                 <div className="relative">
                   <input
+                    id="model-service-key"
                     type={showApiKey ? 'text' : 'password'}
                     value={formData.model_api_key}
-                    onChange={(e) => setFormData({ ...formData, model_api_key: e.target.value })}
-                    placeholder="请粘贴完整的 API Key"
+                    onChange={(e) => updateConnection('model_api_key', e.target.value)}
+                    placeholder={isViking ? '请输入 Secret Access Key' : '请粘贴完整的 API Key'}
                     maxLength={256}
                     className="w-full px-4 py-2.5 pr-10 border border-slate-200 rounded-[12px] text-sm"
                   />
@@ -2019,15 +2173,72 @@ const ModelConfigTab = () => {
                   </button>
                 </div>
               </div>
+              {isViking && <div className="space-y-3">
+                {([{ key: 'access_key_id', label: 'Access Key ID', placeholder: '请输入 Access Key ID' },
+                  { key: 'region', label: '地域', placeholder: '默认 cn-beijing' },
+                  { key: 'endpoint_id', label: '接入点 ID（可选）', placeholder: 'ep-…' }] as const).map(option => <div key={option.key}>
+                  <label htmlFor={`model-option-${option.key}`} className="block text-sm font-medium text-slate-700 mb-2">{option.label}</label>
+                  <input id={`model-option-${option.key}`} value={formData.api_options[option.key] || ''} onChange={e => updateApiOption(option.key, e.target.value)}
+                    placeholder={option.placeholder} maxLength={256} className="w-full px-4 py-2.5 border border-slate-200 rounded-[12px] text-sm" />
+                </div>)}
+              </div>}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2"><span className="text-red-500">*</span> 接口地址 URL</label>
-                <input
-                  type="text"
-                  value={formData.url}
-                  onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                  placeholder="例如：https://api.example.com/v1/chat/completions"
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-[12px] text-sm"
-                />
+                <label htmlFor="model-service-name" className="block text-sm font-medium text-slate-700 mb-2"><span className="text-red-500">*</span> 模型名称（唯一标识）</label>
+                {availableModels.length > 0 && <label className="mb-2 flex items-center gap-2 text-xs text-slate-600">
+                  <input type="checkbox" checked={showAllModels} onChange={e => setShowAllModels(e.target.checked)} />
+                  显示所有用途的模型（默认显示当前用途及未知模型）
+                </label>}
+                <div className="flex gap-2">
+                  <AutoComplete
+                    id="model-service-name"
+                    className="flex-1 min-w-0"
+                    dropdownStyle={{ zIndex: 10000 }}
+                    size="large"
+                    value={formData.model_name}
+                    onChange={value => { resetModelTest(); setFormData(previous => ({ ...previous, model_name: value })); }}
+                    options={visibleModels.map(model => ({ value: model.id, label: <div><div>{model.id}</div><div className="text-xs text-slate-500">{purposeLabel(model)}</div></div> }))}
+                    filterOption={(input, option) => (option?.value ?? '').toLowerCase().includes(input.toLowerCase())}
+                    placeholder="选择或手动填写模型名称"
+                  />
+                  <button type="button" onClick={handleReadModels} disabled={readingModels || !formData.url.trim()}
+                    className="px-3 border border-indigo-200 text-indigo-600 rounded-[12px] text-sm disabled:opacity-50 flex items-center gap-1">
+                    {readingModels && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {readingModels ? '读取中' : '读取模型'}
+                  </button>
+                </div>
+                <p role={modelListError ? 'alert' : 'status'} className={`mt-2 text-xs ${modelListError ? 'text-amber-700' : 'text-slate-500'}`}>
+                  {modelListMessage || '支持读取模型列表或手动输入模型名称。'}
+                </p>
+                <p className={`mt-2 text-xs ${selectedMismatch ? 'text-amber-700' : 'text-slate-500'}`} data-testid="model-purpose">
+                  {testedModelClass ? `已通过${MODEL_CLASS_META.find(meta => meta.key === testedModelClass)?.label}的调用测试。` : selectedCatalogModel ? `${purposeLabel(selectedCatalogModel)}。${selectedMismatch ? '可能与当前用途不匹配，请测试连接；仍可手动保存。' : '请通过测试连接确认是否可用。'}` : '模型用途待验证，请测试连接。'}
+                </p>
+              </div>
+              {formData.model_class === 'embedding' && <div>
+                <label htmlFor="model-service-dimensions" className="block text-sm font-medium text-slate-700 mb-2">向量维数（可选）</label>
+                <input id="model-service-dimensions" type="number" min="1" max="65536" step="1" value={formData.embedding_dimensions}
+                  onChange={e => { resetModelTest(); setFormData(previous => ({ ...previous, embedding_dimensions: e.target.value })); }}
+                  placeholder="留空使用模型默认维数"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-[12px] text-sm" />
+                <p className="mt-2 text-xs text-slate-500">模型须支持自定义维数。更换向量模型或维数后，已有向量索引需重新生成；连接测试仅校验返回向量。</p>
+              </div>}
+              {formData.model_class === 'base' && <div>
+                <label htmlFor="model-option-max_tokens" className="block text-sm font-medium text-slate-700 mb-2">最大输出 Token 数（可选）</label>
+                <input id="model-option-max_tokens" type="number" min="1" max="1048576" step="1" value={formData.api_options.max_tokens ?? ''}
+                  onChange={e => updateApiOption('max_tokens', e.target.value)} placeholder="留空使用默认值；Claude 默认 4096"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-[12px] text-sm" />
+              </div>}
+              <div className="rounded-[12px] bg-slate-50 p-3">
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => handleTestModel()} disabled={testingModel || !formData.url.trim() || !formData.model_name.trim()}
+                    className="text-sm text-indigo-600 disabled:opacity-50 flex items-center gap-1">
+                    {testingModel && <Loader2 className="w-4 h-4 animate-spin" />}测试连接
+                  </button>
+                  {formData.model_class === 'base' && <button type="button" onClick={() => handleTestModel(true)} disabled={testingModel || !formData.url.trim() || !formData.model_name.trim()}
+                    className="text-sm text-indigo-600 disabled:opacity-50">测试流式对话</button>}
+                </div>
+                <p role={testError ? 'alert' : 'status'} data-testid="model-test-result" className={`mt-2 text-xs ${testError ? 'text-amber-700' : 'text-slate-600'}`}>
+                  {testMessage || '使用少量测试文本调用所选模型，可能产生少量费用。测试不会保存配置。'}
+                </p>
               </div>
               <div className="flex gap-3 pt-4">
                 <button onClick={closeModal} className="flex-1 py-2.5 border border-slate-200 text-slate-700 rounded-[12px] font-medium">取消</button>

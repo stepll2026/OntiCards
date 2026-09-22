@@ -588,6 +588,8 @@ def _get_model_config_dict() -> Optional[Dict[str, Any]]:
         return {
             "api_key": model_config.model_api_key,
             "api_url": model_config.url,
+            "api_protocol": getattr(model_config, "api_protocol", "auto"),
+            "api_options": getattr(model_config, "api_options", None),
             "model_name": model_config.model_name,
             "timeout": getattr(model_config, 'timeout', 180),
         }

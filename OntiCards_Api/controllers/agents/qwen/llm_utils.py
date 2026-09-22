@@ -12,6 +12,7 @@ import time
 from flask import current_app
 from extensions.ext_database import db
 from models.model_config import Model_configuration
+from controllers.model_config.model_protocols import model_request, normalize_chat
 
 
 def llm_call(
@@ -46,32 +47,7 @@ def llm_call(
         raise ValueError("未找到 model_class 为 'base' 的模型配置")
 
     # 从数据库记录中获取所需参数
-    api_key = model_config.model_api_key
-    api_url = model_config.url
-    model_name = model_config.model_name
-
-    # 判断 api_key 是否为空
-    if api_key and api_key.strip() and api_key.lower() != 'null':
-        headers = {
-            'Authorization': f'Bearer {api_key}',
-            'Content-Type': 'application/json',
-        }
-    else:
-        headers = {
-            'Content-Type': 'application/json',
-        }
-
-    payload = {
-        'model': model_name,
-        'messages': [
-            {
-                'role': 'user',
-                'content': prompt
-            }
-        ],
-
-        'temperature': temperature,
-    }
+    api_url, headers, payload, protocol = model_request(model_config, "base", prompt, temperature=temperature)
 
     for attempt in range(retries + 1):
         try:
@@ -79,10 +55,11 @@ def llm_call(
                 api_url,
                 headers=headers,
                 json=payload,
-                timeout=timeout
+                timeout=timeout,
+                allow_redirects=False,
             )
             response.raise_for_status()
-            return response.json()['choices'][0]['message']['content']
+            return normalize_chat(response.json(), protocol)['choices'][0]['message']['content']
         except requests.exceptions.Timeout:
             print(f"[WARN] LLM request timed out (attempt {attempt + 1}/{retries})")
         except Exception as e:
