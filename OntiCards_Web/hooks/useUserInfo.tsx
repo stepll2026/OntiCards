@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { getUserInfo } from '@/api/user';
+import { hasSSOAccessToken } from '@/utils/sso';
 
 export interface UserInfoType {
   id: string;
@@ -81,11 +82,10 @@ export const setUserInfoInitialized = (userInfo: UserInfoType): void => {
   hasInitialized = true;
 };
 
-// 检查是否是SSO回调（URL中有access_token参数）
+// 检查是否是 SSO 回调（新版本使用 fragment，仍兼容旧 query 形式）
 export const isSSOCallback = (): boolean => {
   if (typeof window === 'undefined') return false;
-  const params = new URLSearchParams(window.location.search);
-  return params.has('access_token');
+  return hasSSOAccessToken(window.location);
 };
 
 // SSO token 存储完成事件

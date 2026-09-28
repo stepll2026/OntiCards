@@ -16,6 +16,7 @@ import os
 from extensions.ext_database import db
 from models.users import User
 from controllers.weaviate_db_tool.weaviate_api import ensure_user_collection_exists
+from core.sso_redirect import is_allowed_redirect, with_access_token_fragment
 
 sso_bp = Blueprint('sso', __name__, url_prefix='/sso')
 
@@ -138,6 +139,16 @@ def sso_login():
         if not username or not idp_user_id:
             return jsonify({"error": "token中缺少必要的用户信息"}), 400
 
+        redirect_url = request.args.get('redirect_url')
+        if redirect_url:
+            allowed_origins = [
+                *os.getenv('ALLOWED_ORIGINS', '').split(','),
+                os.getenv('PUBLIC_BASE_URL', ''),
+                request.host_url,
+            ]
+            if not is_allowed_redirect(redirect_url, allowed_origins):
+                return jsonify({"error": "redirect_url不在允许的域名范围内"}), 400
+
         # 查询或创建用户
         user = _get_or_create_user(
             idp_user_id=idp_user_id,
@@ -160,13 +171,9 @@ def sso_login():
 
         # 返回JSON格式（前端可以直接使用）
         # 同时支持 redirect_url 参数，实现重定向跳转
-        redirect_url = request.args.get('redirect_url')
-        
         if redirect_url:
-            # 重定向到前端页面，把我们的token放在URL参数中
-            # 参数名用 access_token 明确区分
-            separator = '&' if '?' in redirect_url else '?'
-            redirect_url_with_token = f"{redirect_url}{separator}access_token={user_token}"
+            # Fragment values stay in the browser and do not reach proxy/server logs.
+            redirect_url_with_token = with_access_token_fragment(redirect_url, user_token)
             return redirect(redirect_url_with_token)
         else:
             return jsonify({

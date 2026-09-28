@@ -149,11 +149,11 @@ import { getUserInfo } from '@/api/user';
 import { setUserInfoInitialized, notifySSOTokenStored } from '@/hooks/useUserInfo';
 import type { UserInfoType } from '@/context/homeContext';
 import { Loader2 } from 'lucide-react';
+import { getSSOAccessToken, urlWithoutSSOAccessToken } from '@/utils/sso';
 
 // SSO回调处理逻辑（适用于Overview页面）
 const handleSSOCallback = async (): Promise<boolean> => {
-  const params = new URLSearchParams(window.location.search);
-  const accessToken = params.get('access_token');
+  const accessToken = getSSOAccessToken(window.location);
 
   if (!accessToken) {
     return false;
@@ -181,9 +181,8 @@ const handleSSOCallback = async (): Promise<boolean> => {
     console.error('SSO登录获取用户信息失败:', err);
   }
 
-  // 清除URL中的access_token参数
-  const cleanUrl = window.location.pathname + window.location.hash;
-  window.history.replaceState(null, '', cleanUrl);
+  // Remove the credential while retaining unrelated query and fragment state.
+  window.history.replaceState(null, '', urlWithoutSSOAccessToken(window.location));
 
   return true;
 };
@@ -222,8 +221,7 @@ const OverviewPage = ({ lng }: { lng: string }) => {
   // SSO回调处理：检查URL中是否有access_token
   useEffect(() => {
     const handleSSOLoading = async () => {
-      const params = new URLSearchParams(window.location.search);
-      const accessToken = params.get('access_token');
+      const accessToken = getSSOAccessToken(window.location);
 
       if (accessToken) {
         // 这是SSO回调，需要处理token
