@@ -2627,40 +2627,58 @@ class QueryByDataCardsAggPlugin(Resource):
         # 记录开始时间
         start_time = time_module.time()
 
-        # 初始化性能指标收集器
-        metrics = {
-            "vector_search_ms": 0,
-            "rerank_ms": 0,
-            "llm_gen_sql_ms": 0,
-            "llm_fusion_ms": 0,
-            "sql_execution_ms": 0,
-            "total_duration_ms": 0
-        }
+        # === 顶层异常处理：确保所有未捕获的异常都能被记录 ===
+        try:
+            return self._do_post_core(user_id, api_key_id, start_time)
+        except Exception as e:
+            import traceback
+            error_detail = traceback.format_exc()
+            print(f"[agg] 未捕获的异常：{type(e).__name__}: {str(e)}")
+            print(f"[agg] 详细错误：\n{error_detail}")
 
-        # 初始化 Token 使用量收集器
-        tokens = {
-            "embedding_tokens": 0,
-            "rerank_tokens": 0,
-            "llm_prompt_tokens": 0,
-            "llm_completion_tokens": 0,
-            "total_tokens": 0
-        }
+            # 初始化空的 metrics 和 tokens（用于日志记录）
+            metrics = {"total_duration_ms": int((time_module.time() - start_time) * 1000)}
+            tokens = {}
+            quality = {}
+            total_duration_ms = int((time_module.time() - start_time) * 1000)
+            error_msg = f"查询失败：{type(e).__name__}: {str(e)}"
 
-        # 初始化召回质量指标
-        quality = {
-            "cards_recalled": 0,
-            "cards_reranked": 0,
-            "cards_selected": 0,
-            "top1_rerank_score": None,
-            "avg_rerank_score": None
-        }
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
 
-        # 收集涉及的数据源信息
-        source_datasource_ids = []  # 查询来源数据源ID
-        source_datasource_names = []  # 查询来源数据源名称
-        datasource_ids = []  # 涉及的数据源ID
-        datasource_names = []  # 涉及的数据源名称
-        table_names = []
+            _log_query_plugin(
+                user_id=user_id,
+                question="unknown",
+                sql=None,
+                source_datasource_ids=[],
+                source_datasource_names=[],
+                datasource_ids=[],
+                datasource_names=[],
+                table_names=[],
+                metrics={**metrics, "total_duration_ms": total_duration_ms},
+                tokens=tokens,
+                result_count=0,
+                quality=quality,
+                merge_strategy=None,
+                success=False,
+                error_message=error_msg,
+                api_key_id=api_key_id,
+                full_response_result=None,
+                cluster_sqls=None,
+                processed_question=None,
+                term_rewrite_info=None
+            )
+
+            return format_response(None, 500, error_msg)
+
+    def _do_post_core(self, user_id, api_key_id, start_time):
+        """插件版聚合检索核心逻辑，所有业务逻辑都在此方法中"""
+        body = request.get_json() or {}
+        user_question = (body.get("query") or "").strip()
+        if not user_question:
+            return format_response(None, 400, "请提供 query")
 
         body = request.get_json() or {}
         user_question = (body.get("query") or "").strip()
@@ -2668,10 +2686,6 @@ class QueryByDataCardsAggPlugin(Resource):
             return format_response(None, 400, "请提供 query")
 
         # === 术语识别与展开（新增） ===
-        # 先保存原始问题，后续用于日志记录
-        original_question = user_question
-
-        # 1) 推断融合策略（AND/OR），用户不输入参数，自动识别
         t0 = time_module.time()
         merge_strategy = _infer_strategy(user_question)
         metrics["llm_gen_sql_ms"] += int((time_module.time() - t0) * 1000)
@@ -2927,22 +2941,48 @@ class QueryByDataCardsAggPlugin(Resource):
                 relationship_data_cache[ds_id] = {"cards": {}, "join_suggestions": [], "missing_tables": table_names}
 
         if not table_objs:
-            return format_response(
-                {
-                    "clusters": [],
-                    "merge": {"strategy": merge_strategy, "entity_key": entity_key},
-                    "final_rows": [],
-                    "data_cards": _make_json_serializable(data_cards_info),
-                    "term_rewrite": {
-                        "enabled": enable_term_rewrite,
-                        "matched_count": len(matched_terms),
-                        "matched_terms": matched_terms,
-                        "rewritten_question": rewritten_question
-                    }
-                },
-                200,
-                "未命中可用数据卡片"
+            # 记录日志：未命中数据卡片
+            total_duration_ms = int((time_module.time() - start_time) * 1000)
+            empty_payload = {
+                "clusters": [],
+                "merge": {"strategy": merge_strategy, "entity_key": entity_key},
+                "final_rows": [],
+                "data_cards": _make_json_serializable(data_cards_info),
+                "term_rewrite": {
+                    "enabled": enable_term_rewrite,
+                    "matched_count": len(matched_terms),
+                    "matched_terms": matched_terms,
+                    "rewritten_question": rewritten_question
+                }
+            }
+            _log_query_plugin(
+                user_id=user_id,
+                question=user_question,
+                sql=None,
+                source_datasource_ids=source_datasource_ids,
+                source_datasource_names=source_datasource_names,
+                datasource_ids=datasource_ids,
+                datasource_names=datasource_names,
+                table_names=[],
+                metrics={**metrics, "total_duration_ms": total_duration_ms},
+                tokens=tokens,
+                result_count=0,
+                quality=quality,
+                merge_strategy=merge_strategy,
+                success=False,
+                error_message="未命中可用数据卡片",
+                api_key_id=api_key_id,
+                full_response_result=empty_payload,
+                cluster_sqls=None,
+                processed_question=user_question if term_rewrite_performed else None,
+                term_rewrite_info={
+                    "enabled": enable_term_rewrite,
+                    "matched_count": len(matched_terms),
+                    "matched_terms": matched_terms,
+                    "rewritten_question": rewritten_question
+                } if term_rewrite_performed else None
             )
+            return format_response(empty_payload, 200, "未命中可用数据卡片")
 
         # 3) Trino特殊处理：检查是否所有表都通过Trino连接访问
         # 调试：打印所有表的连接信息
@@ -3072,10 +3112,66 @@ class QueryByDataCardsAggPlugin(Resource):
                 error_detail = traceback.format_exc()
                 print(f"[agg] Trino统一查询异常：{str(e)}")
                 print(f"[agg] 详细错误：\n{error_detail}")
-                return format_response(None, 500, f"Trino查询异常：{str(e)}")
+                total_duration_ms = int((time_module.time() - start_time) * 1000)
+                error_msg = f"Trino查询异常：{type(e).__name__}: {str(e)}"
+                _log_query_plugin(
+                    user_id=user_id,
+                    question=user_question,
+                    sql=None,
+                    source_datasource_ids=source_datasource_ids,
+                    source_datasource_names=source_datasource_names,
+                    datasource_ids=datasource_ids,
+                    datasource_names=datasource_names,
+                    table_names=table_names,
+                    metrics={**metrics, "total_duration_ms": total_duration_ms},
+                    tokens=tokens,
+                    result_count=0,
+                    quality=quality,
+                    merge_strategy=None,
+                    success=False,
+                    error_message=error_msg,
+                    api_key_id=api_key_id,
+                    full_response_result=None,
+                    cluster_sqls=None,
+                    processed_question=None,
+                    term_rewrite_info=None
+                )
+                return format_response(None, 500, error_msg)
 
         # 3) 分簇（同 db_type + connect_info 的放一起，准备簇内联查）
-        clusters = build_clusters(table_objs)
+        print(f"[DEBUG] 开始分簇，共 {len(table_objs)} 个表对象...")
+        try:
+            clusters = build_clusters(table_objs)
+            print(f"[DEBUG] 分簇完成，生成 {len(clusters)} 个簇")
+        except Exception as e:
+            print(f"[DEBUG] ❌ 分簇时出错: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            total_duration_ms = int((time_module.time() - start_time) * 1000)
+            error_msg = f"分簇失败：{type(e).__name__}: {str(e)}"
+            _log_query_plugin(
+                user_id=user_id,
+                question=user_question,
+                sql=None,
+                source_datasource_ids=source_datasource_ids,
+                source_datasource_names=source_datasource_names,
+                datasource_ids=datasource_ids,
+                datasource_names=datasource_names,
+                table_names=[],
+                metrics={**metrics, "total_duration_ms": total_duration_ms},
+                tokens=tokens,
+                result_count=0,
+                quality=quality,
+                merge_strategy=None,
+                success=False,
+                error_message=error_msg,
+                api_key_id=api_key_id,
+                full_response_result=None,
+                cluster_sqls=None,
+                processed_question=None,
+                term_rewrite_info=None
+            )
+            return format_response(None, 500, error_msg)
 
         # 4) 簇内生成单条 SQL 并执行（带关系卡片增强，支持并行执行）
         print(f"[agg] 开始簇内执行，共 {len(clusters)} 个簇")

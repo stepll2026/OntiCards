@@ -2643,6 +2643,62 @@ class QueryByDataCardsAgg(Resource):
 
         # 记录开始时间，用于性能统计
         start_time = time_module.time()
+
+        # === 顶层异常处理：确保所有未捕获的异常都能被记录 ===
+        try:
+            return self._do_post_core(body, start_time)
+        except Exception as e:
+            import traceback
+            error_detail = traceback.format_exc()
+            print(f"[agg] 未捕获的异常：{type(e).__name__}: {str(e)}")
+            print(f"[agg] 详细错误：\n{error_detail}")
+
+            # 尝试获取 user_id（可能在初始化之前抛出异常）
+            try:
+                user_id = str(flask_login.current_user.id)
+            except Exception:
+                user_id = "unknown"
+
+            # 初始化空的 metrics 和 tokens（用于日志记录）
+            metrics = {"total_duration_ms": int((time_module.time() - start_time) * 1000)}
+            tokens = {}
+            quality = {}
+            total_duration_ms = int((time_module.time() - start_time) * 1000)
+            error_msg = f"查询失败：{type(e).__name__}: {str(e)}"
+
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+
+            _log_query(
+                user_id=user_id,
+                question=user_question,
+                sql=None,
+                source_datasource_ids=[],
+                source_datasource_names=[],
+                datasource_ids=[],
+                datasource_names=[],
+                table_names=[],
+                metrics={**metrics, "total_duration_ms": total_duration_ms},
+                tokens=tokens,
+                result_count=0,
+                quality=quality,
+                merge_strategy=None,
+                success=False,
+                error_message=error_msg,
+                full_response_result=None,
+                cluster_sqls=None,
+                processed_question=None,
+                term_rewrite_info=None
+            )
+
+            return format_response(None, 500, error_msg)
+
+    @flask_login.login_required
+    def _do_post_core(self, body, start_time):
+        """聚合检索核心逻辑，所有业务逻辑都在此方法中"""
+        user_question = (body.get("query") or "").strip()
         user_id = str(flask_login.current_user.id)
 
         # 初始化性能指标收集器
@@ -2681,7 +2737,6 @@ class QueryByDataCardsAgg(Resource):
         table_names = []
 
         # 新增：接收数据源ID参数（可选）
-        # 支持单个数据源ID或数据源ID列表
         datasource_id = body.get("datasource_id")
         datasource_ids_param = body.get("datasource_ids")  # 支持传入数据源ID列表
 
@@ -3130,7 +3185,30 @@ class QueryByDataCardsAgg(Resource):
                 error_detail = traceback.format_exc()
                 print(f"[agg] Trino统一查询异常：{str(e)}")
                 print(f"[agg] 详细错误：\n{error_detail}")
-                return format_response(None, 500, f"Trino查询异常：{str(e)}")
+                total_duration_ms = int((time_module.time() - start_time) * 1000)
+                error_msg = f"Trino查询异常：{type(e).__name__}: {str(e)}"
+                _log_query(
+                    user_id=user_id,
+                    question=user_question,
+                    sql=None,
+                    source_datasource_ids=source_datasource_ids,
+                    source_datasource_names=source_datasource_names,
+                    datasource_ids=datasource_ids,
+                    datasource_names=datasource_names,
+                    table_names=table_names,
+                    metrics={**metrics, "total_duration_ms": total_duration_ms},
+                    tokens=tokens,
+                    result_count=0,
+                    quality=quality,
+                    merge_strategy=None,
+                    success=False,
+                    error_message=error_msg,
+                    full_response_result=None,
+                    cluster_sqls=None,
+                    processed_question=None,
+                    term_rewrite_info=None
+                )
+                return format_response(None, 500, error_msg)
 
         # 3) 分簇（同 db_type + connect_info 的放一起，准备簇内联查）
         print(f"[DEBUG] 开始分簇，共 {len(table_objs)} 个表对象...")
@@ -3141,7 +3219,30 @@ class QueryByDataCardsAgg(Resource):
             print(f"[DEBUG] ❌ 分簇时出错: {str(e)}")
             import traceback
             traceback.print_exc()
-            return format_response(None, 500, f"分簇失败：{str(e)}")
+            total_duration_ms = int((time_module.time() - start_time) * 1000)
+            error_msg = f"分簇失败：{type(e).__name__}: {str(e)}"
+            _log_query(
+                user_id=user_id,
+                question=user_question,
+                sql=None,
+                source_datasource_ids=source_datasource_ids,
+                source_datasource_names=source_datasource_names,
+                datasource_ids=datasource_ids,
+                datasource_names=datasource_names,
+                table_names=[],
+                metrics={**metrics, "total_duration_ms": total_duration_ms},
+                tokens=tokens,
+                result_count=0,
+                quality=quality,
+                merge_strategy=None,
+                success=False,
+                error_message=error_msg,
+                full_response_result=None,
+                cluster_sqls=None,
+                processed_question=None,
+                term_rewrite_info=None
+            )
+            return format_response(None, 500, error_msg)
 
         # 4) 簇内生成单条 SQL 并执行（带关系卡片增强，支持并行执行）
         print(f"[agg] 开始簇内执行，共 {len(clusters)} 个簇")
