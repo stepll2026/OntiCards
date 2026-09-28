@@ -944,53 +944,11 @@ def _find_entity_key_field(row: dict, entity_key: str) -> str | None:
 
 def _collect_entity_ids(rows: List[dict], entity_key: str) -> Set[Any]:
     """
-    收集实体 ID，同时过滤掉"空记录"（除了 entity_key 外，其他字段都是无效值）
-
-    特殊情况：如果记录只有 entity_key 一个字段，则认为是有效的（用于聚合查询的跨簇融合）
+    收集实体 ID（不再做任何"字段值是否有效"的判断，统一原样收集）。
 
     智能匹配：支持别名匹配，如 entity_key="id" 可以匹配 "user_id"、"product_id" 等
     """
     s = set()
-
-    def has_valid_data(row: dict, entity_key_field: str) -> bool:
-        """
-        检查记录是否包含有效数据
-
-        特殊情况：
-        - 如果只有 entity_key 一个字段，且有值，则认为是有效的
-          （这在聚合查询的跨簇融合中是合理的）
-        - 对于统计查询（如 COUNT、SUM），即使结果为 0 也是有效的
-          （例如 {"mismatch_count": 0} 是有效结果，不应该被过滤）
-        """
-        # 特殊情况1：如果只有 entity_key 一个字段，且有值，则认为是有效的
-        if len(row) == 1 and entity_key_field in row and row[entity_key_field] is not None:
-            return True
-
-        # 特殊情况2：检查是否是统计查询结果（字段名包含 count/sum/avg/total/num 等）
-        # 这些查询的结果即使为 0 也是有效的
-        stat_keywords = ['count', 'sum', 'avg', 'total', 'num', 'amount', 'quantity', 'ratio', 'rate', 'percentage']
-        is_stat_query = any(
-            any(keyword in k.lower() for keyword in stat_keywords)
-            for k in row.keys()
-        )
-
-        # 如果是统计查询，只要有非 None 的值就认为是有效的（即使值为 0）
-        if is_stat_query:
-            for k, v in row.items():
-                if k == entity_key_field:
-                    continue
-                if v is not None:  # 只要不是 None，就认为是有效的（包括 0）
-                    return True
-            return False
-
-        # 检查除了 entity_key 外是否有其他有效字段
-        for k, v in row.items():
-            if k == entity_key_field:
-                continue
-            # 如果有任何一个字段有有效值，则认为有有效数据
-            if v is not None and v != 0 and v != 0.0 and v != "" and v is not False:
-                return True
-        return False
 
     # 首次查找entity_key字段（只需查找一次）
     entity_key_field = None
@@ -1004,11 +962,10 @@ def _collect_entity_ids(rows: List[dict], entity_key: str) -> Set[Any]:
             print(f"[agg/entity_key匹配] 可用字段: {list(rows[0].keys()) if rows[0] else '(空)'}")
             return s
 
+    # ✅ 不再过滤"非主键字段全为 0/NULL/空字符串"的记录——凡是主键存在的记录都纳入收集。
     for r in rows or []:
         if entity_key_field in r and r[entity_key_field] is not None:
-            # 只收集那些有有效数据的记录的 ID
-            if has_valid_data(r, entity_key_field):
-                s.add(r[entity_key_field])
+            s.add(r[entity_key_field])
 
     return s
 
@@ -1793,96 +1750,20 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
                 print(f"[_exec_cluster][{db_type}] ⚠️ 警告：SQL执行成功但返回空数据列表")
 
             # 过滤空记录和异常记录：只保留有有效数据的记录
-            def has_valid_data_in_row(row: dict) -> bool:
-                """
-                检查记录是否包含有效且合理的数据
+            # ✅ 不再做"空记录/异常记录"过滤：SQL 通过安全校验后，结果即应原样透传。
+            # 字段值层面的硬编码判断（0/空串/False 算"无效"、quantity==price 算异常）
+            # 会误伤大量合法业务数据（已发货数量=0、1 元购、退款金额=0 等），
+            # 与"以 SQL 为准"的聚合检索原则冲突。
 
-                过滤条件：
-                1. 所有字段都是 None/空字符串 → 无效
-                2. 存在明显异常的字段映射（如 quantity == price 且不是合理值） → 无效
+            # 从全部返回数据中收集 entity_ids（仅用于规则融合回退方案，LLM 语义融合不依赖此字段）
+            eids = list(_collect_entity_ids(data, entity_key))
 
-                特殊情况：
-                - 如果记录只有 entity_key 一个字段，且 entity_key 有值，则认为是有效的
-                  （这在跨簇融合场景中是合理的，用于收集满足条件的 ID）
-                - 对于统计查询（如 COUNT、SUM），即使结果为 0 也是有效的
-                  （例如 {"mismatch_count": 0} 是有效结果，不应该被过滤）
-                """
-                # 特殊情况1：如果只有 entity_key 一个字段，且有值，则认为是有效的
-                if len(row) == 1 and entity_key in row and row[entity_key] is not None:
-                    return True
-
-                # 特殊情况2：检查是否是统计查询结果（字段名包含 count/sum/avg/total/num 等）
-                # 这些查询的结果即使为 0 也是有效的
-                stat_keywords = ['count', 'sum', 'avg', 'total', 'num', 'amount', 'quantity', 'ratio', 'rate',
-                                 'percentage']
-                is_stat_query = any(
-                    any(keyword in k.lower() for keyword in stat_keywords)
-                    for k in row.keys()
-                )
-
-                # 如果是统计查询，只要有非 None 的值就认为是有效的（即使值为 0）
-                if is_stat_query:
-                    for k, v in row.items():
-                        if k == entity_key:
-                            continue
-                        if v is not None:  # 只要不是 None，就认为是有效的（包括 0）
-                            return True
-                    return False
-
-                # 对于非统计查询，检查是否有非 entity_key 的非空非零字段
-                has_non_empty = False
-                for k, v in row.items():
-                    if k == entity_key:
-                        continue
-                    if v is not None and v != 0 and v != 0.0 and v != "" and v is not False:
-                        has_non_empty = True
-                        break
-
-                if not has_non_empty:
-                    return False
-
-                # 检测异常：如果同时存在 quantity 和 price 字段，且它们的值完全相同（且不是 0 或小的正常值）
-                # 这通常意味着字段映射错误
-                if 'quantity' in row and 'price' in row:
-                    q = row['quantity']
-                    p = row['price']
-                    # 如果两个值都存在且相同
-                    if q is not None and p is not None and q == p:
-                        # 排除一些合理的情况（比如都是 0, 或者很小的正数如 0.01-10.0）
-                        if q != 0 and p != 0:
-                            # 如果值很大（绝对值 > 100）或者是负数，且相同，则认为是异常
-                            if abs(q) > 100 or q < 0:
-                                print(
-                                    f"[agg] 检测到异常记录：product_id={row.get(entity_key)}, quantity={q}, price={p}（字段值相同且异常）")
-                                return False
-
-                return True
-
-            original_count = len(data)
-            # 过滤掉空记录
-            filtered_data = [row for row in data if has_valid_data_in_row(row)]
-            filtered_count = original_count - len(filtered_data)
-
-            # 从过滤后的数据中收集 entity_ids（仅用于多簇融合，单簇场景不使用）
-            eids = list(_collect_entity_ids(filtered_data, entity_key))
-
-            if filtered_count > 0:
-                print(f"[agg] 簇 {db_type} 原始查询结果 {original_count} 条，过滤掉 {filtered_count} 条异常/空记录")
-                warnings = (warnings or [])
-                warnings.append(f"过滤掉 {filtered_count} 条异常/空记录（字段值异常或都是 0/NULL）")
-
-                # 输出生成的 SQL 用于调试
-                print(f"[agg] 簇 {db_type} 生成的 SQL: {sql_text[:200]}...")  # 只输出前 200 字符
-
-            # 注意：entity_ids 仅用于规则融合回退方案，LLM语义融合不依赖此字段
             if not eids:
                 # 不添加警告，因为LLM语义融合不需要entity_ids
                 print(f"[agg] 簇 {db_type} 未收集到 entity_key '{entity_key}'（LLM语义融合不受影响）")
             else:
                 print(f"[agg] 簇 {db_type} 收集 entity_key '{entity_key}' 共 {len(eids)} 个（备用融合方案）")
 
-            # 使用过滤后的数据
-            data = filtered_data
             success = True
             break  # 成功，跳出重试循环
 
@@ -3795,127 +3676,18 @@ class QueryByDataCardsAggPlugin(Resource):
                     f"[融合] 融合策略 '{merge_strategy}' 计算出 {len(final_ids)} 个实体ID，但无法从任何簇中提取到对应的完整行数据"
                 )
 
-        # 6.5) 过滤掉"空记录"：除了 entity_key 外，其他字段都是 NULL/0/空字符串的记录
-        def _is_empty_record(row: dict, entity_key: str) -> bool:
-            """
-            判断一条记录是否为"空记录"（除了 entity_key 外，其他字段都是无效值）
+        # 6.5) ✅ 不再做"空记录"过滤：SQL 已经通过白名单校验与执行，
+        #       跨簇融合之后的所有记录都应当原样透传。
+        #       字段值层面的硬编码判断（0/空串/False 算"无效"、70% 字段为空即丢弃）
+        #       与"以 SQL 为准"原则冲突，已整体移除。
 
-            判断标准：
-            1. 如果记录只有 entity_key 一个字段 → 空记录
-            2. 如果所有非 entity_key 字段都是无效值（None/0/0.0/空字符串） → 空记录
-            3. 如果大部分字段（>= 70%）是无效值，且没有任何有意义的值 → 空记录
-            4. 否则为有效记录
-
-            特殊情况：
-            - 对于统计查询（如 COUNT、SUM），即使结果为 0 也不是空记录
-              （例如 {"mismatch_count": 0} 是有效结果，不应该被过滤）
-            """
-            # 特殊情况：检查是否是统计查询结果（字段名包含 count/sum/avg/total/num 等）
-            # 这些查询的结果即使为 0 也是有效的
-            stat_keywords = ['count', 'sum', 'avg', 'total', 'num', 'ratio', 'rate', 'percentage']
-            is_stat_query = any(
-                any(keyword in k.lower() for keyword in stat_keywords)
-                for k in row.keys() if k != entity_key
-            )
-
-            # 如果是统计查询，只要有非 None 的值就不是空记录（即使值为 0）
-            if is_stat_query:
-                for k, v in row.items():
-                    if k == entity_key:
-                        continue
-                    if v is not None:  # 只要不是 None，就不是空记录（包括 0）
-                        return False
-                return True  # 所有统计字段都是 None，才是空记录
-
-            if len(row) <= 1:
-                return True  # 只有 entity_key，肯定是空记录
-
-            non_key_fields = {k: v for k, v in row.items() if k != entity_key}
-            if not non_key_fields:
-                return True
-
-            # 定义"无效值"：None、0、0.0、空字符串、False
-            def is_invalid_value(v):
-                return v is None or v == 0 or v == 0.0 or v == "" or v is False
-
-            # 统计无效值的数量
-            invalid_count = sum(1 for v in non_key_fields.values() if is_invalid_value(v))
-
-            # 情况 1：所有非 entity_key 字段都是无效值 → 空记录
-            if invalid_count == len(non_key_fields):
-                return True
-
-            # 情况 2：大部分字段（>= 70%）是无效值 → 检查是否有有意义的值
-            if invalid_count >= len(non_key_fields) * 0.7:
-                has_meaningful_value = False
-                for k, v in non_key_fields.items():
-                    # 有意义的值：非空字符串、非零数字、布尔 True 等
-                    if not is_invalid_value(v):
-                        # 进一步检查：如果是字符串，长度要 > 0
-                        if isinstance(v, str) and len(v.strip()) > 0:
-                            has_meaningful_value = True
-                            break
-                        # 如果是数字，且不是 0/0.0
-                        elif isinstance(v, (int, float)) and v != 0 and v != 0.0:
-                            has_meaningful_value = True
-                            break
-                        # 其他类型的非 None 值
-                        elif not isinstance(v, (str, int, float)):
-                            has_meaningful_value = True
-                            break
-
-                if not has_meaningful_value:
-                    return True
-
-            return False
-
-        # 根据查询类型和融合策略，过滤空记录并生成最终结果
-        #
-        # 重要逻辑：
-        # - OR/UNION 查询：不过滤空记录（因为满足任一条件即可，某些字段缺失是正常的）
-        # - AND/PRIORITY 查询：过滤空记录（因为需要同时满足多个条件，字段应该完整）
-        should_filter_empty = merge_strategy in ['AND', 'PRIORITY']
-
+        # 根据查询类型和融合策略生成最终结果（不再做空记录过滤）
         if is_detail_query:
-            # 明细列表查询：根据策略决定是否过滤 all_detail_rows
-            before_filter_count = len(all_detail_rows)
-
-            if should_filter_empty:
-                filtered_detail_rows = [
-                    row for row in all_detail_rows
-                    if not _is_empty_record(row, entity_key)  # 使用 entity_key 而不是 entity_key_field
-                ]
-
-                filtered_count = before_filter_count - len(filtered_detail_rows)
-                if filtered_count > 0:
-                    fill_warnings.append(
-                        f"[融合] 已过滤 {filtered_count} 条空记录（这些记录除了 {entity_key} 外，其他字段都是 NULL/0/空值）"
-                    )
-            else:
-                # OR/UNION 查询：不过滤，保留所有记录（满足任一条件即可）
-                filtered_detail_rows = all_detail_rows
-
-            final_rows = filtered_detail_rows
+            # 明细列表查询：直接使用 all_detail_rows，不再过滤
+            final_rows = all_detail_rows
         else:
-            # 聚合查询：根据策略决定是否过滤 rows_by_id
-            before_filter_count = len(rows_by_id)
-
-            if should_filter_empty:
-                filtered_rows_by_id = {
-                    k: v for k, v in rows_by_id.items()
-                    if not _is_empty_record(v, entity_key)  # 使用 entity_key 而不是 entity_key_field
-                }
-
-                filtered_count = before_filter_count - len(filtered_rows_by_id)
-                if filtered_count > 0:
-                    fill_warnings.append(
-                        f"[融合] 已过滤 {filtered_count} 条空记录（这些记录除了 {entity_key} 外，其他字段都是 NULL/0/空值）"
-                    )
-            else:
-                # OR/UNION 查询：不过滤，保留所有记录（满足任一条件即可）
-                filtered_rows_by_id = rows_by_id
-
-            final_rows = list(filtered_rows_by_id.values())
+            # 聚合查询：直接使用 rows_by_id.values()，不再过滤
+            final_rows = list(rows_by_id.values())
 
         # 清理 cluster_results，移除不可序列化的字段
         clean_cluster_results = []
