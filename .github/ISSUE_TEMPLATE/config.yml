@@ -1,6 +1,10 @@
 blank_issues_enabled: false
 
 contact_links:
+  - name: "🔐 Security Vulnerability"
+    url: "https://github.com/stepll2026/OntiCards/security/advisories/new"
+    about: "发现真实安全漏洞时，请通过 Private Vulnerability Reporting 私密提交，请勿创建公开 Issue。"
+
   - name: "💬 GitHub Discussions"
     url: "https://github.com/stepll2026/OntiCards/discussions"
     about: "使用咨询、技术交流、方案讨论和经验分享，请优先前往 Discussions。"

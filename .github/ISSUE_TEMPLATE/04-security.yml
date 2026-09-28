@@ -1,0 +1,86 @@
+name: "🔐 Security Issue"
+description: "安全配置、加固建议及其他非敏感安全问题。真实安全漏洞请使用私密漏洞报告。"
+title: "[Security] "
+labels:
+  - security
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🔐 安全问题提交说明
+
+        感谢您帮助提升 OntiCards 的安全性。
+
+        **如果您发现的是具有真实可利用性的安全漏洞，请不要通过本 Issue 公开漏洞细节。**
+
+        请使用 GitHub Private Vulnerability Reporting 私密提交：
+
+        1. 进入 OntiCards 仓库
+        2. 打开 Security and quality
+        3. 进入 Advisories
+        4. 点击 Report a vulnerability
+
+        安全策略：
+
+        https://github.com/stepll2026/OntiCards/blob/main/SECURITY.md
+
+        请勿在公开 Issue 中提交：
+
+        - 数据库密码
+        - API Key
+        - Access Token
+        - JWT / SSO Secret
+        - Cookie
+        - 私钥
+        - `.env` 实际配置
+        - 客户数据
+        - 可直接利用的漏洞细节
+        - 未脱敏的生产环境信息
+
+  - type: dropdown
+    id: security_type
+    attributes:
+      label: 问题类型
+      description: 如果属于真实可利用漏洞，请停止填写并改用 Private Vulnerability Reporting。
+      options:
+        - Security documentation improvement
+        - Security hardening suggestion
+        - Security configuration question
+        - Secret scanning false positive
+        - Other non-sensitive security topic
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 非敏感问题描述
+      description: |
+        请仅填写适合公开讨论且不包含漏洞利用细节或敏感信息的内容。
+        如果问题可能造成真实安全影响，请使用 Private Vulnerability Reporting。
+      placeholder: "请描述安全配置、加固建议或其他非敏感安全问题。"
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境信息
+      description: 如与问题相关，可提供已脱敏的 OntiCards 版本、部署方式或运行环境。
+      placeholder: |
+        OntiCards version:
+        Deployment:
+        OS:
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: 提交前确认
+      options:
+        - label: "我确认本 Issue 不包含真实密码、Token、Secret、私钥、客户数据或其他敏感信息。"
+          required: true
+        - label: "我确认这不是需要私密披露的可利用安全漏洞；如果属于漏洞，我会使用 Private Vulnerability Reporting。"
+          required: true
