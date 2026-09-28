@@ -2561,10 +2561,40 @@ class QueryByDataCardsAggPlugin(Resource):
         if not user_question:
             return format_response(None, 400, "请提供 query")
 
-        body = request.get_json() or {}
-        user_question = (body.get("query") or "").strip()
-        if not user_question:
-            return format_response(None, 400, "请提供 query")
+        # 初始化性能指标收集器
+        metrics = {
+            "vector_search_ms": 0,
+            "rerank_ms": 0,
+            "llm_gen_sql_ms": 0,
+            "llm_fusion_ms": 0,
+            "sql_execution_ms": 0,
+            "total_duration_ms": 0
+        }
+
+        # 初始化 Token 使用量收集器
+        tokens = {
+            "embedding_tokens": 0,
+            "rerank_tokens": 0,
+            "llm_prompt_tokens": 0,
+            "llm_completion_tokens": 0,
+            "total_tokens": 0
+        }
+
+        # 初始化召回质量指标
+        quality = {
+            "cards_recalled": 0,
+            "cards_reranked": 0,
+            "cards_selected": 0,
+            "top1_rerank_score": None,
+            "avg_rerank_score": None
+        }
+
+        # 收集涉及的数据源信息
+        source_datasource_ids = []  # 查询来源数据源ID（用户发起查询时选中的数据源）
+        source_datasource_names = []  # 查询来源数据源名称
+        datasource_ids = []  # 涉及的数据源ID（查询过程中涉及到的所有数据源）
+        datasource_names = []  # 涉及的数据源名称
+        table_names = []  # 涉及的表名
 
         # === 术语识别与展开（新增） ===
         t0 = time_module.time()
