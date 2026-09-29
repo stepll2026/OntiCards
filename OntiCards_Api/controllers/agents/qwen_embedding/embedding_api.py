@@ -55,7 +55,6 @@ def qwen_llm_embeddings_with_usage(text):
             'dimension': '1024',
             'encoding_format': 'float',
         }
-        print(f"[DEBUG] 调用 Embedding API: {api_url}")
         print(f"[DEBUG] model: {model_name}, input长度: {len(text)}")
         response = requests.post(api_url, headers=headers, json=json_data)
         parsed_data = response.json()

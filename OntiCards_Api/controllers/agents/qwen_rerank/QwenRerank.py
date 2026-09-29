@@ -26,7 +26,6 @@ def QwenRerank_llm(query, documents, top_n):
         model_name = model_config.model_name
 
         # 判断 api_key 是否为空
-        print(f"[DEBUG] Rerank 配置检查 - api_key: '{api_key}', url: '{api_url}', model: '{model_name}'")
         if api_key and api_key.strip() and api_key.lower() != 'null':
             headers = {
                 'Authorization': 'Bearer ' + api_key,
