@@ -1,4 +1,5 @@
 import { message } from 'antd/lib'
+import { hasSSOAccessToken } from '@/utils/sso'
 
 type FetchOptionType = Omit<RequestInit, 'body'> & {
   params?: Record<string, any>
@@ -93,11 +94,10 @@ const baseOptions = {
   }),
   redirect: 'follow',
 }
-// 检查是否是SSO回调（URL中有access_token参数）
+// 检查是否是 SSO 回调（新版本使用 fragment，仍兼容旧 query 形式）
 const isSSOCallback = (): boolean => {
   if (typeof window === 'undefined') return false
-  const params = new URLSearchParams(window.location.search)
-  return params.has('access_token')
+  return hasSSOAccessToken(window.location)
 }
 
 type ResponseError = {

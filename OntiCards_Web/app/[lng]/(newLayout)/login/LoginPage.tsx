@@ -7,11 +7,11 @@ import { setLoggingOut } from '@/api/base';
 import { setUserInfoInitialized, notifySSOTokenStored } from '@/hooks/useUserInfo';
 import type { UserInfoType } from '@/context/homeContext';
 import { Loader2, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
+import { getSSOAccessToken, urlWithoutSSOAccessToken } from '@/utils/sso';
 
 // SSO回调处理逻辑
 const handleSSOCallback = async (router: ReturnType<typeof useRouter>, lng: string) => {
-  const params = new URLSearchParams(window.location.search);
-  const accessToken = params.get('access_token');
+  const accessToken = getSSOAccessToken(window.location);
 
   if (!accessToken) {
     return false;
@@ -39,9 +39,8 @@ const handleSSOCallback = async (router: ReturnType<typeof useRouter>, lng: stri
     console.error('SSO登录获取用户信息失败:', err);
   }
 
-  // 清除URL中的access_token参数，并跳转到概览页
-  const cleanUrl = window.location.pathname + window.location.hash;
-  window.history.replaceState(null, '', cleanUrl);
+  // Remove the credential before navigation while retaining unrelated URL state.
+  window.history.replaceState(null, '', urlWithoutSSOAccessToken(window.location));
   router.push(`/${lng}/overview`);
 
   return true;
@@ -108,8 +107,7 @@ export default function LoginPage({ lng }: LoginPageProps) {
   // SSO回调处理：检查URL中是否有access_token
   useEffect(() => {
     const handleSSOLoading = async () => {
-      const params = new URLSearchParams(window.location.search);
-      const hasAccessToken = params.has('access_token');
+      const hasAccessToken = getSSOAccessToken(window.location) !== null;
 
       // 只有在 URL 中有 access_token 时才显示 SSO 加载状态
       if (hasAccessToken) {
