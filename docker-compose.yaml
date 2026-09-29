@@ -12,6 +12,12 @@ services:
       TZ: "${TZ:-Asia/Shanghai}"
     volumes:
       - ./volumes/postgresql/data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
     restart: unless-stopped
     networks:
       - onticards
@@ -36,6 +42,12 @@ services:
       TZ: "${TZ:-Asia/Shanghai}"
     volumes:
       - ./volumes/weaviate/data:/var/lib/weaviate
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/v1/.well-known/ready >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 15s
     restart: unless-stopped
     networks:
       - onticards
@@ -67,14 +79,20 @@ services:
       - ./volumes/governance/reports:/data/governance/reports
     depends_on:
       onticards-db:
-        condition: service_started
+        condition: service_healthy
       onticards-weaviate:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent --show-error http://127.0.0.1:9103/healthz >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     restart: unless-stopped
     networks:
       - onticards
 
-  # Web does not query the data services directly; these dependencies implement the requested startup order.
+  # Web can start independently; Nginx waits for its HTTP health check below.
   onticards_web:
     build:
       context: ./OntiCards_Web
@@ -86,11 +104,12 @@ services:
       HOSTNAME: "0.0.0.0"
       DEPLOY_ENV: "${DEPLOY_ENV:-PRODUCTION}"
       TZ: "${TZ:-Asia/Shanghai}"
-    depends_on:
-      onticards-db:
-        condition: service_started
-      onticards-weaviate:
-        condition: service_started
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/login').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
     restart: unless-stopped
     networks:
       - onticards
@@ -111,9 +130,9 @@ services:
       - ./nginx/onticards.conf:/etc/nginx/templates/default.conf.template:ro
     depends_on:
       onticards_api:
-        condition: service_started
+        condition: service_healthy
       onticards_web:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - onticards
