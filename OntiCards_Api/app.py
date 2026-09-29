@@ -20,6 +20,7 @@ from config import Config
 from controllers import init_app
 from controllers.weaviate_db_tool.weaviate_api import ensure_user_collection_exists
 from core import log
+from core.request_logging import redact_mapping, redact_url
 from extensions import ext_database, ext_migrate, ext_login
 from extensions.ext_database import db
 
@@ -152,8 +153,9 @@ def create_app():
         g.env = env
         g.app_path = app_path
         g.root_path = app_path
-        app.logger.info(request.url)
-        app.logger.info(dict(request.form))
+        app.logger.info("%s %s", request.method, redact_url(request.url))
+        if request.form:
+            app.logger.info("form=%s", redact_mapping(request.form))
 
     @app.after_request
     def afterRequest(resp: Response):
