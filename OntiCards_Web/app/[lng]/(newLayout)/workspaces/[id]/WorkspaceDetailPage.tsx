@@ -38,6 +38,7 @@ import {
   CreditCard,
   Database,
   Download,
+  Eye,
   FileCheck,
   FileText,
   FileX,
@@ -1218,7 +1219,7 @@ const WorkspaceDetailPage = () => {
   const [selectedCard, setSelectedCard] = useState<{ card: DataCard; datasource: DataSource } | null>(null)
 
   // 资产（表信息）分页状态
-  const SCHEMAS_PAGE_SIZE = 20
+  const SCHEMAS_PAGE_SIZE = 15
   const [schemasPage, setSchemasPage] = useState(1)
 
   // 资产搜索状态
@@ -1483,6 +1484,14 @@ const WorkspaceDetailPage = () => {
     }
     return result
   }, [schemas, assetsSearch, assetsTypeFilter])
+
+  // 当过滤/搜索导致总页数减少时，自动校正当前页码，避免停在不存在的空页
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(filteredSchemas.length / SCHEMAS_PAGE_SIZE))
+    if (schemasPage > totalPages) {
+      setSchemasPage(totalPages)
+    }
+  }, [filteredSchemas.length, schemasPage])
 
   // 卡片类型筛选（搜索由后端 q 参数完成，前端只按 view/table 过滤）
   const filteredCards = useMemo(() => {
@@ -2696,12 +2705,12 @@ const WorkspaceDetailPage = () => {
                         className="bg-slate-50 dark:bg-slate-700/80 border-b border-slate-100 dark:border-slate-600 text-left"
                       >
                         <th className="p-4 font-semibold text-slate-500 dark:text-slate-300 w-[50px]">#</th>
-                        <th className="p-4 font-semibold text-slate-500 dark:text-slate-300 w-[200px]">表名</th>
-                        <th className="p-4 font-semibold text-slate-500 dark:text-slate-300 w-[80px]">类型</th>
+                        <th className="p-4 font-semibold text-slate-500 dark:text-slate-300 w-[260px]">表名</th>
+                        <th className="p-4 font-semibold text-slate-500 dark:text-slate-300 w-[72px]">类型</th>
                         <th className="p-4 font-semibold text-slate-500 dark:text-slate-300 w-[90px]">字段数</th>
-                        <th className="p-4 font-semibold text-slate-500 dark:text-slate-300">描述</th>
-                        <th className="p-4 font-semibold text-slate-500 dark:text-slate-300 w-[160px]">状态</th>
-                        <th className="p-4 font-semibold text-slate-500 dark:text-slate-300 text-right w-[110px]">操作</th>
+                        <th className="p-4 font-semibold text-slate-500 dark:text-slate-250">描述</th>
+                        <th className="p-4 font-semibold text-slate-500 dark:text-slate-300 w-[140px]">状态</th>
+                        <th className="p-4 font-semibold text-slate-500 dark:text-slate-300 text-right w-[90px]">操作</th>
                       </tr>
                       </thead>
                       <tbody>
@@ -2711,7 +2720,7 @@ const WorkspaceDetailPage = () => {
                         >
                           <td className="p-4 text-slate-400 dark:text-slate-500 font-mono text-xs">{(schemasPage - 1) * SCHEMAS_PAGE_SIZE + idx + 1}</td>
                           <td className="p-4">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
                               <div
                                 className="p-1.5 bg-slate-100 dark:bg-slate-600 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/40 transition-colors flex-shrink-0"
                                 style={{ borderRadius: '50%' }}
@@ -2719,7 +2728,8 @@ const WorkspaceDetailPage = () => {
                                 <Table className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors" />
                               </div>
                               <span
-                                className="font-mono font-semibold text-slate-700 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors"
+                                className="font-mono font-semibold text-slate-700 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate"
+                                title={s.table_name}
                               >{s.table_name}</span>
                             </div>
                           </td>
@@ -2762,10 +2772,11 @@ const WorkspaceDetailPage = () => {
                           <td className="p-4 text-right">
                             <button
                               onClick={() => setSelectedSchema(s)}
-                              className="text-sm font-medium px-4 py-2 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 dark:hover:bg-indigo-600 hover:text-white dark:hover:text-white transition-all duration-200 whitespace-nowrap"
-                              style={{ borderRadius: '20px' }}
+                              className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors whitespace-nowrap"
+                              title="查看详情"
                             >
-                              查看详情
+                              <Eye className="w-3.5 h-3.5" />
+                              详情
                             </button>
                           </td>
                         </tr>
@@ -2818,6 +2829,11 @@ const WorkspaceDetailPage = () => {
                           <ChevronRight className="w-4 h-4" />
                         </button>
                       </div>
+                    </div>
+                  )}
+                  {!filteredSchemas.length && (
+                    <div className="py-12 text-center text-sm text-slate-400 dark:text-slate-500">
+                      暂无匹配的表/视图
                     </div>
                   )}
                 </>
