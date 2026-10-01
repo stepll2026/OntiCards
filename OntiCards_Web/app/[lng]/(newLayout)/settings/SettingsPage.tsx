@@ -49,6 +49,8 @@ import { notifyChangelogChanged } from '@/hooks/useDataSources';
 import { setLoggingOut } from '@/api/base';
 import { App, Switch, Form, Input, Select, message } from 'antd';
 import ReactMarkdown from '@/components/reactMarkdown/ReactMarkdown';
+import OrcaRouterProviderFields from '@/components/business/OrcaRouterProviderFields';
+import { ORCAROUTER_MODEL_TYPE, ORCAROUTER_API_BASE, isOrcaRouterModelType } from '@/utils/orcarouter';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import utc from 'dayjs/plugin/utc';
@@ -1714,6 +1716,8 @@ const ModelConfigTab = () => {
   const [addingModelClass, setAddingModelClass] = useState<ModelClassType | null>(null);
   const [saving, setSaving] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
+  // 是否为 OrcaRouter 供应商；是则展示双认证入口与实时模型下拉
+  const [isOrcaRouter, setIsOrcaRouter] = useState(false);
   const { modal, message: messageApi } = App.useApp();
 
   const [formData, setFormData] = useState({
@@ -1767,6 +1771,7 @@ const ModelConfigTab = () => {
       model_class: modelClass
     });
     setShowApiKey(false);
+    setIsOrcaRouter(false);
     setShowCreateModal(true);
   };
 
@@ -1784,6 +1789,7 @@ const ModelConfigTab = () => {
       model_class: target.model_class
     });
     setShowApiKey(false);
+    setIsOrcaRouter(isOrcaRouterModelType(target.model_type));
     setShowCreateModal(true);
   };
 
@@ -1791,6 +1797,7 @@ const ModelConfigTab = () => {
     setShowCreateModal(false);
     setEditingModel(null);
     setAddingModelClass(null);
+    setIsOrcaRouter(false);
     setFormData({ model_type: '', model_name: '', model_api_key: '', url: '', model_class: 'base' });
   };
 
@@ -1977,63 +1984,105 @@ const ModelConfigTab = () => {
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">模型类别（便于识别，如 DeepSeek、通义千问、豆包）</label>
-                <input
-                  type="text"
-                  value={formData.model_type}
-                  onChange={(e) => setFormData({ ...formData, model_type: e.target.value })}
-                  placeholder="例如：豆包、千问、GPT-4o"
-                  maxLength={64}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-[12px] text-sm"
+                <label className="block text-sm font-medium text-slate-700 mb-2">供应商</label>
+                <select
+                  value={isOrcaRouter ? 'orcarouter' : 'custom'}
+                  onChange={(e) => {
+                    const next = e.target.value === 'orcarouter';
+                    setIsOrcaRouter(next);
+                    setFormData((prev) => ({
+                      ...prev,
+                      model_type: next ? ORCAROUTER_MODEL_TYPE : '',
+                      url: next ? ORCAROUTER_API_BASE : '',
+                      model_name: '',
+                      model_api_key: '',
+                    }));
+                  }}
+                  data-testid="model-provider-select"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-[12px] text-sm bg-white"
+                >
+                  <option value="custom">自定义 / 其他（OpenAI 兼容）</option>
+                  <option value="orcarouter">OrcaRouter</option>
+                </select>
+                {isOrcaRouter && (
+                  <p className="mt-2 text-xs text-slate-500">
+                    推理地址固定为 <span className="font-mono">{ORCAROUTER_API_BASE}</span>，模型来自实时目录。
+                  </p>
+                )}
+              </div>
+              {isOrcaRouter ? (
+                <OrcaRouterProviderFields
+                  modelClass={formData.model_class}
+                  modelName={formData.model_name}
+                  onModelNameChange={(value) => setFormData((prev) => ({ ...prev, model_name: value }))}
+                  apiKey={formData.model_api_key}
+                  onApiKeyChange={(value) => setFormData((prev) => ({ ...prev, model_api_key: value }))}
+                  showApiKey={showApiKey}
+                  onToggleShowApiKey={() => setShowApiKey((prev) => !prev)}
+                  notify={(type, text) => (type === 'success' ? messageApi.success(text) : messageApi.error(text))}
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2"><span className="text-red-500">*</span> 模型名称（唯一标识）</label>
-                <input
-                  type="text"
-                  value={formData.model_name}
-                  onChange={(e) => setFormData({ ...formData, model_name: e.target.value })}
-                  placeholder="例如：qwen3.7-max"
-                  maxLength={128}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-[12px] text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">API Key</label>
-                <div className="relative">
-                  <input
-                    type={showApiKey ? 'text' : 'password'}
-                    value={formData.model_api_key}
-                    onChange={(e) => setFormData({ ...formData, model_api_key: e.target.value })}
-                    placeholder="请粘贴完整的 API Key"
-                    maxLength={256}
-                    className="w-full px-4 py-2.5 pr-10 border border-slate-200 rounded-[12px] text-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowApiKey(!showApiKey)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    title={showApiKey ? '隐藏' : '显示'}
-                  >
-                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2"><span className="text-red-500">*</span> 接口地址 URL</label>
-                <input
-                  type="text"
-                  value={formData.url}
-                  onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                  placeholder="例如：https://api.example.com/v1/chat/completions"
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-[12px] text-sm"
-                />
-              </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">模型类别（便于识别，如 DeepSeek、通义千问、豆包）</label>
+                    <input
+                      type="text"
+                      value={formData.model_type}
+                      onChange={(e) => setFormData({ ...formData, model_type: e.target.value })}
+                      placeholder="例如：豆包、千问、GPT-4o"
+                      maxLength={64}
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-[12px] text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2"><span className="text-red-500">*</span> 模型名称（唯一标识）</label>
+                    <input
+                      type="text"
+                      value={formData.model_name}
+                      onChange={(e) => setFormData({ ...formData, model_name: e.target.value })}
+                      placeholder="例如：qwen3.7-max"
+                      maxLength={128}
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-[12px] text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">API Key</label>
+                    <div className="relative">
+                      <input
+                        type={showApiKey ? 'text' : 'password'}
+                        value={formData.model_api_key}
+                        onChange={(e) => setFormData({ ...formData, model_api_key: e.target.value })}
+                        placeholder="请粘贴完整的 API Key"
+                        maxLength={256}
+                        className="w-full px-4 py-2.5 pr-10 border border-slate-200 rounded-[12px] text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowApiKey(!showApiKey)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        title={showApiKey ? '隐藏' : '显示'}
+                      >
+                        {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2"><span className="text-red-500">*</span> 接口地址 URL</label>
+                    <input
+                      type="text"
+                      value={formData.url}
+                      onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+                      placeholder="例如：https://api.example.com/v1/chat/completions"
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-[12px] text-sm"
+                    />
+                  </div>
+                </>
+              )}
               <div className="flex gap-3 pt-4">
                 <button onClick={closeModal} className="flex-1 py-2.5 border border-slate-200 text-slate-700 rounded-[12px] font-medium">取消</button>
                 <button
                   onClick={handleSubmit}
-                  disabled={saving || !formData.model_name.trim() || !formData.url.trim()}
+                  disabled={saving || !formData.model_name.trim() || (!isOrcaRouter && !formData.url.trim())}
                   className="flex-1 py-2.5 bg-indigo-600 text-white rounded-[12px] font-medium disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}

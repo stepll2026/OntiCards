@@ -9,6 +9,7 @@ from flask import Blueprint, request
 from flask_restful import Api, Resource
 
 from extensions.ext_database import db
+from core.orcarouter.credentials import mask_api_key
 from models.model_config import Model_configuration
 
 # -----------------------------
@@ -52,7 +53,8 @@ class ModelConfigAPI(Resource):
                     "id": str(obj.id),
                     "model_name": obj.model_name,
                     "model_type": obj.model_type,
-                    "model_api_key": obj.model_api_key,
+                    # 只返回脱敏占位符，绝不把完整密钥发回浏览器
+                    "model_api_key": mask_api_key(obj.model_api_key),
                     "model_class": obj.model_class,
                     "url": obj.url,
                     "created_at": obj.created_at.isoformat() if obj.created_at else None,
@@ -66,7 +68,8 @@ class ModelConfigAPI(Resource):
                     "id": str(r.id),
                     "model_name": r.model_name,
                     "model_type": r.model_type,
-                    "model_api_key": r.model_api_key,
+                    # 只返回脱敏占位符，绝不把完整密钥发回浏览器
+                    "model_api_key": mask_api_key(r.model_api_key),
                     "model_class": r.model_class,
                     "url": r.url,
                     "created_at": r.created_at.isoformat() if r.created_at else None,

@@ -41,6 +41,9 @@ from controllers.business_term.business_term_api import business_term_api
 # SSO单点登录模块
 from controllers.sso.sso_api import sso_bp
 
+# OrcaRouter 供应商模块（API Key + OAuth 2.0 PKCE 两种接入方式）
+from controllers.orcarouter.orcarouter_api import orcarouter_api
+
 # 数据治理模块
 from controllers.governance.governance_api import governance_api
 
@@ -80,6 +83,9 @@ def init_app(app):
 
     # SSO单点登录模块（独立入口，不受其他模块影响）
     app.register_blueprint(sso_bp, url_prefix='/sso')
+
+    # OrcaRouter 供应商模块（API Key 与 PKCE 两种凭据入口，模型目录发现）
+    app.register_blueprint(orcarouter_api, url_prefix='/console/api/orcarouter')
 
     # 数据治理模块
     app.register_blueprint(governance_api, url_prefix='/console/api/governance')

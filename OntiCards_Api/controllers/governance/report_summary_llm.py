@@ -579,15 +579,17 @@ def _get_model_config_dict() -> Optional[Dict[str, Any]]:
             return None
 
         from models.model_config import Model_configuration
+        from controllers.orcarouter.binding import resolve_model_config
         model_config = Model_configuration.query.filter_by(model_class='base').first()
 
         if not model_config:
             print("[WARN] 未找到 model_class 为 'base' 的模型配置")
             return None
 
+        api_url, api_key = resolve_model_config(model_config)
         return {
-            "api_key": model_config.model_api_key,
-            "api_url": model_config.url,
+            "api_key": api_key,
+            "api_url": api_url,
             "model_name": model_config.model_name,
             "timeout": getattr(model_config, 'timeout', 180),
         }
