@@ -4,6 +4,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from models.model_config import Model_configuration
 from flask import current_app
+from controllers.orcarouter.binding import resolve_model_config
 import time
 import logging
 
@@ -145,11 +146,17 @@ def qian_wen_llm(text, stream_type, model_config_dict=None):
                 raise ValueError("未找到 model_class 为 'base' 的模型配置")
 
             # 从数据库记录中获取所需参数
-            api_key = model_config.model_api_key
-            api_url = model_config.url
+            # OrcaRouter 行存的是 base URL：由 model_class 推导具体端点，并用凭据 seam 解析 key
+            api_url, api_key = resolve_model_config(model_config)
             model_name = model_config.model_name
             # 支持在配置中自定义超时
             timeout = getattr(model_config, 'timeout', 180)
+
+    # key 为 None 表示该 OrcaRouter 账号已被标记为 needs_reauth
+    if api_key is None:
+        raise ValueError(
+            "OrcaRouter 账号需要重新授权（密钥已撤销或鉴权失败），请重新登录后再试"
+        )
 
     # 判断 api_key 是否为空
     if api_key and api_key.strip() and api_key.lower() != 'null':

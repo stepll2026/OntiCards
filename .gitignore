@@ -49,3 +49,10 @@ logs/
 # AI / Local development tools
 # ==============================
 .claude/
+
+# ==============================
+# Generated UI evidence and test caches
+# ==============================
+# Produced by OntiCards_Api/test_orcarouter/test_gui_evidence.py, never committed.
+/orca-evidence/
+.pytest_cache/

@@ -3259,9 +3259,11 @@ class QueryByDataCardsAgg(Resource):
                 from models.model_config import Model_configuration
                 model_config = Model_configuration.query.filter_by(model_class='base').first()
                 if model_config:
+                    from controllers.orcarouter.binding import resolve_model_config
+                    _api_url, _api_key = resolve_model_config(model_config)
                     model_config_dict = {
-                        "api_key": model_config.model_api_key,
-                        "api_url": model_config.url,
+                        "api_key": _api_key,
+                        "api_url": _api_url,
                         "model_name": model_config.model_name
                     }
                     print(f"[agg] ✅ 已预加载模型配置: {model_config.model_name}")

@@ -12,6 +12,7 @@ import time
 from flask import current_app
 from extensions.ext_database import db
 from models.model_config import Model_configuration
+from controllers.orcarouter.binding import resolve_model_config
 
 
 def llm_call(
@@ -46,9 +47,16 @@ def llm_call(
         raise ValueError("未找到 model_class 为 'base' 的模型配置")
 
     # 从数据库记录中获取所需参数
-    api_key = model_config.model_api_key
-    api_url = model_config.url
+    # OrcaRouter 行存的是 base URL：由 model_class 推导具体端点，并用凭据 seam 解析 key
+    api_url, api_key = resolve_model_config(model_config)
     model_name = model_config.model_name
+
+    # key 为 None 表示该 OrcaRouter 账号已被标记为 needs_reauth（密钥被撤销或返回 401），
+    # 这里明确失败，避免继续使用已失效的凭据。
+    if api_key is None:
+        raise ValueError(
+            "OrcaRouter 账号需要重新授权（密钥已撤销或鉴权失败），请重新登录后再试"
+        )
 
     # 判断 api_key 是否为空
     if api_key and api_key.strip() and api_key.lower() != 'null':
