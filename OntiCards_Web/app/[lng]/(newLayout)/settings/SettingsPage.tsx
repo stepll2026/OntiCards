@@ -1528,16 +1528,16 @@ const ApiKeysTab = ({ userId }: { userId: string }) => {
                     ? `${key.api_key.slice(0, 4)}${'*'.repeat(key.api_key.length - 8)}${key.api_key.slice(-4)}`
                     : '*'.repeat(key.api_key.length)}
                 </code>
-                <button
-                  onClick={() => copyToClipboard(key.api_key, key.name)}
-                  className="transition-opacity"
-                  title="复制"
-                >
-                  {copiedKey === key.id
-                    ? <Check className="w-[18px] h-[18px] text-green-500" />
-                    : <Copy className="w-[18px] h-[18px] text-slate-400 hover:text-indigo-600" />
-                  }
-                </button>
+                {/*<button*/}
+                {/*  onClick={() => copyToClipboard(key.api_key, key.name)}*/}
+                {/*  className="transition-opacity"*/}
+                {/*  title="复制"*/}
+                {/*>*/}
+                {/*  {copiedKey === key.id*/}
+                {/*    ? <Check className="w-[18px] h-[18px] text-green-500" />*/}
+                {/*    : <Copy className="w-[18px] h-[18px] text-slate-400 hover:text-indigo-600" />*/}
+                {/*  }*/}
+                {/*</button>*/}
               </div>
 
               {/* 底部信息 */}
