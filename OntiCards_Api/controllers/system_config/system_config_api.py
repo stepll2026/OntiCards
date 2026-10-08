@@ -8,7 +8,7 @@
 
 from datetime import datetime, timezone, timedelta as td
 from typing import Any, Dict, Tuple
-from flask import Blueprint, request
+from flask import Blueprint, request, current_app
 from flask import g as flask_g
 from flask_restful import Api, Resource
 from flask_login import login_required, current_user
@@ -37,6 +37,7 @@ class SystemConfigResource(Resource):
     DELETE : 删除配置
     """
 
+    @login_required
     def get(self):
         """
         获取系统配置
@@ -63,6 +64,8 @@ class SystemConfigResource(Resource):
                 }
             }
         """
+        if current_user.role != 'admin':
+            return resp(403, "无权限，仅管理员可访问", None, 403)
         try:
             key = request.args.get('key', '').strip()
             scope = request.args.get('scope', 'all').strip().lower()
@@ -107,6 +110,7 @@ class SystemConfigResource(Resource):
         except Exception as e:
             return resp(500, f"查询配置失败: {str(e)}", None, 500)
 
+    @login_required
     def put(self):
         """
         更新或创建系统配置
@@ -130,6 +134,8 @@ class SystemConfigResource(Resource):
                 }
             }
         """
+        if current_user.role != 'admin':
+            return resp(403, "无权限，仅管理员可访问", None, 403)
         try:
             payload = request.get_json(force=True) or {}
             key = payload.get('key', '').strip()
@@ -170,6 +176,7 @@ class SystemConfigResource(Resource):
             db.session.rollback()
             return resp(500, f"更新配置失败: {str(e)}", None, 500)
 
+    @login_required
     def delete(self):
         """
         删除系统配置
@@ -180,6 +187,8 @@ class SystemConfigResource(Resource):
 
         注意：系统关键配置不建议删除
         """
+        if current_user.role != 'admin':
+            return resp(403, "无权限，仅管理员可访问", None, 403)
         try:
             payload = request.get_json(force=True) or {}
             key = payload.get('key', '').strip()
@@ -240,6 +249,7 @@ class TokenPriceConfigResource(Resource):
         - user_id: 用户ID（可选，为空则查系统级配置）
     """
 
+    @login_required
     def get(self):
         """
         获取当前Token价格配置
@@ -264,6 +274,8 @@ class TokenPriceConfigResource(Resource):
                 }
             }
         """
+        if current_user.role != 'admin':
+            return resp(403, "无权限，仅管理员可访问", None, 403)
         try:
             user_id = request.args.get('user_id') or None
 
@@ -331,6 +343,7 @@ class TokenPriceConfigResource(Resource):
         except Exception as e:
             return resp(500, f"获取价格配置失败: {str(e)}", None, 500)
 
+    @login_required
     def put(self):
         """
         批量更新Token价格配置
@@ -344,6 +357,8 @@ class TokenPriceConfigResource(Resource):
 
         注意：系统级价格会进行合理性校验，用户级价格不校验
         """
+        if current_user.role != 'admin':
+            return resp(403, "无权限，仅管理员可访问", None, 403)
         try:
             payload = request.get_json(force=True) or {}
             target_user_id = payload.get('user_id')
@@ -412,6 +427,7 @@ class DataRetentionConfigResource(Resource):
         - user_id: 用户ID（可选，为空则查系统级配置）
     """
 
+    @login_required
     def get(self):
         """
         获取数据保留配置
@@ -419,6 +435,8 @@ class DataRetentionConfigResource(Resource):
         Query参数:
             - user_id: 用户ID（可选）
         """
+        if current_user.role != 'admin':
+            return resp(403, "无权限，仅管理员可访问", None, 403)
         try:
             user_id = request.args.get('user_id') or None
 
@@ -466,6 +484,7 @@ class DataRetentionConfigResource(Resource):
         except Exception as e:
             return resp(500, f"获取保留配置失败: {str(e)}", None, 500)
 
+    @login_required
     def put(self):
         """
         更新数据保留配置
@@ -475,6 +494,8 @@ class DataRetentionConfigResource(Resource):
             - stats_retention_days: 聚合统计保留天数
             - user_id: 目标用户ID（可选，为空或null表示系统级配置）
         """
+        if current_user.role != 'admin':
+            return resp(403, "无权限，仅管理员可访问", None, 403)
         try:
             payload = request.get_json(force=True) or {}
             target_user_id = payload.get('user_id')
@@ -533,6 +554,7 @@ class DataCleanupResource(Resource):
     正常情况下，数据清理由定时任务自动执行，此接口仅用于特殊情况。
     """
 
+    @login_required
     def post(self):
         """
         手动触发数据清理
@@ -545,6 +567,8 @@ class DataCleanupResource(Resource):
 
         注意：此操作可能需要较长时间，返回前会等待清理完成。
         """
+        if current_user.role != 'admin':
+            return resp(403, "无权限，仅管理员可访问", None, 403)
         try:
             payload = request.get_json(force=True) or {}
             cleanup_type = payload.get('type', 'all').strip().lower()
@@ -553,7 +577,7 @@ class DataCleanupResource(Resource):
             from task import cleanup_expired_logs, cleanup_expired_stats, cleanup_all
 
             results = {}
-            start_time = datetime.now(tz=timezone(timedelta(hours=8)))
+            start_time = datetime.now(tz=timezone(td(hours=8)))
 
             if cleanup_type == 'logs':
                 results = {"query_logs": cleanup_expired_logs()}
@@ -562,7 +586,7 @@ class DataCleanupResource(Resource):
             else:
                 results = cleanup_all()
 
-            end_time = datetime.now(tz=timezone(timedelta(hours=8)))
+            end_time = datetime.now(tz=timezone(td(hours=8)))
             duration_ms = int((end_time - start_time).total_seconds() * 1000)
 
             total_deleted = sum(r.get("deleted", 0) for r in results.values())
@@ -576,8 +600,8 @@ class DataCleanupResource(Resource):
             })
 
         except Exception as e:
-            import traceback
-            return resp(500, f"数据清理失败: {str(e)}\n{traceback.format_exc()}", None, 500)
+            current_app.logger.exception("数据清理失败: %s", e)
+            return resp(500, f"数据清理失败: {str(e)}", None, 500)
 
 
 # 路由注册

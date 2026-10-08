@@ -12,6 +12,7 @@ from uuid import UUID
 
 from flask import Blueprint, request
 from flask_restful import Api, Resource
+from flask_login import login_required, current_user
 
 from extensions.ext_database import db
 from models.api_keys import ApiKey   # 按你项目实际路径调整
@@ -36,6 +37,13 @@ def _parse_expires_at(value):
         return None
     return datetime.fromisoformat(value)
 
+# 脱敏辅助函数
+def _mask_key(plain: str) -> str:
+    """脱敏：保留末尾 4 位作为可识别标识，格式 sk-***last4（不动字段名，仅改值）"""
+    if not plain or len(plain) <= 4:
+        return "sk-***"
+    return f"sk-***{plain[-4:]}"
+
 # 根据id查询单条ApiKey的uuid校验
 def _is_uuid(v: str) -> bool:
     try:
@@ -53,6 +61,7 @@ class ApiKeysAPI(Resource):
     DELETE : 删除 API Key
     """
 
+    @login_required
     def get(self):
         """
         查询 API Key
@@ -60,6 +69,8 @@ class ApiKeysAPI(Resource):
           - id: 查询单条 API Key（UUID）
           - user_id: 查询该用户下的所有 API Keys
         """
+        if current_user.role != 'admin':
+            return resp(403, "无权限，仅管理员可访问", None, 403)
         try:
             key_id = request.args.get("id")
             user_id = request.args.get("user_id")
@@ -80,7 +91,7 @@ class ApiKeysAPI(Resource):
                     "id": str(obj.id),
                     "user_id": str(obj.user_id),
                     "name": obj.name,
-                    "api_key": obj.api_key,
+                    "api_key": _mask_key(obj.api_key),
                     "status": obj.status,
                     "expires_at": obj.expires_at.isoformat() if obj.expires_at else None,
                     "last_used_at": obj.last_used_at.isoformat() if obj.last_used_at else None,
@@ -102,7 +113,7 @@ class ApiKeysAPI(Resource):
                     "id": str(r.id),
                     "user_id": str(r.user_id),
                     "name": r.name,
-                    "api_key": r.api_key,
+                    "api_key": _mask_key(r.api_key),
                     "status": r.status,
                     "expires_at": r.expires_at.isoformat() if r.expires_at else None,
                     "last_used_at": r.last_used_at.isoformat() if r.last_used_at else None,
@@ -115,6 +126,7 @@ class ApiKeysAPI(Resource):
         except Exception as e:
             return resp(500, f"查询失败: {e}", None, 500)
 
+    @login_required
     def post(self):
         """
         创建 API Key
@@ -124,6 +136,8 @@ class ApiKeysAPI(Resource):
           - api_key: 可选（不传则系统生成）
           - expires_at: 可选（ISO8601）
         """
+        if current_user.role != 'admin':
+            return resp(403, "无权限，仅管理员可访问", None, 403)
         try:
             payload = request.get_json(force=True) or {}
 
@@ -173,6 +187,7 @@ class ApiKeysAPI(Resource):
             db.session.rollback()
             return resp(500, f"创建失败: {e}", None, 500)
 
+    @login_required
     def put(self):
         """
         修改 API Key
@@ -180,6 +195,8 @@ class ApiKeysAPI(Resource):
         - 允许修改 name / status / expires_at
         - expires_at 只允许延长，或清空（null = 永不过期）
         """
+        if current_user.role != 'admin':
+            return resp(403, "无权限，仅管理员可访问", None, 403)
         try:
             payload = request.get_json(force=True) or {}
             key_id = payload.get("id")
@@ -247,12 +264,15 @@ class ApiKeysAPI(Resource):
             db.session.rollback()
             return resp(500, f"更新失败: {e}", None, 500)
 
+    @login_required
     def delete(self):
         """
         删除 API Key
         Body:
           - id: 必填
         """
+        if current_user.role != 'admin':
+            return resp(403, "无权限，仅管理员可访问", None, 403)
         try:
             payload = request.get_json(force=True) or {}
             key_id = payload.get("id")

@@ -7,6 +7,7 @@
 from typing import Any, Dict, Tuple
 from flask import Blueprint, request
 from flask_restful import Api, Resource
+from flask_login import login_required, current_user
 
 from extensions.ext_database import db
 from models.model_config import Model_configuration
@@ -24,6 +25,14 @@ def resp(code: int = 200, msg: str = "success", data: Any = None,
     return {"code": code, "msg": msg, "data": data if data is not None else []}, http_status  # type: ignore[return]
 
 
+# 脱敏辅助函数
+def _mask_key(plain: str) -> str:
+    """脱敏：保留末尾 4 位作为可识别标识，格式 sk-***last4（不动字段名，仅改值）"""
+    if not plain or len(plain) <= 4:
+        return "sk-***"
+    return f"sk-***{plain[-4:]}"
+
+
 # 资源类
 class ModelConfigAPI(Resource):
     """
@@ -33,26 +42,29 @@ class ModelConfigAPI(Resource):
     PUT: 修改模型配置
     DELETE: 删除模型配置
     """
-    
+
+    @login_required
     def get(self):
         """
         查询模型配置
         查询参数: id (可选，如果提供则返回单个，否则返回列表)
         """
+        if current_user.role != 'admin':
+            return resp(403, "无权限，仅管理员可访问", None, 403)
         try:
             model_id = request.args.get("id")
-            
+
             if model_id:
                 # 查询单个记录
                 obj = Model_configuration.query.filter_by(id=model_id).first()
                 if not obj:
                     return resp(404, "模型配置不存在", [], 404)
-                
+
                 data = {
                     "id": str(obj.id),
                     "model_name": obj.model_name,
                     "model_type": obj.model_type,
-                    "model_api_key": obj.model_api_key,
+                    "model_api_key": _mask_key(obj.model_api_key),
                     "model_class": obj.model_class,
                     "url": obj.url,
                     "created_at": obj.created_at.isoformat() if obj.created_at else None,
@@ -66,22 +78,25 @@ class ModelConfigAPI(Resource):
                     "id": str(r.id),
                     "model_name": r.model_name,
                     "model_type": r.model_type,
-                    "model_api_key": r.model_api_key,
+                    "model_api_key": _mask_key(r.model_api_key),
                     "model_class": r.model_class,
                     "url": r.url,
                     "created_at": r.created_at.isoformat() if r.created_at else None,
                     "updated_at": r.updated_at.isoformat() if r.updated_at else None
                 } for r in records]
                 return resp(200, "success", data, 200)
-                
+
         except Exception as e:
             return resp(500, f"查询失败: {e}", [], 500)
-    
+
+    @login_required
     def post(self):
         """
         新增模型配置
         必填参数: model_name, model_type, model_api_key, model_class, url
         """
+        if current_user.role != 'admin':
+            return resp(403, "无权限，仅管理员可访问", None, 403)
         try:
             payload = request.get_json(force=True) or {}
             model_name = payload.get("model_name")
@@ -89,7 +104,7 @@ class ModelConfigAPI(Resource):
             model_api_key = payload.get("model_api_key")
             model_class = payload.get("model_class")
             url = payload.get("url")
-            
+
             # 验证必填字段
             if not model_name:
                 return resp(400, "model_name 不能为空", [], 400)
@@ -99,12 +114,12 @@ class ModelConfigAPI(Resource):
                 return resp(400, "model_class 不能为空", [], 400)
             if not url:
                 return resp(400, "url 不能为空", [], 400)
-            
+
             # 检查模型名称是否已存在
             exists = Model_configuration.query.filter_by(model_name=model_name).first()
             if exists:
                 return resp(409, f"该类型模型已存在：{model_class}", [], 409)
-            
+
             # 创建新记录
             obj = Model_configuration(
                 model_name=model_name,
@@ -115,32 +130,35 @@ class ModelConfigAPI(Resource):
             )
             db.session.add(obj)
             db.session.commit()
-            
+
             data = {"id": str(obj.id)}
             return resp(200, "success", data, 200)
-            
+
         except Exception as e:
             db.session.rollback()
             return resp(500, f"新增失败: {e}", [], 500)
-    
+
+    @login_required
     def put(self):
         """
         修改模型配置
         必填参数: id
         可选参数: model_name, model_type, model_api_key, model_class, url
         """
+        if current_user.role != 'admin':
+            return resp(403, "无权限，仅管理员可访问", None, 403)
         try:
             payload = request.get_json(force=True) or {}
             model_id = payload.get("id")
-            
+
             if not model_id:
                 return resp(400, "id 不能为空", [], 400)
-            
+
             # 查找记录
             obj = Model_configuration.query.filter_by(id=model_id).first()
             if not obj:
                 return resp(404, "模型配置不存在", [], 404)
-            
+
             # 更新字段
             if "model_name" in payload:
                 new_model_name = payload["model_name"]
@@ -154,55 +172,58 @@ class ModelConfigAPI(Resource):
                 if dup:
                     return resp(409, f"模型名称已存在：{new_model_name}", [], 409)
                 obj.model_name = new_model_name
-            
+
             if "model_type" in payload:
                 if not payload["model_type"]:
                     return resp(400, "model_type 不能为空", [], 400)
                 obj.model_type = payload["model_type"]
-            
+
             if "model_api_key" in payload:
                 obj.model_api_key = payload["model_api_key"]
-            
+
             if "model_class" in payload:
                 if not payload["model_class"]:
                     return resp(400, "model_class 不能为空", [], 400)
                 obj.model_class = payload["model_class"]
-            
+
             if "url" in payload:
                 if not payload["url"]:
                     return resp(400, "url 不能为空", [], 400)
                 obj.url = payload["url"]
-            
+
             db.session.commit()
             return resp(200, "success", {"id": str(obj.id)}, 200)
-            
+
         except Exception as e:
             db.session.rollback()
             return resp(500, f"更新失败: {e}", [], 500)
-    
+
+    @login_required
     def delete(self):
         """
         删除模型配置
         必填参数: id
         """
+        if current_user.role != 'admin':
+            return resp(403, "无权限，仅管理员可访问", None, 403)
         try:
             payload = request.get_json(force=True) or {}
             model_id = payload.get("id")
-            
+
             if not model_id:
                 return resp(400, "id 不能为空", [], 400)
-            
+
             # 查找记录
             obj = Model_configuration.query.filter_by(id=model_id).first()
             if not obj:
                 return resp(404, "模型配置不存在", [], 404)
-            
+
             # 删除记录
             db.session.delete(obj)
             db.session.commit()
-            
+
             return resp(200, "deleted", {"id": model_id}, 200)
-            
+
         except Exception as e:
             db.session.rollback()
             return resp(500, f"删除失败: {e}", [], 500)
