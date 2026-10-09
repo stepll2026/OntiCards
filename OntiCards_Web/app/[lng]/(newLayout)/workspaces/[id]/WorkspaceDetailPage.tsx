@@ -2735,7 +2735,7 @@ const WorkspaceDetailPage = () => {
                           </td>
                           <td className="p-4">
                           <span
-                            className={`inline-flex items-center px-3 py-1.5 text-xs font-medium ${s.is_view ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400' : 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'}`}
+                            className={`inline-flex items-center px-3 py-1.5 text-xs font-medium whitespace-nowrap flex-shrink-0 ${s.is_view ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400' : 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'}`}
                             style={{ borderRadius: '9999px' }}
                           >
                             {s.is_view ? '视图' : '表'}
