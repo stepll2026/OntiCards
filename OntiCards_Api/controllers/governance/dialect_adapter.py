@@ -66,6 +66,21 @@ DIALECT_CONFIGS: Dict[str, DialectInfo] = {
         cast_as_text_supported=False,
         supports_limit=True  # 支持 LIMIT 语法
     ),
+    # MariaDB follows the MySQL-compatible SQL path while retaining its product name.
+    'mariadb': DialectInfo(
+        name='MariaDB',
+        identifier_quote='`{}`',
+        date_now='NOW()',
+        date_current_date='CURRENT_DATE',
+        date_add='INTERVAL {}',
+        string_length='LENGTH({})',
+        regex_match='{} REGEXP "{}"',
+        null_check_eq="{} = ''",
+        type_cast='CAST({} AS {})',
+        empty_string_cast='CHAR',
+        cast_as_text_supported=False,
+        supports_limit=True
+    ),
     'mssql': DialectInfo(
         name='SQL Server',
         identifier_quote='[{}]',
@@ -292,8 +307,8 @@ class DialectAdapter:
 
         if self.db_type == 'postgresql':
             return self.dialect.regex_match.format(quoted_col, pattern)
-        elif self.db_type == 'mysql' or self.db_type == 'oceanbase':
-            # OceanBase MySQL 模式与 MySQL 行为一致，复用同一处理方式
+        elif self.db_type in ('mysql', 'mariadb', 'oceanbase'):
+            # MariaDB/OceanBase MySQL 模式与 MySQL 行为一致，复用同一处理方式
             return self.dialect.regex_match.format(quoted_col, pattern)
         elif self.db_type == 'mssql':
             # MSSQL 不支持正则，降级为 LIKE
@@ -866,7 +881,8 @@ FROM {quoted_table}
 |- EXTRACT(YEAR FROM col): 提取年份
 '''
         }
-        return docs.get(self.db_type, docs['postgresql'])
+        docs_key = 'mysql' if self.db_type == 'mariadb' else self.db_type
+        return docs.get(docs_key, docs['postgresql'])
 
     def _get_string_functions_doc(self) -> str:
         """获取字符串函数文档"""
@@ -924,7 +940,8 @@ FROM {quoted_table}
 |- INSTR(col, substr): 查找子串位置
 '''
         }
-        return docs.get(self.db_type, docs['postgresql'])
+        docs_key = 'mysql' if self.db_type == 'mariadb' else self.db_type
+        return docs.get(docs_key, docs['postgresql'])
 
     def _get_regex_syntax_doc(self) -> str:
         """获取正则表达式语法文档"""
@@ -966,7 +983,8 @@ FROM {quoted_table}
 |- 示例: REGEXP_LIKE(phone, '^1[3-9]\\d{9}$')
 '''
         }
-        return docs.get(self.db_type, docs['postgresql'])
+        docs_key = 'mysql' if self.db_type == 'mariadb' else self.db_type
+        return docs.get(docs_key, docs['postgresql'])
 
     def _get_null_check_doc(self) -> str:
         """获取空值判断语法文档"""
@@ -1012,7 +1030,8 @@ FROM {quoted_table}
 |- 数值/日期列的空字符串判定：先 TO_CHAR(col) = ''，再 IS NULL
 '''
         }
-        return docs.get(self.db_type, docs['postgresql'])
+        docs_key = 'mysql' if self.db_type == 'mariadb' else self.db_type
+        return docs.get(docs_key, docs['postgresql'])
 
 
 def adapt_sql_for_dialect(

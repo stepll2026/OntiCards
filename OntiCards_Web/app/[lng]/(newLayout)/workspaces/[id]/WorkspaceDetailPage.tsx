@@ -137,6 +137,7 @@ const tabs = [
 const getDbTypeIcon = (dbType: string) => {
   const icons: Record<string, string> = {
     mysql: '🐬',
+    mariadb: '🦭',
     postgresql: '🐘',
     mssql: '📊',
     oracle: '🔵',
@@ -153,6 +154,7 @@ const getDbTypeIcon = (dbType: string) => {
 const getDbTypeTagClass = (dbType: string) => {
   const map: Record<string, string> = {
     mysql: 'bg-blue-50 text-blue-600 border-blue-100',
+    mariadb: 'bg-cyan-50 text-cyan-700 border-cyan-100',
     postgresql: 'bg-emerald-50 text-emerald-600 border-emerald-100',
     mssql: 'bg-purple-50 text-purple-600 border-purple-100',
     oracle: 'bg-red-50 text-red-600 border-red-100',

@@ -871,6 +871,7 @@ def _exec_trino_unified(
 def _pick_template_by_db(db_type: str) -> str:
     m = {
         "mysql": "mysql_multi_table.txt",
+        "mariadb": "mysql_multi_table.txt",
         "postgresql": "postgresql_multi_table.txt",
         "mssql": "mssql_multi_table.txt",
         "oracle": "oracle_multi_table.txt",

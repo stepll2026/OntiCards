@@ -65,6 +65,9 @@ const useDarkMode = () => {
 // 数据库类型对应的图标（与添加数据源弹框保持一致）
 const getDbTypeIcon = (dbType: string) => {
   const type = dbType?.toLowerCase() || '';
+  if (type.includes('mariadb')) {
+    return { icon: '🦭', bg: 'from-cyan-50 to-teal-100' };
+  }
   if (type.includes('mysql')) {
     return { icon: '🐬', bg: 'from-sky-50 to-sky-100' };
   }
@@ -425,6 +428,7 @@ const totalSources = dataSources?.length ?? 0;
                 {[
                   { name: 'PostgreSQL', type: 'postgresql' },
                   { name: 'MySQL', type: 'mysql' },
+                  { name: 'MariaDB', type: 'mariadb' },
                   { name: 'Oracle', type: 'oracle' },
                   { name: 'SQL Server', type: 'sql server' },
                   { name: 'Trino', type: 'trino' },

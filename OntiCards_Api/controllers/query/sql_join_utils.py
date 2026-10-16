@@ -378,7 +378,7 @@ def render_whitelist_for_prompt(db_type: str, t: dict, alias: str) -> str:
     # 人大金仓（KingBase）基于 PostgreSQL，复用 PostgreSQL 的引用符
     # OceanBase MySQL 模式与 MySQL 行为一致，使用反引号
     db_type_lower = (db_type or "").lower()
-    if db_type_lower in ("mysql", "oceanbase"):
+    if db_type_lower in ("mysql", "mariadb", "oceanbase"):
         quote = "`"
     elif db_type_lower == "mssql":
         quote = "["  # SQL Server方括号，但要成对使用

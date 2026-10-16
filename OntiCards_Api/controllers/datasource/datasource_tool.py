@@ -961,8 +961,8 @@ class DatasourceToolAPI(Resource):
                 # 但 schema 不再猜，直接用 record.schema_name
                 payload["catalog"] = (record.catalog_type or (
                     record.database_name.split("/", 1)[0] if "/" in record.database_name else record.database_name))
-            elif dbt == "mysql":
-                # mysql 没 schema，不加 schema 字段
+            elif dbt in ("mysql", "mariadb"):
+                # MySQL/MariaDB 没有独立 schema，不加 schema 字段
                 pass
 
             if dbt == "trino":

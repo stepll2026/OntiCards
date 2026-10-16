@@ -38,6 +38,7 @@ api = Api(bp_data_audit)
 _SQL_FILE_NAMES: Dict[str, str] = {
     "postgresql": "data_audit_postgre.txt",
     "mysql": "data_audit_mysql.txt",
+    "mariadb": "data_audit_mysql.txt",
     "mssql": "data_audit_mssql.txt",
     "oracle": "data_audit_oracle.txt",
     "sqlite": "data_audit_sqlite.txt",
@@ -62,7 +63,8 @@ def _bad(msg, code=400): return {"code": code, "msg": msg, "data": None}, 200
 def _normalize_db_type(s: str) -> str:
     s = (s or "").lower()
     if s in ("postgres", "postgresql", "pg"): return "postgresql"
-    if s in ("mysql", "mariadb"): return "mysql"
+    if s in ("mysql",): return "mysql"
+    if s in ("mariadb",): return "mariadb"
     if s in ("mssql", "sqlserver", "sql_server"): return "mssql"
     if s in ("oracle", "ora"): return "oracle"
     if s in ("sqlite", "sqlite3"): return "sqlite"
@@ -123,7 +125,7 @@ def _read_sql_chunks_from_file(db_type: str) -> List[str]:
 def _exec_ddl_batch(engine: Engine, stmts: List[str], db_type: str, *, mysql_database: Optional[str] = None):
     """逐条执行 DDL；PG 需转义 %，MySQL 可先 USE 目标库；Oracle/达梦 需剔除 SQL*Plus 风格的 /。"""
     with engine.begin() as conn:
-        if db_type in ("mysql", "oceanbase") and mysql_database:
+        if db_type in ("mysql", "mariadb", "oceanbase") and mysql_database:
             conn.exec_driver_sql(f"USE `{mysql_database}`")
         for s in stmts:
             sql_to_run = s
@@ -170,7 +172,7 @@ def _is_ddl_permission_error(exc: Exception, db_type: str) -> bool:
     若识别为权限错误，调用方应降级到应用层统计 _audit_*_direct。
     """
     msg = (str(exc) or "").lower()
-    if db_type in ("mysql", "oceanbase"):
+    if db_type in ("mysql", "mariadb", "oceanbase"):
         # MySQL 1370 = ER_SP_ALTER_ROUTINE_NO_ACCESS
         # OceanBase 沿用 MySQL 错误码
         if "1370" in msg:
@@ -329,6 +331,13 @@ def _audit_oceanbase_direct(engine: Engine, schema: str, table: str) -> dict:
     """
     result = _audit_mysql_direct(engine, schema, table)
     result["db_type"] = "oceanbase"
+    return result
+
+
+def _audit_mariadb_direct(engine: Engine, schema: str, table: str) -> dict:
+    """MariaDB application-level audit using the MySQL-compatible queries."""
+    result = _audit_mysql_direct(engine, schema, table)
+    result["db_type"] = "mariadb"
     return result
 
 
@@ -546,7 +555,7 @@ def load_data_audit_ddl(engine: Engine, db_type: str, *, mysql_database: Optiona
     # OceanBase 使用独立的 DDL 文件（ob_data_audit），通过 DDL 文件自身的
     # DROP PROCEDURE IF EXISTS 实现幂等，无需额外清理逻辑
     # 达梦 DM 使用独立的 DDL 文件（data_audit_dm.txt），与 Oracle 一样走 SQL*Plus 风格
-    if db_type not in ("postgresql", "mysql", "mssql", "kingbase", "oceanbase", "dm"):
+    if db_type not in ("postgresql", "mysql", "mariadb", "mssql", "kingbase", "oceanbase", "dm"):
         # Oracle/SQLite/Trino 在 perform_data_audit 中走应用层统计，无需 DDL
         return
 
@@ -587,8 +596,8 @@ def _call_data_audit_proc(engine: Engine, db_type: str, schema: str, table: str)
     if db_type == "postgresql" or db_type == "kingbase":
         # KingBase 基于 PostgreSQL 协议，复用 PG 调用方式
         return _fetch_mappings(engine, "SELECT * FROM data_audit(:s, :t)", {"s": schema, "t": table})
-    if db_type == "mysql":
-        # MySQL GTID 模式要求：存储过程内的临时表操作必须在事务外部执行
+    if db_type in ("mysql", "mariadb"):
+        # MySQL/MariaDB 存储过程需在该连接语义下执行。
         # 使用 engine.connect() 而非 engine.begin() 来保持 autocommit=1
         with engine.connect() as conn:
             result = conn.execute(text("CALL data_audit(:s, :t)"), {"s": schema, "t": table})
@@ -713,7 +722,7 @@ def perform_data_audit(engine, db_type, database_name, table_name, schema_name=N
 
         # helper：拿到当前 db_type 的 schema 参数（与下方 proc 调用保持完全一致）
         def _resolve_fallback_schema() -> str:
-            if db_type in ("mysql", "oceanbase"):
+            if db_type in ("mysql", "mariadb", "oceanbase"):
                 return (
                         schema_name
                         or database_name
@@ -730,6 +739,8 @@ def perform_data_audit(engine, db_type, database_name, table_name, schema_name=N
         if install_state == "no_perm":
             if db_type == "mysql":
                 return _audit_mysql_direct(engine, _resolve_fallback_schema(), table)
+            if db_type == "mariadb":
+                return _audit_mariadb_direct(engine, _resolve_fallback_schema(), table)
             if db_type == "oceanbase":
                 return _audit_oceanbase_direct(engine, _resolve_fallback_schema(), table)
             if db_type == "postgresql":
@@ -762,6 +773,8 @@ def perform_data_audit(engine, db_type, database_name, table_name, schema_name=N
                 )
                 if db_type == "mysql":
                     return _audit_mysql_direct(engine, _resolve_fallback_schema(), table)
+                if db_type == "mariadb":
+                    return _audit_mariadb_direct(engine, _resolve_fallback_schema(), table)
                 if db_type == "oceanbase":
                     return _audit_oceanbase_direct(engine, _resolve_fallback_schema(), table)
                 if db_type == "postgresql":
@@ -781,7 +794,7 @@ def perform_data_audit(engine, db_type, database_name, table_name, schema_name=N
                                    {"s": schema, "t": table}
                                    )
 
-        elif db_type == "mysql":
+        elif db_type in ("mysql", "mariadb"):
             schema = schema_name or database_name or (connect_info.get("database") if connect_info else None)
             # MySQL GTID 模式要求：存储过程内的临时表操作必须在事务外部执行
             # 使用 engine.connect() 而非 engine.begin() 来保持 autocommit=1

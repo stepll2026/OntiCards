@@ -30,6 +30,7 @@ interface AddDataSourceModalProps {
 // 数据库类型配置
 const databaseTypes = [
   { value: 'mysql', label: 'MySQL', icon: '🐬' },
+  { value: 'mariadb', label: 'MariaDB', icon: '🦭' },
   { value: 'postgresql', label: 'PostgreSQL', icon: '🐘' },
   { value: 'mssql', label: 'SQL Server', icon: '🏢' },
   { value: 'oracle', label: 'Oracle', icon: '🔶' },
@@ -1645,6 +1646,7 @@ const AddDataSourceModal: React.FC<AddDataSourceModalProps> = ({ isOpen, onClose
 function getDefaultPort(dbType: DatabaseType): number {
   const ports: Record<DatabaseType, number> = {
     mysql: 3306,
+    mariadb: 3306,
     postgresql: 5432,
     mssql: 1433,
     oracle: 1521,

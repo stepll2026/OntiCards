@@ -6,7 +6,7 @@ import { request, urlPrefix } from './base'
 // ===== 类型定义 =====
 
 // 数据库类型
-export type DatabaseType = 'mysql' | 'postgresql' | 'mssql' | 'oracle' | 'sqlite' | 'trino' | 'kingbase' | 'oceanbase' | 'dm'
+export type DatabaseType = 'mysql' | 'mariadb' | 'postgresql' | 'mssql' | 'oracle' | 'sqlite' | 'trino' | 'kingbase' | 'oceanbase' | 'dm'
 
 // 数据源连接配置
 export interface DataSourceConfig {
@@ -354,6 +354,19 @@ export interface PaginationParams {
 
 // ===== API 函数 =====
 
+const buildDatabaseRequestBody = (config: DataSourceConfig): Record<string, any> => {
+  const requestBody: Record<string, any> = { ...config }
+
+  // MariaDB is a first-class backend product type. Send the canonical snake_case
+  // field explicitly while leaving existing payloads unchanged for other databases.
+  if (config.dbType === 'mariadb') {
+    requestBody.db_type = 'mariadb'
+    delete requestBody.dbType
+  }
+
+  return requestBody
+}
+
 /**
  * 获取数据库表列表
  * @param config 数据源配置
@@ -362,7 +375,7 @@ export interface PaginationParams {
 export const listTables = async (config: DataSourceConfig): Promise<ApiResponse<TableListResponse>> => {
   try {
     // 构建请求参数
-    const requestBody: any = { ...config }
+    const requestBody = buildDatabaseRequestBody(config)
 
     // 只有Oracle数据库且勾选了SYSDBA模式时才携带oracle_mode_sysdba字段
     if (config.dbType === 'oracle' && config.oracle_mode_sysdba === true) {
@@ -423,7 +436,7 @@ export const listTables = async (config: DataSourceConfig): Promise<ApiResponse<
 export const testConnection = async (config: DataSourceConfig): Promise<ApiResponse<ConnectionTestResult>> => {
   try {
     // 构建请求参数，处理Oracle SYSDBA模式和Trino的port字段
-    const requestBody: any = { ...config }
+    const requestBody = buildDatabaseRequestBody(config)
 
     // 只有Oracle数据库且勾选了SYSDBA模式时才携带oracle_mode_sysdba字段
     if (config.dbType === 'oracle' && config.oracle_mode_sysdba === true) {
@@ -494,7 +507,7 @@ export const extractSchema = async (
   try {
     // 构建请求参数，处理Oracle SYSDBA模式和Trino的port字段
     const requestBody: any = {
-      ...config,
+      ...buildDatabaseRequestBody(config),
       request_id: requestId  // 添加请求ID
     }
 
@@ -588,7 +601,7 @@ export const cancelExtractSchema = async (requestId: string, config?: DataSource
       body: {
         request_id: requestId,
         // 传递完整配置，让后端构建连接字符串
-        ...(config ? { config } : {})
+        ...(config ? { config: buildDatabaseRequestBody(config) } : {})
       },
     })
     return response

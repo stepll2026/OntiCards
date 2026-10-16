@@ -321,6 +321,9 @@ class RequestCancelledException(Exception):
 # 1) 程序连接数据库时使用的默认驱动映射：用户无需选择 driver
 DEFAULT_DRIVERS = {
     "mysql": "pymysql",
+    # MariaDB uses its MySQL-compatible wire protocol with the existing PyMySQL driver.
+    # Keep "mariadb" as the OntiCards product identity while using mysql+pymysql below.
+    "mariadb": "pymysql",
     "postgresql": "psycopg",
     "mssql": "pyodbc",
     "oracle": "oracledb",  # 使用 python-oracledb (thin模式，无需Oracle客户端库)
@@ -361,6 +364,7 @@ ALIASES = {
 # 3) 各数据库必填项规则（最小可用参数集）
 REQUIRED_RULES = {
     "mysql": [["username", "password", "host", "port", "database"]],
+    "mariadb": [["username", "password", "host", "port", "database"]],
     "postgresql": [["username", "password", "host", "port", "database"]],
     # mssql 支持两种：DSN 方式 或 host 方式（二选一规则用两个列表表示）
     "mssql": [["username", "password", "dsn", "database"],
@@ -609,9 +613,9 @@ def build_db_url(
         print(f"[DEBUG] Trino 生成的连接 URL: {url}")
         return url
 
-    # OceanBase MySQL 模式租户：协议层 100% 兼容 MySQL，必须显式走 mysql+pymysql 前缀
-    # （不能写 oceanbase+pymysql，因为 SQLAlchemy 没注册这个方言）
-    if db_type == "oceanbase":
+    # MariaDB and OceanBase MySQL mode use the MySQL-compatible protocol. Route both
+    # through OntiCards' existing mysql+pymysql path while keeping db_type separately.
+    if db_type in ("mariadb", "oceanbase"):
         return URL.create(
             drivername=f"mysql+{driver}",   # 即 "mysql+pymysql"
             username=username,
@@ -678,8 +682,8 @@ def build_db_url_from_json(payload: Dict[str, Any]) -> str | URL:
                 query["driver"] = picked
             # 若未能探测到已安装驱动，就保持不填，后续会在 get_db_engine 里给出友好错误
 
-    # 仅对 MySQL/OceanBase MySQL 模式做兼容：schema 视作 database（如果没传 database）
-    if db_type in ("mysql", "oceanbase") and not data.get("database") and data.get("schema"):
+    # MySQL-compatible products treat schema as database when database is omitted.
+    if db_type in ("mysql", "mariadb", "oceanbase") and not data.get("database") and data.get("schema"):
         data["database"] = data["schema"]
 
     # 必填校验
@@ -1075,6 +1079,19 @@ def _get_table_comment(inspector, table_name, schema=None):
     return ""
 
 
+# These products intentionally reuse another SQLAlchemy dialect. Their user-facing
+# and persisted identity must therefore come from the request rather than the engine.
+PRODUCT_IDENTITY_DB_TYPES = {"kingbase", "mariadb", "oceanbase", "dm"}
+
+
+def _database_type_for_response(original_db_type: str, engine) -> str:
+    """Return the OntiCards product type without leaking the compatibility dialect."""
+    normalized = (original_db_type or "").lower()
+    if normalized in PRODUCT_IDENTITY_DB_TYPES:
+        return normalized
+    return str(engine.dialect.name)
+
+
 # 根据不同数据库类型获取对应库或表空间下的所有表名
 def get_tables(inspector, engine, payload):
     """
@@ -1433,7 +1450,7 @@ def insert_table_info_to_db(payload: dict, user_id: str, connect_info: str, conn
             or db_connect_info_payload.get("schema")
             or (url.username or "").upper()
         )
-    elif db_type in ("postgresql", "mysql", "mssql", "kingbase"):
+    elif db_type in ("postgresql", "mysql", "mariadb", "mssql", "kingbase"):
         db_name_for_rows = url.database
     elif db_type == "sqlite":
         db_name_for_rows = url.database or ":memory:"
@@ -2406,7 +2423,7 @@ def _infer_db_name(db_type: str, connect_info: str) -> str | None:
         # 达梦：用用户名大写作为 database_name（与 Oracle 一致，因为达梦默认 schema = 用户名）
         # 如果用户传了 target_schema，则用 target_schema
         return (url.username or "").upper()
-    elif dbt in ("postgresql", "mysql", "mssql", "kingbase"):
+    elif dbt in ("postgresql", "mysql", "mariadb", "mssql", "kingbase"):
         return url.database
     elif dbt == "sqlite":
         return url.database or ":memory:"
@@ -2474,8 +2491,8 @@ def _resolve_schema_name(db_type: Optional[str],
     if dbt == "trino":
         # trino 的 schema 必填（你 REQUIRED_RULES 就要求 schema）:contentReference[oaicite:1]{index=1}
         return payload.get("schema")
-    if dbt == "mysql":
-        # mysql 没 schema，schema_name 这里可存数据库名，方便 UI 展示统一
+    if dbt in ("mysql", "mariadb"):
+        # MySQL/MariaDB 没有独立 schema，schema_name 可存数据库名便于 UI 展示。
         return payload.get("database")
     if dbt == "oceanbase":
         # OceanBase MySQL 模式租户：与 MySQL 行为一致，无 schema 分离维度
@@ -2835,12 +2852,8 @@ class ExtractSchemaAPI(Resource):
             # --- 公共流程（放在 try/except 之后） ---
             inspector = inspect(engine)
 
-            # 如果是 KingBase/OceanBase 等特殊数据库（SQLAlchemy dialect 名与用户传入类型不一致），
-            # 返回原始传入的 db_type，而不是 engine.dialect.name
-            if db_type_raw in ("kingbase", "oceanbase"):
-                dialect_name_for_return = db_type_raw
-            else:
-                dialect_name_for_return = str(engine.dialect.name)
+            # 兼容协议产品使用底层 SQLAlchemy dialect 提取结构，但返回用户选择的产品类型。
+            dialect_name_for_return = _database_type_for_response(db_type_raw, engine)
 
             database_info = {
                 "database_type": dialect_name_for_return,
@@ -3228,12 +3241,8 @@ class ConnectTestAPI(Resource):
             engine = get_db_engine(raw_conn_str, db_type=original_db_type)
 
             # 3) 读取版本信息以辅助定位（不影响成功/失败判断）
-            # 如果是 KingBase/OceanBase/达梦 等特殊数据库（SQLAlchemy dialect 名与用户传入类型不一致），
-            # 返回原始传入的 db_type，而不是 engine.dialect.name
-            if original_db_type in ("kingbase", "oceanbase", "dm"):
-                db_type = original_db_type
-            else:
-                db_type = str(engine.dialect.name)
+            # 兼容协议产品返回用户选择的产品类型，不暴露底层 dialect。
+            db_type = _database_type_for_response(original_db_type, engine)
             db_ver = _get_database_version(engine)
 
             return {

@@ -61,7 +61,7 @@ More industry solutions: [http://www.onticards.com/zh-cn/solutions](http://www.o
 
 Zero-intrusion access to mainstream open-source, commercial, and domestic Chinese databases — fully aligned with localization requirements:
 
-- Open source: MySQL 5.7+, PostgreSQL 10+, SQLite 3.x
+- Open source: MySQL 5.7+, MariaDB 10.11 (validated through the MySQL-compatible protocol and SQL path; JSON columns may appear as `LONGTEXT` in metadata, and sequences are not extracted as tables/views), PostgreSQL 10+, SQLite 3.x
 
 - Commercial: Oracle 11g+, SQL Server 2012+
 

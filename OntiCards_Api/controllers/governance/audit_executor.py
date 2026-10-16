@@ -326,6 +326,7 @@ class RuleExecutor:
             'mssql': 'dbo',
             'oracle': None,
             'mysql': None,
+            'mariadb': None,
             'sqlite': None,
             'trino': None,
             'oceanbase': None,  # OceanBase MySQL 模式无 schema 分离
@@ -368,8 +369,8 @@ class RuleExecutor:
                     WHERE table_catalog = :db_name AND table_name = :table_name
                     ORDER BY ordinal_position
                 """)
-            elif self.db_type == 'mysql' or self.db_type == 'oceanbase':
-                # OceanBase MySQL 模式与 MySQL 行为一致，复用同一查询方式
+            elif self.db_type in ('mysql', 'mariadb', 'oceanbase'):
+                # MariaDB/OceanBase MySQL 模式与 MySQL 行为一致，复用同一查询方式
                 cols_sql = text("""
                     SELECT column_name
                     FROM information_schema.columns
@@ -645,8 +646,8 @@ class RuleExecutor:
             if self.db_type in ('postgresql', 'kingbase'):
                 # PostgreSQL 使用 ~* (不区分大小写)
                 pass
-            elif self.db_type == 'mysql' or self.db_type == 'oceanbase':
-                # MySQL/OceanBase 使用 REGEXP
+            elif self.db_type in ('mysql', 'mariadb', 'oceanbase'):
+                # MySQL/MariaDB/OceanBase 使用 REGEXP
                 result = result.replace('~*', 'REGEXP')
             elif self.db_type in ('oracle', 'dm'):
                 # Oracle / 达梦 DM 使用 REGEXP_LIKE 函数（达梦与 Oracle 兼容）
@@ -1645,8 +1646,8 @@ class AuditExecutor:
             executed_sql = (
                 f"SELECT * FROM data_audit('{schema_label}', '{table}')"
             )
-        elif self.db_type == 'mysql':
-            # MySQL 使用 data_audit 存储过程
+        elif self.db_type in ('mysql', 'mariadb'):
+            # MySQL/MariaDB 使用 data_audit 存储过程
             executed_sql = (
                 f"CALL data_audit('{schema_label}', '{table}')"
             )

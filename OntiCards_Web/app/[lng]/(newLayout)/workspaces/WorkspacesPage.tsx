@@ -30,6 +30,7 @@ import { urlPrefix } from '@/api/base';
 const getDbTypeIcon = (dbType: string) => {
   const icons: Record<string, string> = {
     mysql: '🐬',
+    mariadb: '🦭',
     postgresql: '🐘',
     mssql: '📊',
     oracle: '🔵',
@@ -46,6 +47,7 @@ const getDbTypeIcon = (dbType: string) => {
 const getDbTypeColor = (dbType: string) => {
   const colors: Record<string, string> = {
     mysql: 'bg-blue-100 text-blue-600',
+    mariadb: 'bg-cyan-100 text-cyan-700',
     postgresql: 'bg-emerald-100 text-emerald-600',
     mssql: 'bg-purple-100 text-purple-600',
     oracle: 'bg-red-100 text-red-600',
