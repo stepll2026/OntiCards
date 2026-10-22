@@ -11,9 +11,9 @@
 
 **开源免费 · 私有化部署 · 全链路数据智能化治理**
 
-**项目地址**：[https://github.com/stepll2026/OntiCards/releases](https://github.com/stepll2026/OntiCards/releases)
+**项目地址**：https://github.com/stepll2026/OntiCards/releases
 
-**官方文档**：[http://www.onticards.com/docs/zh-cn/](http://www.onticards.com/docs/zh-cn/)
+**官方文档**：http://www.onticards.com/docs/zh-cn/
 
 **开源协议**：[AGPL-3.0](./LICENSE)
 
@@ -53,7 +53,7 @@ OntiCards 并非实验性demo，已在**汽车、金融、政企、制造、教�
 
 - **地产法务**：AI智能合同审查，单份合同审核从40分钟压缩至4分钟，自动识别风险条款、分级预警、结构化批注
 
-更多行业解决方案：[http://www.onticards.com/zh-cn/solutions](http://www.onticards.com/zh-cn/solutions)
+更多行业解决方案：http://www.onticards.com/zh-cn/solutions
 
 ## 🔥 核心能力全景
 
@@ -230,6 +230,6 @@ OntiCards 开源版基于**AGPL-3.0** 协议开源。基于本项目修改后对
 
 - 问题反馈 & 功能建议：[GitHub Issues](https://github.com/stepll2026/OntiCards/issues)
 
-- 产品官网 & 行业方案：[http://www.onticards.com](http://www.onticards.com)
+- 产品官网 & 行业方案：http://www.onticards.com
 
 **OntiCards — 让每一家企业的私有数据，都能安全、高效、低成本接入AI时代**

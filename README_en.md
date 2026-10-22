@@ -11,9 +11,9 @@
 
 **Open source and free · Self-hosted · End-to-end intelligent data governance**
 
-**Project**: [https://github.com/stepll2026/OntiCards/releases](https://github.com/stepll2026/OntiCards/releases)
+**Project**: https://github.com/stepll2026/OntiCards/releases
 
-**Documentation**: [http://www.onticards.com/docs/zh-cn/](http://www.onticards.com/docs/zh-cn/)
+**Documentation**: http://www.onticards.com/docs/zh-cn/
 
 **License**: [AGPL-3.0](./LICENSE)
 
@@ -53,7 +53,7 @@ OntiCards is not an experimental demo. It runs stably in production at leading e
 
 - **Real estate legal**: AI-powered contract review compresses per-contract review from 40 minutes to 4, automatically flagging risky clauses with tiered alerts and structured annotations
 
-More industry solutions: [http://www.onticards.com/zh-cn/solutions](http://www.onticards.com/zh-cn/solutions)
+More industry solutions: http://www.onticards.com/zh-cn/solutions
 
 ## 🔥 Full Capability Overview
 
@@ -230,6 +230,6 @@ The open-source edition is **free forever** and can be self-hosted in production
 
 - Bug reports & feature requests: [GitHub Issues](https://github.com/stepll2026/OntiCards/issues)
 
-- Product website & industry solutions: [http://www.onticards.com](http://www.onticards.com)
+- Product website & industry solutions: http://www.onticards.com
 
 **OntiCards — Bringing every enterprise's private data safely, efficiently, and affordably into the AI era**
