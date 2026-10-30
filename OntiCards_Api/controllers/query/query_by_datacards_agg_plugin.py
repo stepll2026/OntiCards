@@ -1075,6 +1075,206 @@ def _filter_clusters_by_question(cluster_results: List[dict], user_question: str
     return cluster_results, []
 
 
+# LLM 融合阶段每个数据源传给模型的样本行数。
+# 只用于让模型判断字段格式与关联方式，不参与实际融合——
+# 真实融合由 _apply_fusion_plan 在【全量】 rows 上执行。
+FUSION_SAMPLE_ROWS = 3
+
+# 融合规约中支持的过滤算子
+_FUSION_FILTER_OPS = {"eq", "neq", "in", "not_in", "gt", "gte", "lt", "lte", "contains"}
+
+
+def _normalize_link_value(value, normalize_ops):
+    """按规约给出的算子序列，依次归一化关联键的值。"""
+    if value is None:
+        return None
+    s = str(value)
+    for op in (normalize_ops or []):
+        op = str(op or "").strip().lower()
+        if op == "trim":
+            s = s.strip()
+        elif op == "casefold":
+            s = s.casefold()
+        elif op == "upper":
+            s = s.upper()
+        elif op == "lower":
+            s = s.lower()
+        elif op == "digits_only":
+            s = "".join(ch for ch in s if ch.isdigit())
+    return s
+
+
+def _row_match_filter(row: dict, cond: dict) -> bool:
+    """判断一行是否满足单条结构化过滤条件；条件不合法或类型不可比较时放行，避免误杀数据。"""
+    if not isinstance(cond, dict):
+        return True
+    field = cond.get("field")
+    op = str(cond.get("op") or "").strip().lower()
+    expected = cond.get("value")
+    if field is None or op not in _FUSION_FILTER_OPS:
+        return True
+    actual = row.get(field)
+    try:
+        if op == "eq":
+            return actual == expected
+        if op == "neq":
+            return actual != expected
+        if op == "in":
+            return actual in (expected or [])
+        if op == "not_in":
+            return actual not in (expected or [])
+        if op == "contains":
+            return str(expected or "") in str(actual or "")
+        if actual is None:
+            return False
+        if op == "gt":
+            return actual > expected
+        if op == "gte":
+            return actual >= expected
+        if op == "lt":
+            return actual < expected
+        if op == "lte":
+            return actual <= expected
+    except Exception:
+        return True
+    return True
+
+
+def _apply_fusion_plan(cluster_results: List[dict], plan: dict) -> Tuple[List[dict], List[str]]:
+    """
+    在【全量】簇结果上执行 LLM 给出的融合规约，产出最终数据行。
+
+    这是修复"跨源融合只读取每个来源前 10 条"的核心：
+    LLM 只负责产出规约（策略 / 关联键 / 归一化 / 过滤 / 投影），
+    数据行的读取与合并全部由本函数确定性完成，因此
+      - 不再受"每个数据源只取前 N 行"的限制
+      - 不再受"每行只取前 N 个字段"的限制
+      - 结果中的每个值都来自数据库原始结果，不会被模型改写
+
+    Returns:
+        (fused_rows, warnings)：融合后的行，以及执行过程中产生的提示
+    """
+    warnings: List[str] = []
+
+    if not isinstance(plan, dict):
+        return [], ["融合规约缺失或格式不正确"]
+
+    mode = str(plan.get("mode") or "").strip().lower()
+    filters = plan.get("filters") or []
+
+    # 规约中的数据源编号从 1 开始，这里转成 0 基索引
+    src_idx = []
+    for s in (plan.get("sources") or []):
+        try:
+            i = int(s) - 1
+        except (TypeError, ValueError):
+            continue
+        if 0 <= i < len(cluster_results) and i not in src_idx:
+            src_idx.append(i)
+    if not src_idx:
+        src_idx = list(range(len(cluster_results)))
+        warnings.append("融合规约未给出可用的数据源，已按全部数据源处理")
+
+    # 取各源的【全量】行，并应用作用于该源的过滤条件
+    per_source_rows = {}
+    for i in src_idx:
+        applicable = [c for c in filters
+                      if isinstance(c, dict) and c.get("source") in (None, i + 1)]
+        kept = []
+        for row in (cluster_results[i].get("rows") or []):
+            if not isinstance(row, dict):
+                kept.append(row)
+                continue
+            if all(_row_match_filter(row, c) for c in applicable):
+                kept.append(row)
+        per_source_rows[i] = kept
+
+    fused: List[dict] = []
+
+    if mode == "single":
+        try:
+            pi = int(plan.get("primary_source")) - 1
+        except (TypeError, ValueError):
+            pi = src_idx[0]
+        if pi not in per_source_rows:
+            pi = src_idx[0]
+        for row in per_source_rows.get(pi, []):
+            if isinstance(row, dict):
+                new_row = dict(row)
+                new_row.setdefault("_source", [f"数据源{pi + 1}"])
+                fused.append(new_row)
+            else:
+                fused.append(row)
+
+    elif mode == "join":
+        link = plan.get("link") if isinstance(plan.get("link"), dict) else {}
+        left = link.get("left") if isinstance(link.get("left"), dict) else {}
+        right = link.get("right") if isinstance(link.get("right"), dict) else {}
+        normalize_ops = link.get("normalize") or []
+        try:
+            li = int(left.get("source")) - 1
+            ri = int(right.get("source")) - 1
+        except (TypeError, ValueError):
+            li = ri = None
+        lf, rf = left.get("field"), right.get("field")
+        if li is None or ri is None or li not in per_source_rows or ri not in per_source_rows or not lf or not rf:
+            warnings.append("融合规约的关联键不可用，已退化为并集")
+            mode = "union"
+        else:
+            right_index = {}
+            for row in per_source_rows[ri]:
+                if not isinstance(row, dict):
+                    continue
+                key = _normalize_link_value(row.get(rf), normalize_ops)
+                if key is None or key == "":
+                    continue
+                right_index.setdefault(key, row)
+            for row in per_source_rows[li]:
+                if not isinstance(row, dict):
+                    continue
+                key = _normalize_link_value(row.get(lf), normalize_ops)
+                if key is None or key == "":
+                    continue
+                match = right_index.get(key)
+                if match is None:
+                    # AND 语义：左源记录未能在右源找到对应实体，不保留
+                    continue
+                merged = dict(row)
+                for k, v in match.items():
+                    if k not in merged or merged[k] in (None, ""):
+                        merged[k] = v
+                merged["_source"] = [f"数据源{li + 1}", f"数据源{ri + 1}"]
+                merged["_match_type"] = "llm_plan"
+                fused.append(merged)
+
+    if mode != "single" and mode != "join":
+        # union 以及无法识别的模式：纵向拼接所有相关源的【全量】行
+        if mode not in ("union", ""):
+            warnings.append(f"未识别的融合模式 '{mode}'，已按并集处理")
+        for i in src_idx:
+            for row in per_source_rows.get(i, []):
+                if isinstance(row, dict):
+                    new_row = dict(row)
+                    new_row.setdefault("_source", [f"数据源{i + 1}"])
+                    fused.append(new_row)
+                else:
+                    fused.append(row)
+
+    # 输出字段投影（始终保留 _ 开头的来源标记字段）
+    out_fields = plan.get("output_fields") or []
+    if out_fields:
+        projected = []
+        for row in fused:
+            if not isinstance(row, dict):
+                projected.append(row)
+                continue
+            projected.append({k: v for k, v in row.items()
+                              if k in out_fields or str(k).startswith("_")})
+        fused = projected
+
+    return fused, warnings
+
+
 def _llm_fuse_results(
         user_question: str,
         cluster_results: List[dict],
@@ -1095,15 +1295,22 @@ def _llm_fuse_results(
         relationship_data: 关系卡片数据
         model_config_dict: 模型配置字典（可选，用于避免访问数据库）
 
+    执行方式：
+    - 模型只输出融合规约（plan），不搬运任何数据行
+    - fused_rows 由 _apply_fusion_plan 在【全量】簇结果上执行规约得到
+
     Returns:
         {
             "analysis": {...},
             "fusion_strategy": "AND/OR/PRIORITY/SINGLE_SOURCE",
-            "fused_rows": [...],
+            "plan": {...},          # 模型给出的融合规约
+            "fused_rows": [...],    # 执行规约后的全量融合结果
             "conflicts": [...],
             "warnings": [...],
+            "fusion_method": "llm_plan",
             "fusion_time_ms": 123  # 融合耗时（毫秒）
         }
+        规约不可用或执行结果为空时返回 None，由调用方回退到规则融合。
     """
     fusion_start_time = time_module.time()
 
@@ -1128,32 +1335,31 @@ def _llm_fuse_results(
             cluster_text += f"涉及表: {', '.join(table_names)}\n"
             cluster_text += f"返回行数: {len(rows)}\n"
 
-            # 限制展示的行数，避免提示词过长
-            # 优化：每个簇最多展示10行（从20降低到10）
-            sample_rows = rows[:10] if len(rows) > 10 else rows
+            # 只向模型传递【结构信息】：完整列名 + 少量样本。
+            # 这里不再截断行数与字段数——真实融合由 _apply_fusion_plan 在全量 rows 上执行，
+            # 样本仅供模型判断字段格式与关联方式。
+            sample_rows = rows[:FUSION_SAMPLE_ROWS]
             total_rows_count += len(sample_rows)
 
-            if sample_rows:
-                # 优化：限制每行的字段数量，只保留前15个字段
-                simplified_rows = []
-                for row in sample_rows:
+            if rows:
+                columns = []
+                for row in rows[:50]:
                     if isinstance(row, dict):
-                        # 只保留前15个字段
-                        limited_row = dict(list(row.items())[:15])
-                        simplified_rows.append(limited_row)
-                    else:
-                        simplified_rows.append(row)
-
-                cluster_text += f"数据样例:\n```json\n{json.dumps(simplified_rows, ensure_ascii=False, indent=2, default=str)}\n```\n"
-                if len(rows) > 10:
-                    cluster_text += f"(还有 {len(rows) - 10} 条数据未展示)\n"
+                        for col in row.keys():
+                            if col not in columns:
+                                columns.append(col)
+                cluster_text += f"列名: {', '.join(str(c) for c in columns)}\n"
+                cluster_text += (
+                    f"样本（仅用于判断字段格式，真实共 {len(rows)} 行）:\n```json\n"
+                    f"{json.dumps(sample_rows, ensure_ascii=False, indent=2, default=str)}\n```\n"
+                )
             else:
                 cluster_text += "无数据返回\n"
 
             cluster_results_text.append(cluster_text)
 
         data_prep_ms = int((time_module.time() - data_prep_start) * 1000)
-        print(f"[agg] 融合数据准备耗时: {data_prep_ms}ms，实际传递 {total_rows_count} 行数据")
+        print(f"[agg] 融合数据准备耗时: {data_prep_ms}ms，传给模型的样本共 {total_rows_count} 行（融合在全量数据上执行）")
 
         # ✅ 修复：构建"参与融合的表集合"，并按白名单过滤关系数据
         # 之前直接把所有数据源的 join_suggestions 一起塞给 LLM，会混入无关表的 JOIN，
@@ -1232,6 +1438,17 @@ def _llm_fuse_results(
             result = json.loads(content)
         parse_ms = int((time_module.time() - parse_start) * 1000)
         print(f"[agg] 融合结果解析耗时: {parse_ms}ms")
+
+        # 用规约在【全量】数据上执行融合（模型不再搬运数据行）
+        plan = result.get("plan")
+        fused_rows, plan_warnings = _apply_fusion_plan(cluster_results, plan)
+        if plan_warnings:
+            result.setdefault("warnings", []).extend(plan_warnings)
+        if not fused_rows:
+            print("[agg] ⚠️ 融合规约执行结果为空，回退到规则融合")
+            return None
+        result["fused_rows"] = fused_rows
+        result["fusion_method"] = "llm_plan"
 
         print(f"[agg] LLM融合完成: 策略={result.get('fusion_strategy')}, 结果数={len(result.get('fused_rows', []))}")
 
