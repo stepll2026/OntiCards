@@ -8,6 +8,7 @@
 
 import os
 import json
+import math
 from typing import Dict, Any, List, Optional
 
 from models.governance_report import GovernanceReport
@@ -848,6 +849,36 @@ def _assemble_chunks_to_summary(chunks: Dict[str, Optional[str]]) -> str:
     return '\n\n---\n\n'.join(sections)
 
 
+def _basic_audit_counts(tables: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """按表身份计行；列级观测数只用于字段缺失率，未知/冲突不猜测。"""
+    identities = ('datasource_id', 'db_type', 'database', 'schema', 'table')
+    grouped = {}
+    observations = []
+    for index, table in enumerate(tables):
+        identity = tuple(table.get(key) for key in identities)
+        # 无表名时不能判断是否是同一张表，也不能确认总行数。
+        key = identity if table.get('table') else ('unknown', index)
+        counts = [column.get('total_rows') for column in table.get('report', [])]
+        grouped.setdefault(key, []).extend(counts or [None])
+        if not table.get('table'):
+            grouped[key].append(None)
+        observations.extend(counts)
+
+    def valid(value):
+        return type(value) is int and value >= 0
+
+    table_counts = []
+    for counts in grouped.values():
+        table_counts.append(counts[0] if all(valid(n) for n in counts)
+                            and len(set(counts)) == 1 else None)
+    total_rows = (sum(table_counts) if table_counts and
+                  all(n is not None for n in table_counts) else None)
+    field_observations = (sum(observations) if observations and
+                          all(valid(n) for n in observations) else None)
+    return {'tables_count': len(grouped), 'total_rows': total_rows,
+            'field_observations': field_observations}
+
+
 def _build_summary_json_for_module(module_data: Any, module_type: str) -> str:
     """根据模块类型构建用于综合总结的摘要 JSON
 
@@ -856,22 +887,32 @@ def _build_summary_json_for_module(module_data: Any, module_type: str) -> str:
         module_type: 模块类型 ('basic_audit' | 'quality_audit' | 'relation_discovery')
 
     Returns:
-        摘要 JSON 字符串或 "未执行该模块"
+        摘要 JSON 字符串；缺失结果不推断执行状态
     """
     import json
 
-    if module_type == 'basic_audit':
-        if not module_data or not module_data.get('tables'):
-            return "未执行该模块"
+    state = {
+        'data_available': isinstance(module_data, dict),
+        'status': module_data.get('status') if isinstance(module_data, dict) else None,
+    }
+    result_key = {'basic_audit': 'tables', 'quality_audit': 'results',
+                  'relation_discovery': 'relationships_count'}.get(module_type)
+    if result_key and (not isinstance(module_data, dict) or result_key not in module_data
+                       or module_data[result_key] is None):
+        return json.dumps({**state, 'message': '没有可用结果；执行状态仅以 status 为准，null 表示未知'},
+                          ensure_ascii=False)
 
+    if module_type == 'basic_audit':
         tables = module_data.get('tables', [])
         all_columns = [c for tbl in tables for c in tbl.get('report', [])]
 
-        total_rows = sum(c.get('total_rows', 0) for c in all_columns)
+        counts = _basic_audit_counts(tables)
+        field_observations = counts['field_observations']
         null_count = sum(c.get('null_count', 0) for c in all_columns)
         empty_str_count = sum(c.get('empty_str_count', 0) for c in all_columns)
         missing_count = sum(c.get('missing_count', 0) for c in all_columns)
-        missing_pct = (missing_count / total_rows * 100) if total_rows > 0 else 0
+        missing_pct = (None if field_observations is None else
+                       (missing_count / field_observations * 100 if field_observations else 0))
 
         problem_cols = sorted(
             [c for c in all_columns if c.get('missing_pct', 0) > 0],
@@ -892,28 +933,25 @@ def _build_summary_json_for_module(module_data: Any, module_type: str) -> str:
         top_problems = sorted(top_problems, key=lambda x: x['missing_pct'], reverse=True)[:5]
 
         return json.dumps({
-            "tables_count": len(tables),
+            **state,
+            **counts,
             "columns_count": len(all_columns),
-            "total_rows": total_rows,
             "null_count": null_count,
             "empty_str_count": empty_str_count,
             "missing_count": missing_count,
-            "missing_pct": round(missing_pct, 2),
+            "missing_pct": round(missing_pct, 2) if missing_pct is not None else None,
             "problem_columns": len(problem_cols),
             "top_problems": top_problems
         }, ensure_ascii=False)
 
     elif module_type == 'quality_audit':
-        if not module_data or not module_data.get('results'):
-            return "未执行该模块"
-
         results = module_data.get('results', [])
         passed = [r for r in results if r.get('status') == 'passed']
         failed = [r for r in results if r.get('status') == 'failed']
         errors = [r for r in results if r.get('status') == 'error']
 
         total_failed_rows = sum(r.get('failed_count', 0) for r in failed)
-        pass_rate = (len(passed) / len(results) * 100) if results else 0
+        pass_rate = (len(passed) / len(results) * 100) if results else None
         critical_count = len([r for r in failed if r.get('severity') == 'critical'])
 
         top_failures = sorted(
@@ -933,20 +971,18 @@ def _build_summary_json_for_module(module_data: Any, module_type: str) -> str:
         ]
 
         return json.dumps({
+            **state,
             "rules_count": len(results),
             "passed_count": len(passed),
             "failed_count": len(failed),
             "error_count": len(errors),
-            "pass_rate": round(pass_rate, 2),
+            "pass_rate": round(pass_rate, 2) if pass_rate is not None else None,
             "total_failed_rows": total_failed_rows,
             "critical_count": critical_count,
             "top_failures": top_failures
         }, ensure_ascii=False)
 
     elif module_type == 'relation_discovery':
-        if not module_data or module_data.get('relationships_count', 0) == 0:
-            return "未执行该模块"
-
         stats = module_data.get('statistics') or {}
         relationships = module_data.get('relationships', [])[:10]  # 取前10个用于摘要
 
@@ -961,6 +997,7 @@ def _build_summary_json_for_module(module_data: Any, module_type: str) -> str:
         ]
 
         return json.dumps({
+            **state,
             "relationships_count": module_data.get('relationships_count', 0),
             "tables_count": module_data.get('tables_count', 0),
             "cards_count": module_data.get('cards_count', 0),
@@ -993,19 +1030,57 @@ def generate_overall_summary(
         return None
 
     # 构建各模块摘要
-    basic_audit = exec_resp.get('basic_audit') or {}
-    quality_audit = exec_resp.get('quality_audit') or {}
-    relation_data = exec_resp.get('relation_discovery') or {}
+    basic_audit = exec_resp.get('basic_audit')
+    quality_audit = exec_resp.get('quality_audit')
+    relation_data = exec_resp.get('relation_discovery')
 
     basic_summary = _build_summary_json_for_module(basic_audit, 'basic_audit')
     quality_summary = _build_summary_json_for_module(quality_audit, 'quality_audit')
     relation_summary = _build_summary_json_for_module(relation_data, 'relation_discovery')
+
+    # 数据库仍可能保留旧版完整模板；迁移已知冲突指令，保留其余定制内容。
+    for before, after in {
+        '- 若未执行：`"未执行该模块"`': '- 缺少结果：JSON message 说明没有可用结果；status 为 null 表示执行状态未知',
+        '- 若执行：统计摘要 JSON': '- 有结果：统计摘要 JSON；零结果不表示未执行',
+        '- 综合三个模块的结果，给出整体质量评分（0-100分）': '- 引用系统报告事实中的 quality_score，不得重新评分；null 表示未知',
+        '- 结合质量评分给出定性判断（优秀/良好/一般/较差/差）': '- 引用系统报告事实中的 grade，不得自拟评级；null 表示未知',
+        '- 如果某个模块未执行，在相应位置说明"用户本次未选择该模块检测"': '- 缺少结果时说明没有可用结果；不得推断用户未选择或未执行',
+    }.items():
+        prompt_template = prompt_template.replace(before, after)
 
     prompt = prompt_template.format(
         basic_audit_summary=basic_summary,
         quality_audit_summary=quality_summary,
         relation_discovery_summary=relation_summary,
     )
+
+    # 与报告概览使用相同的已存评分，不让模型重算。放在模板之外，
+    # 确保数据库中尚未更新的旧模板也能获得事实与约束。
+    score = getattr(report, 'quality_score', None)
+    try:
+        score = float(score) if score is not None and not isinstance(score, bool) else None
+    except (TypeError, ValueError, OverflowError):
+        score = None
+    if score is not None and (not math.isfinite(score) or not 0 <= score <= 100):
+        score = None
+    facts = {
+        'quality_score': score,
+        'grade': getattr(report, 'grade', None) or None,
+        'modules': {
+            name: {'data_available': exec_resp.get(name) is not None,
+                   'status': (exec_resp.get(name) or {}).get('status')}
+            for name in ('basic_audit', 'quality_audit', 'relation_discovery')
+        },
+    }
+    prompt += ('\n\n## 系统报告事实（优先于模板中的评分要求）\n'
+               + json.dumps(facts, ensure_ascii=False)
+               + '\n必须引用系统 quality_score 和 grade，不得重新评分或自拟评级。'
+               'null 表示未知，不得补造为 0、100 或默认评级。'
+               'total_rows 是按表统计的数据行数；field_observations 是字段观测数，'
+               '不能称为记录数。missing_pct 的分母是字段观测数。'
+               '行数未知或冲突时明确说明未知，不得取最大值或累加列行数。'
+               '模块缺失只表示没有可用结果，不得推断用户未选择或执行成功。'
+               '改进建议与已检测事实分开，不能虚构已发现的问题。')
 
     try:
         content = _call_qwen_llm(prompt)
