@@ -26,8 +26,8 @@
 ## 数据格式说明
 
 ### 基础空值检测摘要
-- 若未执行：`"未执行该模块"`
-- 若执行：统计摘要 JSON
+- 缺少结果：JSON message 说明没有可用结果；status 为 null 表示执行状态未知
+- 有结果：统计摘要 JSON；零结果不表示未执行
   - `tables_count`, `columns_count`, `total_rows`（按表身份统计的数据行数，未知或冲突为 null）
   - `field_observations`: 字段观测数，不是记录数；是字段缺失率 `missing_pct` 的分母
   - `null_count`, `empty_str_count`, `missing_count`, `missing_pct`
@@ -35,16 +35,16 @@
   - `top_problems`: 缺失率最高的前5个字段
 
 ### 规则库质检摘要
-- 若未执行：`"未执行该模块"`
-- 若执行：统计摘要 JSON
+- 缺少结果：JSON message 说明没有可用结果；status 为 null 表示执行状态未知
+- 有结果：统计摘要 JSON；零结果不表示未执行
   - `rules_count`, `passed_count`, `failed_count`, `error_count`, `pass_rate`
   - `total_failed_rows`: 影响行数
   - `critical_count`: 严重问题数
   - `top_failures`: 失败率最高的前5条规则
 
 ### 表关系发现摘要
-- 若未执行：`"未执行该模块"`
-- 若执行：统计摘要 JSON
+- 缺少结果：JSON message 说明没有可用结果；status 为 null 表示执行状态未知
+- 有结果：统计摘要 JSON；零结果不表示未执行
   - `relationships_count`, `tables_count`, `cards_count`
   - `avg_confidence`, `high_confidence_count`, `low_confidence_count`
   - `top_relationships`: 置信度最高的前5个关系

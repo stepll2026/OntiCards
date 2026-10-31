@@ -97,6 +97,46 @@ class SummaryFactsTests(unittest.TestCase):
         self.assertIn('"quality_score": 100.0', prompt)
         self.assertIn('"grade": "优秀"', prompt)
 
+    def prompt_for(self, response, template=None):
+        if template is None:
+            template = summary._load_prompt_template('report_overall_summary_chunk.txt', force_file=True)
+        with patch.object(summary, '_load_prompt_template', return_value=template), \
+             patch.object(summary, '_call_qwen_llm', side_effect=lambda prompt: prompt):
+            return summary.generate_overall_summary(SimpleNamespace(quality_score=100, grade='优秀'), response)
+
+    def test_missing_modules_do_not_claim_not_executed(self):
+        prompt = self.prompt_for({})
+        self.assertNotIn('未执行该模块', prompt)
+        self.assertNotIn('用户本次未选择', prompt)
+        self.assertIn('没有可用结果', prompt)
+        self.assertIn('"status": null', prompt)
+
+    def test_empty_module_results_preserve_unknown_execution_status(self):
+        response = {'basic_audit': {'tables': []}, 'quality_audit': {'results': []},
+                    'relation_discovery': {}}
+        prompt = self.prompt_for(response)
+        self.assertNotIn('未执行该模块', prompt)
+        self.assertIn('"rules_count": 0', prompt)
+        self.assertIn('"pass_rate": null', prompt)
+        self.assertIn('"status": null', prompt)
+
+    def test_completed_zero_relationships_are_available_results(self):
+        data = {'status': 'completed', 'relationships_count': 0, 'relationships': [],
+                'tables_count': 1, 'cards_count': 0}
+        prompt = self.prompt_for({'relation_discovery': data})
+        self.assertIn('"relationships_count": 0', prompt)
+        self.assertIn('"status": "completed"', prompt)
+        self.assertNotIn('未执行该模块', prompt)
+
+    def test_full_legacy_database_template_has_no_conflicting_instructions(self):
+        template = (Path(__file__).parent / 'fixtures/report_overall_summary_legacy.txt').read_text(encoding='utf-8')
+        prompt = self.prompt_for({}, template)
+        self.assertNotIn('未执行该模块', prompt)
+        self.assertNotIn('用户本次未选择', prompt)
+        self.assertNotIn('给出整体质量评分', prompt)
+        self.assertIn('"quality_score": 100.0', prompt)
+        self.assertIn('没有可用结果', prompt)
+
 
 if __name__ == '__main__':
     unittest.main()
