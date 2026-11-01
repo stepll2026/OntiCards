@@ -235,18 +235,7 @@ class ReportSummaryLLM:
         Returns:
             LLM 生成的总结文本
         """
-        try:
-            from controllers.agents.qwen.QwenMaxLatest import qian_wen_llm_with_usage
-        except ImportError:
-            raise ImportError(
-                "LLM 调用失败：请确保 controllers.agents.qwen.QwenMaxLatest 可用。"
-            )
-
-        content, _ = qian_wen_llm_with_usage(prompt, stream_type=False)
-        if not content:
-            raise RuntimeError("LLM 返回内容为空")
-
-        return content.strip()
+        return _call_qwen_llm(prompt)
 
     def generate_summary(
         self,
@@ -434,6 +423,26 @@ def _sanitize_for_llm(
         return data
 
 
+_REPORT_EVIDENCE_BOUNDARY = (
+    '\n\n## 证据与建议边界（优先于模板中的原因分析、严重程度和建议要求）\n'
+    '区分输入中的观察事实、原因假设与条件建议。'
+    '零缺失、零失败或执行成功不能证明已有预防机制，也不能证明结构、录入或初始化规范。'
+    '非空约束（NOT NULL）、默认值、录入校验、初始化或清洗流程等机制，'
+    '仅在输入明确提供时引用已有机制，并限定到输入支持的表、字段和范围；'
+    '输入未提供不等于底层不存在，但不得称其为现有机制或已确认的成功原因。'
+    '即使机制存在，也不能仅凭零缺失或成功推断因果。'
+    '没有原因证据时说明原因未知；假设须标明待验证及所需证据，不能先断言规范再罗列可能原因。'
+    '治理建议使用条件建议：先核查是否存在及是否适用，再建议建立或维护，不能预设已有控制。'
+    '缺少结果或仅有 status 不能证明原因；没有直接证据时明确说明原因未知，'
+    '不得据此断言配置、执行链路或结果采集发生故障。'
+    '配置、执行记录和结果采集可列为待核查方向，不能写成已确认的共性原因。'
+    '覆盖风险、建议优先级及其严重程度判断必须标明为建议或推断，并说明依据和不确定性，'
+    '不得写成已观察到的故障或严重级别。'
+    '实际失败、错误、severity、critical_count 和影响行数须如实引用，'
+    '不得因原因未知而淡化已有检测事实；问题不足时不凑足条数。'
+)
+
+
 def _call_qwen_llm(prompt: str, model_config_dict: Dict[str, Any] = None) -> str:
     """调用 Qwen LLM 生成内容
 
@@ -452,6 +461,13 @@ def _call_qwen_llm(prompt: str, model_config_dict: Dict[str, Any] = None) -> str
     except ImportError:
         raise ImportError("LLM 调用失败：请确保 controllers.agents.qwen.QwenMaxLatest 可用。")
 
+    # Upgrade the known old database template clause without replacing custom content.
+    # Apply the common boundary after formatting on every report path, including legacy.
+    prompt = prompt.replace(
+        '- 如果没有缺失问题，分析数据完整性好的原因',
+        '- 如果没有缺失问题，仅陈述本次观测结果；原因须有输入证据，否则说明原因未知',
+    )
+    prompt += _REPORT_EVIDENCE_BOUNDARY
     content, _ = qian_wen_llm_with_usage(prompt, stream_type=False, model_config_dict=model_config_dict)
     if not content:
         raise RuntimeError("LLM 返回内容为空")
@@ -1084,15 +1100,7 @@ def generate_overall_summary(
                '不能称为记录数。missing_pct 的分母是字段观测数。'
                '行数未知或冲突时明确说明未知，不得取最大值或累加列行数。'
                '模块缺失只表示没有可用结果，不得推断用户未选择或执行成功。'
-               '改进建议与已检测事实分开，不能虚构已发现的问题。'
-               '\n\n## 证据与建议边界（优先于模板中的原因分析、严重程度和建议要求）\n'
-               '缺少结果或仅有 status 不能证明原因；没有直接证据时明确说明原因未知，'
-               '不得据此断言配置、执行链路或结果采集发生故障。'
-               '配置、执行记录和结果采集可列为待核查方向，不能写成已确认的共性原因。'
-               '覆盖风险、建议优先级及其严重程度判断必须标明为建议或推断，并说明依据和不确定性，'
-               '不得写成已观察到的故障或严重级别。'
-               '实际失败、错误、severity、critical_count 和影响行数须如实引用，'
-               '不得因原因未知而淡化已有检测事实；问题不足时不凑足条数。')
+               '改进建议与已检测事实分开，不能虚构已发现的问题。')
 
     try:
         content = _call_qwen_llm(prompt)

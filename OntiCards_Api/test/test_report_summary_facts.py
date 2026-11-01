@@ -9,6 +9,7 @@ import sys
 from types import ModuleType, SimpleNamespace
 import unittest
 from unittest.mock import patch
+from contextlib import contextmanager
 
 
 # The production module only uses these ORM classes as type annotations.
@@ -30,6 +31,19 @@ def table(rows=(3, 3, 3), schema='public', database='db'):
                 report=[dict(column_name=str(i), total_rows=n, null_count=0,
                              empty_str_count=0, missing_count=0, missing_pct=0)
                         for i, n in enumerate(rows)])
+
+
+@contextmanager
+def provider_capture():
+    """Replace only the external provider, exercising the real report helpers."""
+    provider = ModuleType('controllers.agents.qwen.QwenMaxLatest')
+    calls = []
+    def capture(prompt, **kwargs):
+        calls.append((prompt, kwargs))
+        return prompt, {}
+    provider.qian_wen_llm_with_usage = capture
+    with patch.dict(sys.modules, {provider.__name__: provider}):
+        yield calls
 
 
 class SummaryFactsTests(unittest.TestCase):
@@ -101,7 +115,7 @@ class SummaryFactsTests(unittest.TestCase):
         if template is None:
             template = summary._load_prompt_template('report_overall_summary_chunk.txt', force_file=True)
         with patch.object(summary, '_load_prompt_template', return_value=template), \
-             patch.object(summary, '_call_qwen_llm', side_effect=lambda prompt: prompt):
+             provider_capture():
             return summary.generate_overall_summary(SimpleNamespace(quality_score=100, grade='优秀'), response)
 
     def test_missing_modules_do_not_claim_not_executed(self):
@@ -204,6 +218,102 @@ class SummaryFactsTests(unittest.TestCase):
         self.assertIn('实际失败、错误、severity、critical_count 和影响行数须如实引用', prompt)
         self.assertIn('不得因原因未知而淡化已有检测事实', prompt)
         self.assertEqual(json.dumps(response, sort_keys=True), before)
+
+
+class SharedReportBoundaryTests(unittest.TestCase):
+    def setUp(self):
+        self.report = SimpleNamespace(id=1, quality_score=100, grade='优秀',
+                                      datasource_id=1, report_name='回归报告',
+                                      execution_time=None, scope_tables=[], details={})
+        self.response = {'basic_audit': {'tables': [table()]}}
+
+    def assert_boundary(self, prompt):
+        self.assertEqual(prompt.count('## 证据与建议边界'), 1)
+        self.assertIn('零缺失、零失败或执行成功不能证明已有预防机制', prompt)
+        self.assertIn('非空约束（NOT NULL）、默认值、录入校验、初始化或清洗流程', prompt)
+        self.assertIn('输入未提供不等于底层不存在', prompt)
+        self.assertIn('仅在输入明确提供时引用已有机制', prompt)
+        self.assertIn('原因未知', prompt)
+        self.assertIn('条件建议', prompt)
+        self.assertIn('实际失败、错误、severity、critical_count 和影响行数须如实引用', prompt)
+
+    def test_parallel_basic_chunk_reaches_provider_with_boundary_and_config(self):
+        config = {'model_name': 'offline-test', 'timeout': 17}
+        with provider_capture() as calls, patch.object(summary, '_get_model_config_dict', return_value=config):
+            result = summary.generate_report_chunks(self.report, self.response)
+        self.assertEqual(len(calls), 1)
+        prompt, kwargs = calls[0]
+        self.assertEqual(result['basic_audit'], prompt.strip())
+        self.assertEqual(kwargs, {'stream_type': False, 'model_config_dict': config})
+        self.assertIn('"missing_count":0', prompt)
+        self.assert_boundary(prompt)
+
+    def test_overall_and_dynamic_reach_provider_with_boundary(self):
+        for generate in [summary.generate_overall_summary, summary.generate_report_summary_from_response]:
+            with self.subTest(generate=generate.__name__), provider_capture() as calls:
+                generate(self.report, self.response)
+                self.assertEqual(len(calls), 1)
+                self.assert_boundary(calls[0][0])
+
+    def test_legacy_entry_reaches_same_provider_boundary(self):
+        with provider_capture() as calls:
+            summary.ReportSummaryLLM().generate_summary(self.report, [])
+        self.assertEqual(len(calls), 1)
+        self.assert_boundary(calls[0][0])
+
+    def test_database_custom_templates_are_loaded_and_constrained(self):
+        flask = ModuleType('flask')
+        flask.has_app_context = lambda: True
+        db = ModuleType('models.prompt_config')
+        templates = {
+            'report_basic_audit_chunk.txt': '企业自定义附录\n{basic_audit_data}\n- 如果没有缺失问题，分析数据完整性好的原因',
+            'report_overall_summary_chunk.txt': '企业自定义附录\n{basic_audit_summary}',
+            'report_dynamic_prompt.txt': '企业自定义附录\n{EXECUTION_RESPONSE_JSON}',
+            'report_summary_prompt.txt': '企业自定义附录\n{null_check_section}',
+        }
+        db.prompt_manager = SimpleNamespace(get_prompt=lambda name, **kwargs: templates[name])
+        with patch.dict(sys.modules, {'flask': flask, 'models.prompt_config': db}):
+            for generate in [lambda: summary._generate_basic_audit_chunk(self.response['basic_audit']),
+                             lambda: summary.generate_overall_summary(self.report, self.response),
+                             lambda: summary.generate_report_summary_from_response(self.report, self.response),
+                             lambda: summary.ReportSummaryLLM().generate_summary(self.report, [])]:
+                with provider_capture() as calls:
+                    generate()
+                    self.assertEqual(len(calls), 1)
+                    prompt = calls[0][0]
+                    self.assertIn('企业自定义附录', prompt)
+                    self.assert_boundary(prompt)
+                    self.assertGreater(prompt.index('## 证据与建议边界'), prompt.index('企业自定义附录'))
+                    self.assertNotIn('- 如果没有缺失问题，分析数据完整性好的原因', prompt)
+
+    def test_direct_chunks_preserve_explicit_controls_and_critical_failures(self):
+        data = {'tables': [table()], 'controls': {'nullable': False, 'default': 0},
+                'results': [{'severity': 'critical', 'failed_count': 7}],
+                'relationships_count': 1}
+        before = json.dumps(data, sort_keys=True)
+        for generate in [summary._generate_basic_audit_chunk, summary._generate_quality_audit_chunk,
+                         summary._generate_relation_chunk]:
+            with self.subTest(generate=generate.__name__), provider_capture() as calls:
+                generate(data)
+                self.assertEqual(len(calls), 1)
+                prompt = calls[0][0]
+                self.assertIn('"nullable":false', prompt)
+                self.assertIn('"default":0', prompt)
+                self.assertIn('"severity":"critical","failed_count":7', prompt)
+                self.assert_boundary(prompt)
+        self.assertEqual(json.dumps(data, sort_keys=True), before)
+
+    def test_shared_helper_keeps_provider_output_and_empty_response_behavior(self):
+        provider = ModuleType('controllers.agents.qwen.QwenMaxLatest')
+        for content in ['  原始模型结果  ', '']:
+            provider.qian_wen_llm_with_usage = lambda *args, **kwargs: (content, {})
+            with patch.dict(sys.modules, {provider.__name__: provider}):
+                for call in [summary._call_qwen_llm, summary.ReportSummaryLLM()._call_llm]:
+                    if content:
+                        self.assertEqual(call('输入'), '原始模型结果')
+                    else:
+                        with self.assertRaisesRegex(RuntimeError, 'LLM 返回内容为空'):
+                            call('输入')
 
 
 if __name__ == '__main__':
