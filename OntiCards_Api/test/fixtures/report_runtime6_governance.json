@@ -1,0 +1,163 @@
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "report_id": "3a33a03d-3104-4d20-bb14-fd909da66c2b",
+    "quality_score": 100.0,
+    "grade": "优秀",
+    "summary": {
+      "total_rules": 0,
+      "passed_rules": 0,
+      "failed_rules": 0,
+      "error_rules": 0,
+      "quality_score": 100.0,
+      "grade": "优秀"
+    },
+    "execution_time": "2026-11-01T14:11:15.305254",
+    "basic_audit": {
+      "tables_count": 1,
+      "tables": [
+        {
+          "db_type": "sqlite",
+          "database": "/tmp/onticards-maintenance-fixture.sqlite",
+          "schema": null,
+          "table": "maintenance_orders",
+          "table_type": "TABLE",
+          "report": [
+            {
+              "column_name": "amount",
+              "data_type": "NUMERIC",
+              "total_rows": 3,
+              "null_count": 0,
+              "empty_str_count": 0,
+              "missing_count": 0,
+              "missing_pct": 0.0
+            },
+            {
+              "column_name": "order_id",
+              "data_type": "INTEGER",
+              "total_rows": 3,
+              "null_count": 0,
+              "empty_str_count": 0,
+              "missing_count": 0,
+              "missing_pct": 0.0
+            },
+            {
+              "column_name": "region",
+              "data_type": "TEXT",
+              "total_rows": 3,
+              "null_count": 0,
+              "empty_str_count": 0,
+              "missing_count": 0,
+              "missing_pct": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    "basic_audit_detail": {
+      "rules_count": 3,
+      "results": [
+        {
+          "id": "04051d41-afdd-47f7-80ee-a8ef3dd093cc",
+          "report_id": "3a33a03d-3104-4d20-bb14-fd909da66c2b",
+          "library_id": null,
+          "rule_id": null,
+          "rule_name": "基础空值检测:maintenance_orders.amount",
+          "rule_type": "basic_null_check",
+          "severity": "warning",
+          "table_name": "maintenance_orders",
+          "column_name": "amount",
+          "rule_mode": "scoped_single",
+          "total_count": 3,
+          "passed_count": 3,
+          "failed_count": 0,
+          "failed_rate": null,
+          "failed_samples": null,
+          "executed_sql_text": "-- sqlite: 应用层循环（基于 perform_data_audit）统计每列 NULL 与空字符串数量，table=maintenance_orders",
+          "execution_time_ms": 1,
+          "raw_result": {
+            "data_type": "NUMERIC",
+            "null_count": 0,
+            "table_type": "TABLE",
+            "total_rows": 3,
+            "column_name": "amount",
+            "missing_pct": 0.0,
+            "missing_count": 0,
+            "empty_str_count": 0
+          },
+          "status": "passed",
+          "error_message": null,
+          "execution_source": "basic_audit",
+          "created_at": "2026-11-01T14:11:15.283456"
+        },
+        {
+          "id": "28365373-f238-4bde-bfe3-7dca6f0040c4",
+          "report_id": "3a33a03d-3104-4d20-bb14-fd909da66c2b",
+          "library_id": null,
+          "rule_id": null,
+          "rule_name": "基础空值检测:maintenance_orders.order_id",
+          "rule_type": "basic_null_check",
+          "severity": "warning",
+          "table_name": "maintenance_orders",
+          "column_name": "order_id",
+          "rule_mode": "scoped_single",
+          "total_count": 3,
+          "passed_count": 3,
+          "failed_count": 0,
+          "failed_rate": null,
+          "failed_samples": null,
+          "executed_sql_text": "-- sqlite: 应用层循环（基于 perform_data_audit）统计每列 NULL 与空字符串数量，table=maintenance_orders",
+          "execution_time_ms": 1,
+          "raw_result": {
+            "data_type": "INTEGER",
+            "null_count": 0,
+            "table_type": "TABLE",
+            "total_rows": 3,
+            "column_name": "order_id",
+            "missing_pct": 0.0,
+            "missing_count": 0,
+            "empty_str_count": 0
+          },
+          "status": "passed",
+          "error_message": null,
+          "execution_source": "basic_audit",
+          "created_at": "2026-11-01T14:11:15.292973"
+        },
+        {
+          "id": "2ffbf719-7fed-4914-b43d-e34f2b15af3a",
+          "report_id": "3a33a03d-3104-4d20-bb14-fd909da66c2b",
+          "library_id": null,
+          "rule_id": null,
+          "rule_name": "基础空值检测:maintenance_orders.region",
+          "rule_type": "basic_null_check",
+          "severity": "warning",
+          "table_name": "maintenance_orders",
+          "column_name": "region",
+          "rule_mode": "scoped_single",
+          "total_count": 3,
+          "passed_count": 3,
+          "failed_count": 0,
+          "failed_rate": null,
+          "failed_samples": null,
+          "executed_sql_text": "-- sqlite: 应用层循环（基于 perform_data_audit）统计每列 NULL 与空字符串数量，table=maintenance_orders",
+          "execution_time_ms": 1,
+          "raw_result": {
+            "data_type": "TEXT",
+            "null_count": 0,
+            "table_type": "TABLE",
+            "total_rows": 3,
+            "column_name": "region",
+            "missing_pct": 0.0,
+            "missing_count": 0,
+            "empty_str_count": 0
+          },
+          "status": "passed",
+          "error_message": null,
+          "execution_source": "basic_audit",
+          "created_at": "2026-11-01T14:11:15.296432"
+        }
+      ]
+    }
+  }
+}

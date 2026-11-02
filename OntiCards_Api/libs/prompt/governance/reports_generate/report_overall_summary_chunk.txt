@@ -33,6 +33,8 @@
   - `null_count`, `empty_str_count`, `missing_count`, `missing_pct`
   - `problem_columns`: 有缺失的列数
   - `top_problems`: 缺失率最高的前5个字段
+  - `inspected_tables`: 本次已检测的全部表及列（包含零缺失的健康列），以 datasource_id、db_type、database、schema、table 区分表身份，columns 为列名清单；身份字段 null 表示该部分未提供，不影响其他已知表名或列名
+  - 涉及表列须引用上述身份；top_problems 为空仅表示未列出缺失问题，不表示检测对象未知
 
 ### 规则库质检摘要
 - 缺少结果：JSON message 说明没有可用结果；status 为 null 表示执行状态未知

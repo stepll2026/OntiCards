@@ -3,6 +3,7 @@
 Run: python -m unittest discover -s OntiCards_Api/test -p test_report_summary_facts.py -v
 """
 import importlib.util
+import copy
 import json
 from pathlib import Path
 import sys
@@ -47,6 +48,58 @@ def provider_capture():
 
 
 class SummaryFactsTests(unittest.TestCase):
+    def test_healthy_runtime6_identities_reach_current_and_legacy_overall_prompts(self):
+        response = json.loads((Path(__file__).parent / 'fixtures/report_runtime6_governance.json').read_text(encoding='utf-8'))['data']
+        before = copy.deepcopy(response)
+        templates = [summary._load_prompt_template('report_overall_summary_chunk.txt', force_file=True),
+                     (Path(__file__).parent / 'fixtures/report_overall_summary_legacy.txt').read_text(encoding='utf-8')]
+        for template in templates:
+            with self.subTest(template=template[:30]):
+                prompt = self.prompt_for(response, template)
+                basic, _ = json.JSONDecoder().raw_decode(prompt[prompt.index('{'):])
+                self.assertIn('inspected_tables', basic)
+                self.assertEqual(len(basic['inspected_tables']), 1)
+                identity = basic['inspected_tables'][0]
+                self.assertEqual(identity['table'], 'maintenance_orders')
+                self.assertEqual(identity['columns'], ['amount', 'order_id', 'region'])
+                self.assertIsNone(identity['schema'])
+                self.assertEqual(basic['top_problems'], [])
+                self.assertEqual((basic['total_rows'], basic['field_observations']), (3, 9))
+        self.assertEqual(response, before)
+
+    def test_inspected_and_problem_identities_keep_same_names_in_distinct_scopes(self):
+        tables = [table(), table(schema='other'), table(database='other'), table()]
+        tables[-1]['datasource_id'] = 'second-source'
+        for t in tables:
+            t['report'][0].update(missing_pct=33.33, missing_count=1)
+        facts = self.basic(*tables)
+        self.assertIn('inspected_tables', facts)
+        expected = [(None, 'db', 'public'), (None, 'db', 'other'),
+                    (None, 'other', 'public'), ('second-source', 'db', 'public')]
+        for collection in ['inspected_tables', 'top_problems']:
+            with self.subTest(collection=collection):
+                self.assertEqual([(x['datasource_id'], x['database'], x['schema']) for x in facts[collection]], expected)
+                self.assertTrue(all(x['table'] == 'orders' and x['db_type'] == 'sqlite' for x in facts[collection]))
+        self.assertEqual(facts['tables_count'], 4)
+        self.assertEqual(facts['total_rows'], 12)
+
+    def test_identity_inventory_preserves_partial_unknown_and_empty_inputs(self):
+        known = table((0,))
+        del known['report'][0]['column_name']
+        unknown = {'report': [{'column_name': 'known_column', 'total_rows': 3}]}
+        facts = self.basic(known, unknown)
+        self.assertIn('inspected_tables', facts)
+        self.assertEqual(facts['inspected_tables'][0]['columns'], [None])
+        self.assertEqual(facts['inspected_tables'][0]['table'], 'orders')
+        self.assertIsNone(facts['inspected_tables'][1]['table'])
+        self.assertEqual(facts['inspected_tables'][1]['columns'], ['known_column'])
+        self.assertIsNone(facts['total_rows'])
+        self.assertEqual(self.basic()['inspected_tables'], [])
+        self.assertEqual(self.basic(table(()))['inspected_tables'][0]['columns'], [])
+        missing = json.loads(summary._build_summary_json_for_module({}, 'basic_audit'))
+        self.assertNotIn('inspected_tables', missing)
+        self.assertIsNone(missing['status'])
+
     def basic(self, *tables):
         return json.loads(summary._build_summary_json_for_module(
             {'tables': list(tables)}, 'basic_audit'))

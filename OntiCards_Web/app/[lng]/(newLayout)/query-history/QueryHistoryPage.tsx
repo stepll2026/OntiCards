@@ -851,17 +851,19 @@ const QueryHistoryPage = ({
             </div>
           ) : (
           <>
-            <table className="w-full" style={{ tableLayout: 'fixed', display: 'table', width: '100%' }}>
+            {/* Keep date/actions readable in both page and workspace; scroll only the table. */}
+            <div role="region" aria-label="查询历史列表" tabIndex={0} style={{ overflowX: 'auto' }}>
+            <table className="w-full" style={{ tableLayout: 'fixed', width: '100%', minWidth: '1280px' }}>
               <colgroup>
                 <col style={{ width: '40px' }} />
                 <col style={{ width: '40px' }} />
-                <col style={{ width: '38%' }} />
-                <col style={{ width: '12%' }} />
-                <col style={{ width: '8%' }} />
-                <col style={{ width: '8%' }} />
-                <col style={{ width: '6%' }} />
-                <col style={{ width: '12%' }} />
-                <col style={{ width: '14%', minWidth: '120px' }} />
+                <col />
+                <col style={{ width: '150px' }} />
+                <col style={{ width: '100px' }} />
+                <col style={{ width: '110px' }} />
+                <col style={{ width: '100px' }} />
+                <col style={{ width: '220px' }} />
+                <col style={{ width: '180px' }} />
               </colgroup>
               <thead style={{ backgroundColor: 'rgb(var(--theme-bg-tertiary))', borderBottom: '1px solid rgb(var(--theme-border))' }}>
                 <tr>
@@ -874,13 +876,13 @@ const QueryHistoryPage = ({
                     />
                   </th>
                   <th style={{ width: '40px' }}></th>
-                  <th style={{ textAlign: 'center', padding: '12px 16px', fontSize: '12px', fontWeight: 600, color: 'rgb(var(--theme-text-secondary))', width: '38%' }}>问题</th>
-                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: 600, color: 'rgb(var(--theme-text-secondary))', width: '12%' }}>数据源</th>
-                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: 600, color: 'rgb(var(--theme-text-secondary))', width: '8%' }}>耗时</th>
-                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: 600, color: 'rgb(var(--theme-text-secondary))', width: '8%' }}>Token</th>
-                  <th style={{ textAlign: 'center', padding: '12px 16px', fontSize: '12px', fontWeight: 600, color: 'rgb(var(--theme-text-secondary))', width: '6%' }}>状态</th>
-                  <th style={{ textAlign: 'center', padding: '12px 16px', fontSize: '12px', fontWeight: 600, color: 'rgb(var(--theme-text-secondary))', width: '12%' }}>时间</th>
-                  <th style={{ textAlign: 'center', padding: '12px 16px', fontSize: '12px', fontWeight: 600, color: 'rgb(var(--theme-text-secondary))', width: '14%', minWidth: '120px' }}>操作</th>
+                  <th style={{ textAlign: 'center', padding: '12px 16px', fontSize: '12px', fontWeight: 600, color: 'rgb(var(--theme-text-secondary))' }}>问题</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: 600, color: 'rgb(var(--theme-text-secondary))' }}>数据源</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: 600, color: 'rgb(var(--theme-text-secondary))' }}>耗时</th>
+                  <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: '12px', fontWeight: 600, color: 'rgb(var(--theme-text-secondary))' }}>Token</th>
+                  <th style={{ textAlign: 'center', padding: '12px 16px', fontSize: '12px', fontWeight: 600, color: 'rgb(var(--theme-text-secondary))' }}>状态</th>
+                  <th style={{ textAlign: 'center', padding: '12px 16px', fontSize: '12px', fontWeight: 600, color: 'rgb(var(--theme-text-secondary))' }}>时间</th>
+                  <th style={{ textAlign: 'center', padding: '12px 16px', fontSize: '12px', fontWeight: 600, color: 'rgb(var(--theme-text-secondary))' }}>操作</th>
                 </tr>
               </thead>
               <tbody style={{ borderColor: 'rgb(var(--theme-border))' }}>
@@ -1032,6 +1034,7 @@ const QueryHistoryPage = ({
                 ))}
               </tbody>
             </table>
+            </div>
 
             {/* 批量操作栏 */}
             {selectedIds.size > 0 && (

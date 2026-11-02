@@ -921,6 +921,14 @@ def _build_summary_json_for_module(module_data: Any, module_type: str) -> str:
     if module_type == 'basic_audit':
         tables = module_data.get('tables', [])
         all_columns = [c for tbl in tables for c in tbl.get('report', [])]
+        # The overall prompt also needs healthy table/column identities: an empty
+        # top_problems list says nothing about which objects were inspected.
+        identity_keys = ('datasource_id', 'db_type', 'database', 'schema', 'table')
+        inspected_tables = [
+            {**{key: tbl.get(key) for key in identity_keys},
+             'columns': [c.get('column_name') for c in tbl.get('report', [])]}
+            for tbl in tables
+        ]
 
         counts = _basic_audit_counts(tables)
         field_observations = counts['field_observations']
@@ -938,8 +946,8 @@ def _build_summary_json_for_module(module_data: Any, module_type: str) -> str:
 
         top_problems = [
             {
-                "table": tbl.get('table', 'N/A'),
-                "column": c.get('column_name', 'N/A'),
+                **{key: tbl.get(key) for key in identity_keys},
+                "column": c.get('column_name'),
                 "missing_pct": c.get('missing_pct', 0)
             }
             for tbl in tables
@@ -951,6 +959,7 @@ def _build_summary_json_for_module(module_data: Any, module_type: str) -> str:
         return json.dumps({
             **state,
             **counts,
+            "inspected_tables": inspected_tables,
             "columns_count": len(all_columns),
             "null_count": null_count,
             "empty_str_count": empty_str_count,
