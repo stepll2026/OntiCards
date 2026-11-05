@@ -1,0 +1,12 @@
+stage	exit_code
+preflight	0
+compose_startup_and_native_migration	0
+report_facts_unit26	0
+migration_current	0
+seed_fixed_source	0
+layout_only_no_model_calls	0
+old_web_geometry_red4	0
+new_web_geometry_green4	0
+integrated_commands_completed	0
+copy_results	0
+cleanup	0

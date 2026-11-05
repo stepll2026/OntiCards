@@ -1,0 +1,29 @@
+.......                                                                  [100%]
+=============================== warnings summary ===============================
+../opt/tests-venv/lib/python3.12/site-packages/_pytest/cacheprovider.py:469
+  /opt/tests-venv/lib/python3.12/site-packages/_pytest/cacheprovider.py:469: PytestCacheWarning: could not create cache path /trusted-tests/.pytest_cache/v/cache/nodeids: [Errno 30] Read-only file system: '/trusted-tests/pytest-cache-files-dfvlsjhy'
+    config.cache.set("cache/nodeids", sorted(self.cached_nodeids))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+7 passed, 1 warning in 0.13s
+{"step": "extract-schema", "status": 200, "duration_seconds": 141.757, "code": 200, "evidence": "extract-schema.json"}
+{"step": "datasources", "status": 200, "duration_seconds": 0.127, "code": 200, "evidence": "datasources.json"}
+{"step": "cards", "status": 200, "duration_seconds": 0.011, "code": 200, "evidence": "cards.json"}
+{"step": "edit-card", "status": 200, "duration_seconds": 1.443, "code": 200, "evidence": "edit-card.json"}
+{"step": "cards-after-edit", "status": 200, "duration_seconds": 0.009, "code": 200, "evidence": "cards-after-edit.json"}
+{"step": "query-total", "status": 200, "duration_seconds": 15.546, "code": 200, "evidence": "query-total.json"}
+{"step": "governance-execute", "status": 200, "duration_seconds": 0.041, "code": 200, "evidence": "governance-execute.json"}
+{"step": "export-xlsx", "status": 200, "duration_seconds": 0.183, "code": 200, "evidence": "export-xlsx.json"}
+{"download": "xlsx", "bytes": 6670, "sha256": "6eff4207408ada484412ca85c55cae1c5a8f4eeb198b2d6055e568a42dd0dd80"}
+{"step": "export-docx", "status": 200, "duration_seconds": 0.099, "code": 200, "evidence": "export-docx.json"}
+{"download": "docx", "bytes": 37226, "sha256": "18437e28f63801fa6331eed36e8f254504f17540a9a89c39f480de3a2d507882"}
+{"step": "export-md", "status": 200, "duration_seconds": 237.767, "code": 200, "evidence": "export-md.json"}
+{"download": "md", "bytes": 9288, "sha256": "5d4cd72b69ce2ed5814d499cd6d36873590f6f866672781efc141f8c8f60f0aa"}
+
+Running 3 tests using 1 worker
+
+  ✓  1 tests/preview.spec.ts:10:5 › 公开登录页与健康检查，有成功截图和无凭据trace (2.0s)
+  ✓  2 tests/preview.spec.ts:25:5 › 真实数据卡片、问数总额250与治理报告详情 (25.1s)
+  ✓  3 tests/preview.spec.ts:54:5 › 合成管理员真实登录及管理页面 (6.8s)
+
+  3 passed (35.5s)

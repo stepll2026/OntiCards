@@ -1,0 +1,79 @@
+.......                                                                  [100%]
+=============================== warnings summary ===============================
+../opt/tests-venv/lib/python3.12/site-packages/_pytest/cacheprovider.py:469
+  /opt/tests-venv/lib/python3.12/site-packages/_pytest/cacheprovider.py:469: PytestCacheWarning: could not create cache path /trusted-tests/.pytest_cache/v/cache/nodeids: [Errno 30] Read-only file system: '/trusted-tests/pytest-cache-files-vry0onk2'
+    config.cache.set("cache/nodeids", sorted(self.cached_nodeids))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+7 passed, 1 warning in 0.14s
+{"step": "extract-schema", "status": 200, "duration_seconds": 156.915, "code": 200, "evidence": "extract-schema.json"}
+{"step": "datasources", "status": 200, "duration_seconds": 0.105, "code": 200, "evidence": "datasources.json"}
+{"step": "cards", "status": 200, "duration_seconds": 0.011, "code": 200, "evidence": "cards.json"}
+{"step": "edit-card", "status": 200, "duration_seconds": 14.899, "code": 200, "evidence": "edit-card.json"}
+{"step": "cards-after-edit", "status": 200, "duration_seconds": 0.008, "code": 200, "evidence": "cards-after-edit.json"}
+Traceback (most recent call last):
+  File "/opt/tests-venv/lib/python3.12/site-packages/urllib3/connectionpool.py", line 540, in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+  File "/opt/tests-venv/lib/python3.12/site-packages/urllib3/connection.py", line 638, in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/http/client.py", line 1457, in getresponse
+    response.begin()
+  File "/usr/lib/python3.12/http/client.py", line 336, in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/http/client.py", line 297, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/socket.py", line 707, in readinto
+    return self._sock.recv_into(b)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/opt/tests-venv/lib/python3.12/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/opt/tests-venv/lib/python3.12/site-packages/urllib3/connectionpool.py", line 847, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/opt/tests-venv/lib/python3.12/site-packages/urllib3/util/retry.py", line 510, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/tests-venv/lib/python3.12/site-packages/urllib3/util/util.py", line 39, in reraise
+    raise value
+  File "/opt/tests-venv/lib/python3.12/site-packages/urllib3/connectionpool.py", line 793, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/opt/tests-venv/lib/python3.12/site-packages/urllib3/connectionpool.py", line 542, in _make_request
+    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
+  File "/opt/tests-venv/lib/python3.12/site-packages/urllib3/connectionpool.py", line 373, in _raise_timeout
+    raise ReadTimeoutError(
+urllib3.exceptions.ReadTimeoutError: HTTPConnectionPool(host='onticards_nginx', port=9107): Read timed out. (read timeout=300)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/trusted-bundle/exercise-product-flow.py", line 64, in <module>
+    query=call('query-total','/query_by_datacards_agg',{'query':'查询 maintenance_orders 表的所有订单 amount 总和，以 total_amount 为列名。','datasource_id':datasource})
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/trusted-bundle/exercise-product-flow.py", line 33, in call
+    response=session.request(method or ('POST' if payload is not None else 'GET'),BASE+path,json=payload,timeout=300)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/tests-venv/lib/python3.12/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/tests-venv/lib/python3.12/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/tests-venv/lib/python3.12/site-packages/requests/adapters.py", line 742, in send
+    raise ReadTimeout(e, request=request)
+requests.exceptions.ReadTimeout: HTTPConnectionPool(host='onticards_nginx', port=9107): Read timed out. (read timeout=300)
+Traceback (most recent call last):
+  File "/trusted-bundle/full-entry.py", line 50, in <module>
+    assert product==0,'Real model product flow failed; no model retry'
+           ^^^^^^^^^^
+AssertionError: Real model product flow failed; no model retry

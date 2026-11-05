@@ -1,0 +1,79 @@
+{
+  "started_at": "2026-11-05T09:12:48.124985+00:00",
+  "sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+  "base_sha": "f4fedcc084280ba4a57105180113e9d989e7487d",
+  "run_id": "onti-resume42-20261105-r2",
+  "synthetic_data_only": true,
+  "steps": [
+    {
+      "step": "extract-schema",
+      "status": 200,
+      "duration_seconds": 141.757,
+      "code": 200,
+      "evidence": "extract-schema.json"
+    },
+    {
+      "step": "datasources",
+      "status": 200,
+      "duration_seconds": 0.127,
+      "code": 200,
+      "evidence": "datasources.json"
+    },
+    {
+      "step": "cards",
+      "status": 200,
+      "duration_seconds": 0.011,
+      "code": 200,
+      "evidence": "cards.json"
+    },
+    {
+      "step": "edit-card",
+      "status": 200,
+      "duration_seconds": 1.443,
+      "code": 200,
+      "evidence": "edit-card.json"
+    },
+    {
+      "step": "cards-after-edit",
+      "status": 200,
+      "duration_seconds": 0.009,
+      "code": 200,
+      "evidence": "cards-after-edit.json"
+    },
+    {
+      "step": "query-total",
+      "status": 200,
+      "duration_seconds": 15.546,
+      "code": 200,
+      "evidence": "query-total.json"
+    },
+    {
+      "step": "governance-execute",
+      "status": 200,
+      "duration_seconds": 0.041,
+      "code": 200,
+      "evidence": "governance-execute.json"
+    },
+    {
+      "step": "export-xlsx",
+      "status": 200,
+      "duration_seconds": 0.183,
+      "code": 200,
+      "evidence": "export-xlsx.json"
+    },
+    {
+      "step": "export-docx",
+      "status": 200,
+      "duration_seconds": 0.099,
+      "code": 200,
+      "evidence": "export-docx.json"
+    },
+    {
+      "step": "export-md",
+      "status": 200,
+      "duration_seconds": 237.767,
+      "code": 200,
+      "evidence": "export-md.json"
+    }
+  ]
+}
