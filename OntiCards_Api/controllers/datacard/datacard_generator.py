@@ -234,7 +234,11 @@ def generate_datacards_for_schema(schema: dict, user_id: str, connect_info: str,
         生成的数据卡片列表
     """
     # 导入取消状态管理器和 schema 过滤器
-    from controllers.datasource.database_schema_extractor import request_status_manager, _add_schema_filter
+    from controllers.datasource.database_schema_extractor import (
+        request_status_manager,
+        _add_schema_filter,
+        _has_schema_dim,
+    )
     from models.datasource_infos import DatasourceInfo
 
     # 在函数开始时检查是否已取消
