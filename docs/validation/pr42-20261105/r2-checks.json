@@ -1,0 +1,13 @@
+{
+  "api_exit": 0,
+  "api_tests": 7,
+  "browser_exit": 0,
+  "browser_expected": 3,
+  "browser_unexpected": 0,
+  "browser_skipped": 0,
+  "model_business_test": "real_chat_embedding_flow",
+  "provider_credential_supplied_to_tests": false,
+  "backend_contains_existing_long_lived_key": true,
+  "supplier_key_revoked": false,
+  "supplier_billing": "unknown"
+}

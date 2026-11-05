@@ -26,24 +26,27 @@
 ## 数据格式说明
 
 ### 基础空值检测摘要
-- 若未执行：`"未执行该模块"`
-- 若执行：统计摘要 JSON
-  - `tables_count`, `columns_count`, `total_rows`
+- 缺少结果：JSON message 说明没有可用结果；status 为 null 表示执行状态未知
+- 有结果：统计摘要 JSON；零结果不表示未执行
+  - `tables_count`, `columns_count`, `total_rows`（按表身份统计的数据行数，未知或冲突为 null）
+  - `field_observations`: 字段观测数，不是记录数；是字段缺失率 `missing_pct` 的分母
   - `null_count`, `empty_str_count`, `missing_count`, `missing_pct`
   - `problem_columns`: 有缺失的列数
   - `top_problems`: 缺失率最高的前5个字段
+  - `inspected_tables`: 本次已检测的全部表及列（包含零缺失的健康列），以 datasource_id、db_type、database、schema、table 区分表身份，columns 为列名清单；身份字段 null 表示该部分未提供，不影响其他已知表名或列名
+  - 涉及表列须引用上述身份；top_problems 为空仅表示未列出缺失问题，不表示检测对象未知
 
 ### 规则库质检摘要
-- 若未执行：`"未执行该模块"`
-- 若执行：统计摘要 JSON
+- 缺少结果：JSON message 说明没有可用结果；status 为 null 表示执行状态未知
+- 有结果：统计摘要 JSON；零结果不表示未执行
   - `rules_count`, `passed_count`, `failed_count`, `error_count`, `pass_rate`
   - `total_failed_rows`: 影响行数
   - `critical_count`: 严重问题数
   - `top_failures`: 失败率最高的前5条规则
 
 ### 表关系发现摘要
-- 若未执行：`"未执行该模块"`
-- 若执行：统计摘要 JSON
+- 缺少结果：JSON message 说明没有可用结果；status 为 null 表示执行状态未知
+- 有结果：统计摘要 JSON；零结果不表示未执行
   - `relationships_count`, `tables_count`, `cards_count`
   - `avg_confidence`, `high_confidence_count`, `low_confidence_count`
   - `top_relationships`: 置信度最高的前5个关系
@@ -91,14 +94,14 @@
 ### 二、全局视角：跨模块的整体评价与改进规划
 
 **1. 整体质量评价（约 80-100 字）**
-- 综合三个模块的结果，给出整体质量评分（0-100分）
-- 结合质量评分给出定性判断（优秀/良好/一般/较差/差）
+- 引用系统报告事实中的 quality_score 和 grade，不得重新评分或自拟评级
+- 分数或评级为 null 时说明未知，不得估算或填入默认值
 - 简要说明本次治理的亮点和不足
 
 **2. 关键问题汇总（约 100-150 字）**
-- 从三个模块中提炼出最突出的 3-5 个关键问题
-- 分析问题的共性原因（系统层面/业务层面）
-- 评估问题的严重程度和影响范围
+- 根据已检测事实提炼关键问题，不凑足条数；无可用结果时单独说明覆盖局限
+- 仅在输入有直接证据时分析原因，否则明确原因未知；配置、执行记录和结果采集仅作为待核查方向
+- 如实引用已检测问题的严重级别和影响行数；覆盖风险及建议优先级须标明为建议或推断，不能充当已观察到的故障
 
 **3. 治理行动计划（约 100-150 字）**
 - 按优先级排序的治理步骤
@@ -112,7 +115,7 @@
 ---
 
 ### 注意事项
-- 如果某个模块未执行，在相应位置说明"用户本次未选择该模块检测"
+- 如果某个模块缺少结果，说明没有可用结果；执行状态按输入引用，原因需有直接证据，不能从 status 单独推断
 - 如果所有模块都表现良好，"关键问题汇总"改为"质量亮点"
 - 数据量化优先，避免纯定性描述
 - 具体建议要务实、可操作，有具体的实施路径

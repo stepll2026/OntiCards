@@ -1,0 +1,74 @@
+test_database_custom_templates_are_loaded_and_constrained (test_report_summary_facts.SharedReportBoundaryTests) ... [Chunk-Gen] 基础空值检测板块生成成功 | chars=985
+[Overall-Summary] 综合总结生成成功 | chars=1422
+ok
+test_direct_chunks_preserve_explicit_controls_and_critical_failures (test_report_summary_facts.SharedReportBoundaryTests) ... [WARN] 当前无应用上下文，report_basic_audit_chunk.txt 跳过数据库加载
+[Chunk-Gen] 基础空值检测板块生成成功 | chars=2353
+[WARN] 当前无应用上下文，report_quality_chunk.txt 跳过数据库加载
+[Chunk-Gen] 规则库质检板块生成成功 | chars=3051
+[WARN] 当前无应用上下文，report_relation_chunk.txt 跳过数据库加载
+[Chunk-Gen] 关系发现板块生成成功 | chars=3025
+ok
+test_legacy_entry_reaches_same_provider_boundary (test_report_summary_facts.SharedReportBoundaryTests) ... [WARN] 当前无应用上下文，report_summary_prompt.txt 跳过数据库加载
+ok
+test_overall_and_dynamic_reach_provider_with_boundary (test_report_summary_facts.SharedReportBoundaryTests) ... [WARN] 当前无应用上下文，report_overall_summary_chunk.txt 跳过数据库加载
+[Overall-Summary] 综合总结生成成功 | chars=4258
+[WARN] 当前无应用上下文，report_dynamic_prompt.txt 跳过数据库加载
+ok
+test_parallel_basic_chunk_reaches_provider_with_boundary_and_config (test_report_summary_facts.SharedReportBoundaryTests) ... [Chunk-Gen] 开始并行分块生成报告 | report_id=1
+[WARN] 当前无应用上下文，report_basic_audit_chunk.txt 跳过数据库加载
+[Chunk-Gen] 加载提示词模板: report_basic_audit_chunk.txt
+[WARN] 当前无应用上下文，report_relation_chunk.txt 跳过数据库加载
+[Chunk-Gen] 加载提示词模板: report_relation_chunk.txt
+[WARN] 当前无应用上下文，report_quality_chunk.txt 跳过数据库加载
+[Chunk-Gen] 加载提示词模板: report_quality_chunk.txt
+[Chunk-Gen] 待生成模块: ['基础空值检测']
+[Chunk-Gen] 已获取模型配置: offline-test
+[Chunk-Gen] basic_audit 板块生成成功 | chars=2234
+[Chunk-Gen] basic_audit 板块生成完成 | chars=2234
+[Chunk-Gen] 并行分块生成完成 | basic=True, relation=False, quality=False
+ok
+test_shared_helper_keeps_provider_output_and_empty_response_behavior (test_report_summary_facts.SharedReportBoundaryTests) ... ok
+test_actual_prompt_carries_authoritative_score_even_with_legacy_template (test_report_summary_facts.SummaryFactsTests) ... [Overall-Summary] 综合总结生成成功 | chars=4
+[Overall-Summary] 综合总结生成成功 | chars=4
+[Overall-Summary] 综合总结生成成功 | chars=4
+ok
+test_completed_zero_relationships_are_available_results (test_report_summary_facts.SummaryFactsTests) ... [Overall-Summary] 综合总结生成成功 | chars=4081
+ok
+test_current_and_saved_templates_do_not_require_unsupported_diagnoses (test_report_summary_facts.SummaryFactsTests) ... [Overall-Summary] 综合总结生成成功 | chars=4258
+[Overall-Summary] 综合总结生成成功 | chars=3948
+ok
+test_custom_template_content_survives_with_final_evidence_constraints (test_report_summary_facts.SummaryFactsTests) ... [Overall-Summary] 综合总结生成成功 | chars=1153
+ok
+test_empty_module_results_preserve_unknown_execution_status (test_report_summary_facts.SummaryFactsTests) ... [Overall-Summary] 综合总结生成成功 | chars=4242
+ok
+test_file_template_formats_with_report_facts (test_report_summary_facts.SummaryFactsTests) ... [Overall-Summary] 综合总结生成成功 | chars=3422
+ok
+test_full_legacy_database_template_has_no_conflicting_instructions (test_report_summary_facts.SummaryFactsTests) ... [Overall-Summary] 综合总结生成成功 | chars=3643
+ok
+test_healthy_runtime6_identities_reach_current_and_legacy_overall_prompts (test_report_summary_facts.SummaryFactsTests) ... [Overall-Summary] 综合总结生成成功 | chars=4322
+[Overall-Summary] 综合总结生成成功 | chars=4012
+ok
+test_identity_inventory_preserves_partial_unknown_and_empty_inputs (test_report_summary_facts.SummaryFactsTests) ... ok
+test_inspected_and_problem_identities_keep_same_names_in_distinct_scopes (test_report_summary_facts.SummaryFactsTests) ... ok
+test_missing_column_count_keeps_rate_unknown (test_report_summary_facts.SummaryFactsTests) ... ok
+test_missing_modules_do_not_claim_not_executed (test_report_summary_facts.SummaryFactsTests) ... [Overall-Summary] 综合总结生成成功 | chars=3953
+ok
+test_observed_critical_failures_are_not_suppressed_by_unknown_cause_policy (test_report_summary_facts.SummaryFactsTests) ... [Overall-Summary] 综合总结生成成功 | chars=1349
+ok
+test_preceding_database_template_cannot_treat_status_as_cause_evidence (test_report_summary_facts.SummaryFactsTests) ... [Overall-Summary] 综合总结生成成功 | chars=1183
+ok
+test_repeated_table_does_not_duplicate_rows (test_report_summary_facts.SummaryFactsTests) ... ok
+test_table_identity_includes_schema_and_database (test_report_summary_facts.SummaryFactsTests) ... ok
+test_three_rows_are_not_nine_records (test_report_summary_facts.SummaryFactsTests) ... ok
+test_unknown_causes_and_advisory_severity_are_explicit_in_actual_prompt (test_report_summary_facts.SummaryFactsTests) ... [Overall-Summary] 综合总结生成成功 | chars=3953
+[Overall-Summary] 综合总结生成成功 | chars=3951
+[Overall-Summary] 综合总结生成成功 | chars=3957
+[Overall-Summary] 综合总结生成成功 | chars=4075
+ok
+test_unknown_or_conflicting_rows_are_not_guessed (test_report_summary_facts.SummaryFactsTests) ... ok
+test_zero_rows_are_known_and_do_not_divide_by_zero (test_report_summary_facts.SummaryFactsTests) ... ok
+
+----------------------------------------------------------------------
+Ran 26 tests in 1.188s
+
+OK
