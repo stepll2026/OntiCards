@@ -145,6 +145,8 @@ http://your-ip:9107
 
 ⚠️ **Must change for production**: database passwords, secret keys, SSO secret, domain allowlist, and other core configuration
 
+Before reusing an existing vector database, read the [Weaviate upgrade and backup checklist (Chinese)](WEAVIATE_UPGRADE.md), including pinned server/client expectations and Compose validation.
+
 Full deployment, offline deployment, upgrades, and HTTPS setup: [Deployment Guide](http://www.onticards.com/docs/zh-cn/deployment.html)
 
 ## ⚡ 5-Minute Quick Start
