@@ -260,6 +260,17 @@ class ChangePasswordAPI(Resource):
 try:
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'storage', 'avatars')
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+    MAX_AVATAR_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB — 与 UPLOAD_IMAGE_FILE_SIZE_LIMIT 对齐
+
+def _safe_filename(filename: str) -> str:
+    """过滤文件名中的路径分隔符与 null，防路径穿越"""
+    if not filename:
+        return ''
+    # 防止 path traversal
+    cleaned = filename.replace('..', '').replace('/', '').replace('\\', '').replace('\x00', '')
+    # 只保留 basename
+    return os.path.basename(cleaned)
+
     # 确保上传目录存在（只在需要时创建）
     # 注意：目录创建延迟到实际上传时进行，不影响模块导入
 except Exception as e:
@@ -302,6 +313,17 @@ class UploadAvatarAPI(Resource):
 
         file = request.files.get('file')
         user_id = request.form.get('user_id')
+        if file:
+            safe_name = _safe_filename(file.filename)
+            if not safe_name:
+                return {'message': 'Invalid filename', 'code': 400}
+            # 检查大小（不将整个文件读入内存，用 stream）
+            file.seek(0, os.SEEK_END)
+            size = file.tell()
+            file.seek(0)
+            if size > MAX_AVATAR_SIZE_BYTES:
+                return {'message': f'File too large (max {MAX_AVATAR_SIZE_BYTES // (1024*1024)}MB)', 'code': 413}
+            file.filename = safe_name
         if file.filename == '':
             return {'message': 'No file selected', 'code': 400}
 
@@ -340,6 +362,16 @@ class UploadAvatarAPI(Resource):
 
         file = request.files.get('file')
         user_id = request.form.get('user_id')
+        if file:
+            safe_name = _safe_filename(file.filename)
+            if not safe_name:
+                return {'message': 'Invalid filename', 'code': 400}
+            file.seek(0, os.SEEK_END)
+            size = file.tell()
+            file.seek(0)
+            if size > MAX_AVATAR_SIZE_BYTES:
+                return {'message': f'File too large (max {MAX_AVATAR_SIZE_BYTES // (1024*1024)}MB)', 'code': 413}
+            file.filename = safe_name
 
         if not file or file.filename == '':
             return {'message': 'No file selected', 'code': 400}
