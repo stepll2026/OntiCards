@@ -5,6 +5,40 @@
 @Create: 2026-06-01
 """
 import json
+import re as _re_expr_sanitize
+
+# 规则条件表达式白名单校验器 — 防 SQL 注入
+# 允许：列占位符 'column'、数字、字符串字面量、比较符、逻辑符、括号、IN/NOT IN、NULL、IS NULL、算术
+allowed_token_re = _re_expr_sanitize.compile(
+    r'^\s*'                                    # 允许前导空白
+    r'('                                        # 开始 token 分组
+    r'column'                                   # 列占位符
+    r'|\d+(\.\d+)?'                            # 整数/小数
+    r'|\u0027[^\u0027]*\u0027'                  # 单引号字符串
+    r'|"[^"]*"'                                # 双引号字符串
+    r'|NULL'                                    # NULL 常量
+    r'|\b(IS|NOT|AND|OR|IN|LIKE|BETWEEN)\b'    # 允许的关键字
+    r'|[=!<>]+'                                 # 比较符
+    r'|[+\-*/()]'                               # 算术 + 括号
+    r')'                                        # token 结束
+    r'(\s+\1)*'                                # 后续 token（允许多个）
+    r'\s*$',
+    _re_expr_sanitize.IGNORECASE,
+)
+
+
+def _validate_condition_expr(expr: str) -> bool:
+    """白名单校验条件表达式 — 只允许预定义 token，拒绝任意函数/注释/分号"""
+    if not expr:
+        return True
+    # 危险字符黑名单（即使正则允许也要拒绝）
+    if any(c in expr for c in (';', '--', '/*', '*/', '#', '\x00')):
+        return False
+    if expr.strip().upper().startswith(('DROP ', 'DELETE ', 'INSERT ', 'UPDATE ', 'ALTER ', 'CREATE ', 'EXEC', 'EXECUTE')):
+        return False
+    return bool(allowed_token_re.match(expr))
+
+
 
 """
 接口列表:
@@ -399,8 +433,12 @@ class RuleListApi(Resource):
                     return resp(code=400, msg="单条件模式下目标列（target_column）不能为空", http_status=400)
                 if not condition_expr:
                     return resp(code=400, msg="单条件模式下条件表达式（condition_expr）不能为空", http_status=400)
+                if not _validate_condition_expr(condition_expr):
+                    return resp(code=400, msg="条件表达式包含非法字符", http_status=400)
                 if condition_expr and 'column' in condition_expr and target_column:
-                    condition_expr = condition_expr.replace('column', f'"{target_column}"')
+                    from controllers.governance.dialect_adapter import DialectAdapter
+                    _safe_col = DialectAdapter(db_type or 'postgresql').quote_identifier(target_column)
+                    condition_expr = condition_expr.replace('column', _safe_col)
             else:
                 target_column = None
                 condition_expr = None
@@ -439,8 +477,13 @@ class RuleListApi(Resource):
                     processed_cond = dict(cond)
                     cond_expr = processed_cond.get('condition', '')
                     cond_column = processed_cond.get('column', '')
-                    if cond_expr and 'column' in cond_expr and cond_column:
-                        processed_cond['condition'] = cond_expr.replace('column', f'"{cond_column}"')
+                    if cond_expr:
+                        if not _validate_condition_expr(cond_expr):
+                            return resp(code=400, msg=f"条件表达式包含非法字符: {cond_expr}", http_status=400)
+                        if 'column' in cond_expr and cond_column:
+                            from controllers.governance.dialect_adapter import DialectAdapter
+                            _safe_col = DialectAdapter(db_type or 'postgresql').quote_identifier(cond_column)
+                            processed_cond['condition'] = cond_expr.replace('column', _safe_col)
                     processed_conditions.append(processed_cond)
 
                 rule.set_conditions(processed_conditions, data.get('condition_mode', 'AND'))
@@ -969,8 +1012,13 @@ class RuleDetailApi(Resource):
                     processed_cond = dict(cond)
                     cond_expr = processed_cond.get('condition', '')
                     cond_column = processed_cond.get('column', '')
-                    if cond_expr and 'column' in cond_expr and cond_column:
-                        processed_cond['condition'] = cond_expr.replace('column', f'"{cond_column}"')
+                    if cond_expr:
+                        if not _validate_condition_expr(cond_expr):
+                            return resp(code=400, msg=f"条件表达式包含非法字符: {cond_expr}", http_status=400)
+                        if 'column' in cond_expr and cond_column:
+                            from controllers.governance.dialect_adapter import DialectAdapter
+                            _safe_col = DialectAdapter(db_type or 'postgresql').quote_identifier(cond_column)
+                            processed_cond['condition'] = cond_expr.replace('column', _safe_col)
                     processed_conditions.append(processed_cond)
                 rule.set_conditions(processed_conditions, condition_mode)
             else:
