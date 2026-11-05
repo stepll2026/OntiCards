@@ -145,6 +145,8 @@ http://your-ip:9107
 
 ⚠️ **生产环境必改**：数据库密码、密钥、SSO密钥、域名白名单等核心配置
 
+复用已有向量库前，请先阅读 [Weaviate 升级与备份清单](WEAVIATE_UPGRADE.md)。
+
 完整部署、离线部署、版本升级、HTTPS配置：[部署指南](http://www.onticards.com/docs/zh-cn/deployment.html)
 
 ## ⚡ 5分钟快速上手流程
