@@ -13,9 +13,9 @@ set -e
 # ============================================================
 
 # 加载 .env 文件
-if [ -f /current_prod_vigor_api/.env ]; then
+if [ -f /onticards_api/.env ]; then
   set -a
-  . /current_prod_vigor_api/.env
+  . /onticards_api/.env
   set +a
 fi
 
@@ -71,7 +71,7 @@ fi
 
 gunicorn \
   --config gunicorn.py \
-  --bind "${DIFY_BIND_ADDRESS:-0.0.0.0}:${DIFY_PORT:-9103}" \
+  --bind "${API_BIND_ADDRESS:-0.0.0.0}:${PORT:-9103}" \
   --workers ${GUNICORN_WORKERS:-2} \
   --worker-class ${GUNICORN_WORKER_CLASS:-gthread} \
   --threads ${GUNICORN_THREADS:-6} \
