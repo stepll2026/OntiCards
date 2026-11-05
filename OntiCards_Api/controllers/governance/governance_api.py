@@ -400,7 +400,9 @@ class RuleListApi(Resource):
                 if not condition_expr:
                     return resp(code=400, msg="单条件模式下条件表达式（condition_expr）不能为空", http_status=400)
                 if condition_expr and 'column' in condition_expr and target_column:
-                    condition_expr = condition_expr.replace('column', f'"{target_column}"')
+                    from controllers.governance.dialect_adapter import DialectAdapter
+                    _safe_col = DialectAdapter(db_type or 'postgresql').quote_identifier(target_column)
+                    condition_expr = condition_expr.replace('column', _safe_col)
             else:
                 target_column = None
                 condition_expr = None
@@ -440,7 +442,9 @@ class RuleListApi(Resource):
                     cond_expr = processed_cond.get('condition', '')
                     cond_column = processed_cond.get('column', '')
                     if cond_expr and 'column' in cond_expr and cond_column:
-                        processed_cond['condition'] = cond_expr.replace('column', f'"{cond_column}"')
+                        from controllers.governance.dialect_adapter import DialectAdapter
+                        _safe_col = DialectAdapter(db_type or 'postgresql').quote_identifier(cond_column)
+                        processed_cond['condition'] = cond_expr.replace('column', _safe_col)
                     processed_conditions.append(processed_cond)
 
                 rule.set_conditions(processed_conditions, data.get('condition_mode', 'AND'))
