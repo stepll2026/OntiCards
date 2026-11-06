@@ -5,38 +5,10 @@
 @Create: 2026-06-01
 """
 import json
-import re as _re_expr_sanitize
-
-# 规则条件表达式白名单校验器 — 防 SQL 注入
-# 允许：列占位符 'column'、数字、字符串字面量、比较符、逻辑符、括号、IN/NOT IN、NULL、IS NULL、算术
-allowed_token_re = _re_expr_sanitize.compile(
-    r'^\s*'                                    # 允许前导空白
-    r'('                                        # 开始 token 分组
-    r'column'                                   # 列占位符
-    r'|\d+(\.\d+)?'                            # 整数/小数
-    r'|\u0027[^\u0027]*\u0027'                  # 单引号字符串
-    r'|"[^"]*"'                                # 双引号字符串
-    r'|NULL'                                    # NULL 常量
-    r'|\b(IS|NOT|AND|OR|IN|LIKE|BETWEEN)\b'    # 允许的关键字
-    r'|[=!<>]+'                                 # 比较符
-    r'|[+\-*/()]'                               # 算术 + 括号
-    r')'                                        # token 结束
-    r'(\s+\1)*'                                # 后续 token（允许多个）
-    r'\s*$',
-    _re_expr_sanitize.IGNORECASE,
+from controllers.governance.condition_security import (
+    validate_condition_expr as _validate_condition_expr,
+    require_conditions_payload, require_condition_expr, replace_column,
 )
-
-
-def _validate_condition_expr(expr: str) -> bool:
-    """白名单校验条件表达式 — 只允许预定义 token，拒绝任意函数/注释/分号"""
-    if not expr:
-        return True
-    # 危险字符黑名单（即使正则允许也要拒绝）
-    if any(c in expr for c in (';', '--', '/*', '*/', '#', '\x00')):
-        return False
-    if expr.strip().upper().startswith(('DROP ', 'DELETE ', 'INSERT ', 'UPDATE ', 'ALTER ', 'CREATE ', 'EXEC', 'EXECUTE')):
-        return False
-    return bool(allowed_token_re.match(expr))
 
 
 
@@ -370,6 +342,11 @@ class RuleListApi(Resource):
         if not data:
             return resp(code=400, msg="请求参数不能为空", http_status=400)
 
+        try:
+            require_conditions_payload(data)
+        except ValueError as e:
+            return resp(code=400, msg=str(e), http_status=400)
+
         # 创建来源
         create_source = data.get('create_source', 'manual')
         if create_source not in GovernanceRule.CREATE_SOURCES:
@@ -438,7 +415,7 @@ class RuleListApi(Resource):
                 if condition_expr and 'column' in condition_expr and target_column:
                     from controllers.governance.dialect_adapter import DialectAdapter
                     _safe_col = DialectAdapter(db_type or 'postgresql').quote_identifier(target_column)
-                    condition_expr = condition_expr.replace('column', _safe_col)
+                    condition_expr = replace_column(condition_expr, _safe_col)
             else:
                 target_column = None
                 condition_expr = None
@@ -482,8 +459,8 @@ class RuleListApi(Resource):
                             return resp(code=400, msg=f"条件表达式包含非法字符: {cond_expr}", http_status=400)
                         if 'column' in cond_expr and cond_column:
                             from controllers.governance.dialect_adapter import DialectAdapter
-                            _safe_col = DialectAdapter(db_type or 'postgresql').quote_identifier(cond_column)
-                            processed_cond['condition'] = cond_expr.replace('column', _safe_col)
+                            _safe_col = DialectAdapter(rule.db_type or 'postgresql').quote_identifier(cond_column)
+                            processed_cond['condition'] = replace_column(cond_expr, _safe_col)
                     processed_conditions.append(processed_cond)
 
                 rule.set_conditions(processed_conditions, data.get('condition_mode', 'AND'))
@@ -522,6 +499,10 @@ class RuleListApi(Resource):
             if rule_type not in GovernanceRule.RULE_TYPES:
                 rule_type = 'custom_sql'
 
+            try:
+                require_conditions_payload(rule_config)
+            except ValueError as e:
+                return resp(code=400, msg=str(e), http_status=400)
             ai_conditions = rule_config.get('conditions', [])
             ai_condition_mode = rule_config.get('condition_mode', 'AND')
 
@@ -630,9 +611,12 @@ class RuleListApi(Resource):
             tmpl_condition_expr = (data.get('condition_expr') or '').strip()
             if not tmpl_condition_expr:
                 tmpl_condition_expr = template.default_condition or ''
+            if not _validate_condition_expr(tmpl_condition_expr):
+                return resp(code=400, msg="条件表达式包含不支持的内容", http_status=400)
             if tmpl_condition_expr and 'column' in tmpl_condition_expr and tmpl_target_column:
-                tmpl_condition_expr = tmpl_condition_expr.replace(
-                    'column', f'"{tmpl_target_column}"'
+                from controllers.governance.dialect_adapter import DialectAdapter
+                tmpl_condition_expr = replace_column(
+                    tmpl_condition_expr, DialectAdapter(db_type or 'postgresql').quote_identifier(tmpl_target_column)
                 )
 
             # SQL 预览
@@ -693,6 +677,7 @@ class RuleListApi(Resource):
         Returns:
             预览SQL字符串
         """
+        require_condition_expr(condition_expr)
         if not table_name:
             return ""
 
@@ -724,12 +709,7 @@ class RuleListApi(Resource):
         if column_name and condition_expr:
             # 只在 condition_expr 包含 column 占位符时才替换
             if 'column' in condition_expr.lower():
-                sql_condition = re.sub(
-                    r'\bcolumn\b',
-                    quoted_col,
-                    condition_expr,
-                    flags=re.IGNORECASE
-                )
+                sql_condition = replace_column(condition_expr, quoted_col)
             else:
                 # 已处理的条件表达式
                 sql_condition = condition_expr
@@ -791,7 +771,7 @@ class RuleListApi(Resource):
 
             if column and condition:
                 # 替换 column 占位符为实际列名
-                sql_cond = condition.replace('column', f'"{column}"')
+                sql_cond = adapter.adapt_condition_expr(condition, column)
                 # 业务条件取反，得到违规条件
                 condition_parts.append(f'(NOT ({sql_cond}))')
 
@@ -931,6 +911,11 @@ class RuleDetailApi(Resource):
         if not data:
             return resp(code=400, msg="请求参数不能为空", http_status=400)
 
+        try:
+            require_conditions_payload(data)
+        except ValueError as e:
+            return resp(code=400, msg=str(e), http_status=400)
+
         if 'rule_name' in data:
             name = data['rule_name'].strip()
             valid, err_msg = _validate_name(name, max_length=255)
@@ -1017,8 +1002,8 @@ class RuleDetailApi(Resource):
                             return resp(code=400, msg=f"条件表达式包含非法字符: {cond_expr}", http_status=400)
                         if 'column' in cond_expr and cond_column:
                             from controllers.governance.dialect_adapter import DialectAdapter
-                            _safe_col = DialectAdapter(db_type or 'postgresql').quote_identifier(cond_column)
-                            processed_cond['condition'] = cond_expr.replace('column', _safe_col)
+                            _safe_col = DialectAdapter(rule.db_type or 'postgresql').quote_identifier(cond_column)
+                            processed_cond['condition'] = replace_column(cond_expr, _safe_col)
                     processed_conditions.append(processed_cond)
                 rule.set_conditions(processed_conditions, condition_mode)
             else:
@@ -3931,6 +3916,11 @@ class RulePreviewApi(Resource):
         if not data:
             return resp(code=400, msg="请求参数不能为空", http_status=400)
 
+        try:
+            require_conditions_payload(data)
+        except ValueError as e:
+            return resp(code=400, msg=str(e), http_status=400)
+
         # 从 library_id 获取 schema_name 和 db_type（优先级低于显式传入的参数）
         schema_name = None
         db_type = data.get('db_type', 'postgresql')
@@ -4060,6 +4050,8 @@ class RulePreviewApi(Resource):
                 'template_name': template.template_name if template else None
             })
 
+        except ValueError as e:
+            return resp(code=400, msg=str(e), http_status=400)
         except Exception as e:
             import traceback
             traceback.print_exc()

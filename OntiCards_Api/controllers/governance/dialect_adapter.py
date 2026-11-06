@@ -15,6 +15,10 @@
 import re
 from typing import Dict, Any, Tuple, List, Optional
 from dataclasses import dataclass
+try:
+    from .condition_security import require_condition_expr, replace_column
+except ImportError:  # Existing standalone dialect test entry point.
+    from condition_security import require_condition_expr, replace_column
 
 
 @dataclass
@@ -230,7 +234,8 @@ class DialectAdapter:
         """
         if not name:
             return name
-        return self.dialect.identifier_quote.format(name)
+        delimiter = self.dialect.identifier_quote.format("")[-1:]
+        return self.dialect.identifier_quote.format(name.replace(delimiter, delimiter * 2))
 
     def quote_table_column(self, table: str, column: str) -> Tuple[str, str]:
         """
@@ -285,7 +290,7 @@ class DialectAdapter:
 
         # 替换 column 占位符
         quoted_col = self.quote_identifier(column)
-        condition = re.sub(r'\bcolumn\b', quoted_col, condition, flags=re.IGNORECASE)
+        condition = replace_column(condition, quoted_col)
 
         return condition
 
@@ -597,6 +602,7 @@ WHERE {quoted_col} IS NOT NULL
             rule_type: 规则类型
             schema: Schema 名（可选，为空时只引用表名）
         """
+        require_condition_expr(condition)
         quoted_table = self.quote_table_reference(table, schema)
         quoted_col = self.quote_identifier(column) if column else None
 
@@ -639,12 +645,7 @@ FROM {quoted_table}
         # ============================================================
         if condition and condition.strip():
             if column and quoted_col:
-                adapted_condition = re.sub(
-                    r'\bcolumn\b',
-                    quoted_col,
-                    condition.strip(),
-                    flags=re.IGNORECASE
-                )
+                adapted_condition = replace_column(condition.strip(), quoted_col)
             else:
                 adapted_condition = condition.strip()
 
@@ -727,12 +728,7 @@ FROM {quoted_table}
 
             quoted_col = self.quote_identifier(column)
             # 替换 column 占位符
-            adapted_condition = re.sub(
-                r'\bcolumn\b',
-                quoted_col,
-                condition.strip(),
-                flags=re.IGNORECASE
-            )
+            adapted_condition = replace_column(condition.strip(), quoted_col)
             # 业务条件取反，得到违规条件
             where_clauses.append(f"(NOT ({adapted_condition}))")
 
@@ -771,6 +767,7 @@ FROM {quoted_table}
         """
         quoted_table = self.quote_table_reference(table, schema)
 
+        require_condition_expr(condition)
         # 适配条件表达式（表级规则中条件通常是完整的 WHERE 子句）
         adapted_condition = condition.strip() if condition else "1=1"
 
