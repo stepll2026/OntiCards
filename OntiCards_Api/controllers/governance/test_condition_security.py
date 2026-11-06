@@ -35,7 +35,7 @@ class ConditionTests(unittest.TestCase):
     def test_reject_statement_escape_and_side_effects(self):
         for expr in ["column > 0); DROP TABLE users; --", "' OR 1=1 --",
                      "column IN (SELECT pg_sleep(1))", "pg_sleep(1) = 0",
-                     "public.pg_sleep(1) = 0", "column > 0) OR (1=1",
+                     "public.pg_sleep(1) = 0", '"ABS"(column) > 0', '"LOWER"(column) = \'x\'', "column > 0) OR (1=1",
                      "column = 1 UNION SELECT 2", "column/*x*/ > 0",
                      "column = 1 INTO OUTFILE '/tmp/x'", "column = 1; SELECT 2",
                      "column = 'x\\' OR 1=1 --'",

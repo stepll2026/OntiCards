@@ -51,6 +51,13 @@ class PostgresTests(unittest.TestCase):
                 CREATE FUNCTION pg_temp.mark_write() RETURNS INTEGER
                 LANGUAGE plpgsql AS $$ BEGIN INSERT INTO marker VALUES (1); RETURN 1; END $$;
             """))
+            conn.execute(text("""
+                CREATE FUNCTION public."ABS"(INTEGER) RETURNS INTEGER
+                LANGUAGE plpgsql AS $$ BEGIN INSERT INTO marker VALUES (2); RETURN 1; END $$;
+            """))
+            # A quoted upper-case name is a different PostgreSQL function,
+            # even when a parser normalizes it to the built-in ABS node.
+            quoted_expr = '"ABS"(column) > 0'
             # Real baseline control: an unconstrained expression can invoke a
             # database function with a write effect in the disposable database.
             baseline_path = pathlib.Path(os.environ["PR50_TEST_BASELINE"])
@@ -64,8 +71,13 @@ class PostgresTests(unittest.TestCase):
                 "custom_sql", db_type="postgresql")
             conn.execute(text(baseline_sql))
             self.assertGreater(conn.execute(text("SELECT COUNT(*) FROM marker")).scalar(), 0)
+            quoted_baseline_sql = namespace["_generate_preview_sql"](
+                None, "items", "price", quoted_expr, "custom_sql", db_type="postgresql")
+            conn.execute(text(quoted_baseline_sql))
+            self.assertGreater(conn.execute(text("SELECT COUNT(*) FROM marker WHERE value = 2")).scalar(), 0)
             conn.execute(text("DELETE FROM marker"))
             for expr in [
+                quoted_expr, '"LOWER"(column) = \'x\'',
                 "pg_temp.mark_write() = 1",
                 "column IN (SELECT pg_temp.mark_write())",
                 "column--1\n>0", "1--1",

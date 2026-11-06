@@ -61,7 +61,14 @@ def _parse(expr, db_type=None):
         if len(tokens) > 512:
             raise ValueError("条件表达式过于复杂")
         depth = 0
-        for token in tokens:
+        for index, token in enumerate(tokens):
+            # SQLGlot can normalize "ABS"(x) to Abs(x), but PostgreSQL keeps
+            # quoted case and may call a different user-defined function.
+            # Our predicates support bare built-in calls, not quoted calls.
+            if (token.token_type == TokenType.IDENTIFIER
+                    and index + 1 < len(tokens)
+                    and tokens[index + 1].token_type == TokenType.L_PAREN):
+                raise ValueError("条件表达式不允许引用函数名")
             if token.comments or token.token_type == TokenType.SEMICOLON:
                 raise ValueError("条件表达式不允许注释或多条语句")
             if token.token_type == TokenType.L_PAREN:
