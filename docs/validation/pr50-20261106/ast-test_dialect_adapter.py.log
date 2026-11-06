@@ -48,6 +48,6 @@ test_sqlite_quote_identifier (__main__.TestUnaffectedDialectsRegression) ... ok
 test_sqlite_quote_table_reference (__main__.TestUnaffectedDialectsRegression) ... ok
 
 ----------------------------------------------------------------------
-Ran 31 tests in 0.001s
+Ran 31 tests in 0.002s
 
 OK
