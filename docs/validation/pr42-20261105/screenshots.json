@@ -1,0 +1,287 @@
+[
+  {
+    "file": "attempt2-browser-2-generated-data-card.png",
+    "run": "attempt2",
+    "stage": "browser",
+    "test": "真实数据卡片、问数总额250与治理报告详情",
+    "status": "passed",
+    "attachment": "generated-data-card",
+    "metadata": {
+      "repository": "stepll2026/OntiCards",
+      "task_id": "9d4091536fb690e93975569245026844",
+      "run_id": "onti-resume42-20261105-r2",
+      "tested_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "web_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "tested_base_sha": "f4fedcc084280ba4a57105180113e9d989e7487d",
+      "environment": "http://onticards_nginx:9107",
+      "actualWorkers": 1
+    },
+    "sha256": "7f0c703fb5ed6c532c6162dc4737010d300c3b0497c93df22373c3ab6ca0ab74"
+  },
+  {
+    "file": "attempt2-browser-2-real-query-total-250.png",
+    "run": "attempt2",
+    "stage": "browser",
+    "test": "真实数据卡片、问数总额250与治理报告详情",
+    "status": "passed",
+    "attachment": "real-query-total-250",
+    "metadata": {
+      "repository": "stepll2026/OntiCards",
+      "task_id": "9d4091536fb690e93975569245026844",
+      "run_id": "onti-resume42-20261105-r2",
+      "tested_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "web_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "tested_base_sha": "f4fedcc084280ba4a57105180113e9d989e7487d",
+      "environment": "http://onticards_nginx:9107",
+      "actualWorkers": 1
+    },
+    "sha256": "46e57c31a12f6a479e599c4e46db485d0e08731b21e3ede89165bd843e8776c8"
+  },
+  {
+    "file": "attempt2-browser-2-governance-real-report.png",
+    "run": "attempt2",
+    "stage": "browser",
+    "test": "真实数据卡片、问数总额250与治理报告详情",
+    "status": "passed",
+    "attachment": "governance-real-report",
+    "metadata": {
+      "repository": "stepll2026/OntiCards",
+      "task_id": "9d4091536fb690e93975569245026844",
+      "run_id": "onti-resume42-20261105-r2",
+      "tested_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "web_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "tested_base_sha": "f4fedcc084280ba4a57105180113e9d989e7487d",
+      "environment": "http://onticards_nginx:9107",
+      "actualWorkers": 1
+    },
+    "sha256": "0a2175212290158eeb189f69103bdfd338520385a7410d9caae24035e13011bf"
+  },
+  {
+    "file": "layout2-browser-green-1-history-geometry-standalone-1440.png",
+    "run": "layout2",
+    "stage": "browser-green",
+    "test": "history geometry standalone 1440",
+    "status": "passed",
+    "attachment": "history-geometry-standalone-1440",
+    "metadata": {
+      "repository": "stepll2026/OntiCards",
+      "task_id": "9d4091536fb690e93975569245026844",
+      "run_id": "onti-resume42-20261105-layout2-green",
+      "tested_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "web_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "tested_base_sha": "f4fedcc084280ba4a57105180113e9d989e7487d",
+      "environment": "http://onticards_nginx:9107",
+      "actualWorkers": 1
+    },
+    "sha256": "6a48aafed16b360eda10d2512b246fb8078eb9b565adbb48a72327146bb1e752"
+  },
+  {
+    "file": "layout2-browser-green-1-history-right-standalone-1440.png",
+    "run": "layout2",
+    "stage": "browser-green",
+    "test": "history geometry standalone 1440",
+    "status": "passed",
+    "attachment": "history-right-standalone-1440",
+    "metadata": {
+      "repository": "stepll2026/OntiCards",
+      "task_id": "9d4091536fb690e93975569245026844",
+      "run_id": "onti-resume42-20261105-layout2-green",
+      "tested_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "web_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "tested_base_sha": "f4fedcc084280ba4a57105180113e9d989e7487d",
+      "environment": "http://onticards_nginx:9107",
+      "actualWorkers": 1
+    },
+    "sha256": "eb4708709e68e3299844783bf4747f5358f23ef192b2ad6ee33b6e82cf8f9073"
+  },
+  {
+    "file": "layout2-browser-green-2-history-geometry-workspace-1440.png",
+    "run": "layout2",
+    "stage": "browser-green",
+    "test": "history geometry workspace 1440",
+    "status": "passed",
+    "attachment": "history-geometry-workspace-1440",
+    "metadata": {
+      "repository": "stepll2026/OntiCards",
+      "task_id": "9d4091536fb690e93975569245026844",
+      "run_id": "onti-resume42-20261105-layout2-green",
+      "tested_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "web_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "tested_base_sha": "f4fedcc084280ba4a57105180113e9d989e7487d",
+      "environment": "http://onticards_nginx:9107",
+      "actualWorkers": 1
+    },
+    "sha256": "2b780b6cafa2d1dcdde6ac410078f6f3b1d20a0464f3e6055f485e1df7bf4349"
+  },
+  {
+    "file": "layout2-browser-green-2-history-right-workspace-1440.png",
+    "run": "layout2",
+    "stage": "browser-green",
+    "test": "history geometry workspace 1440",
+    "status": "passed",
+    "attachment": "history-right-workspace-1440",
+    "metadata": {
+      "repository": "stepll2026/OntiCards",
+      "task_id": "9d4091536fb690e93975569245026844",
+      "run_id": "onti-resume42-20261105-layout2-green",
+      "tested_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "web_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "tested_base_sha": "f4fedcc084280ba4a57105180113e9d989e7487d",
+      "environment": "http://onticards_nginx:9107",
+      "actualWorkers": 1
+    },
+    "sha256": "4d76508e9bc8bf9b60ce6e19092415d3994204fc9eb59c7476ec5c5871249107"
+  },
+  {
+    "file": "layout2-browser-green-3-history-geometry-standalone-1024.png",
+    "run": "layout2",
+    "stage": "browser-green",
+    "test": "history geometry standalone 1024",
+    "status": "passed",
+    "attachment": "history-geometry-standalone-1024",
+    "metadata": {
+      "repository": "stepll2026/OntiCards",
+      "task_id": "9d4091536fb690e93975569245026844",
+      "run_id": "onti-resume42-20261105-layout2-green",
+      "tested_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "web_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "tested_base_sha": "f4fedcc084280ba4a57105180113e9d989e7487d",
+      "environment": "http://onticards_nginx:9107",
+      "actualWorkers": 1
+    },
+    "sha256": "3ae16a854131f3da8a8c4378ed126247887bfc93fbac626f17f480c632e11c2c"
+  },
+  {
+    "file": "layout2-browser-green-3-history-right-standalone-1024.png",
+    "run": "layout2",
+    "stage": "browser-green",
+    "test": "history geometry standalone 1024",
+    "status": "passed",
+    "attachment": "history-right-standalone-1024",
+    "metadata": {
+      "repository": "stepll2026/OntiCards",
+      "task_id": "9d4091536fb690e93975569245026844",
+      "run_id": "onti-resume42-20261105-layout2-green",
+      "tested_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "web_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "tested_base_sha": "f4fedcc084280ba4a57105180113e9d989e7487d",
+      "environment": "http://onticards_nginx:9107",
+      "actualWorkers": 1
+    },
+    "sha256": "155955a435bd6dc63444a4155cb9aaf95d3bcb4e9703c4dbc1b7c047d3334872"
+  },
+  {
+    "file": "layout2-browser-green-4-history-geometry-workspace-1024.png",
+    "run": "layout2",
+    "stage": "browser-green",
+    "test": "history geometry workspace 1024",
+    "status": "passed",
+    "attachment": "history-geometry-workspace-1024",
+    "metadata": {
+      "repository": "stepll2026/OntiCards",
+      "task_id": "9d4091536fb690e93975569245026844",
+      "run_id": "onti-resume42-20261105-layout2-green",
+      "tested_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "web_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "tested_base_sha": "f4fedcc084280ba4a57105180113e9d989e7487d",
+      "environment": "http://onticards_nginx:9107",
+      "actualWorkers": 1
+    },
+    "sha256": "c7d931b9d801e634dc699bfb452b3cdf0dab5e0f062fd4e517c9b9e3dcb8d948"
+  },
+  {
+    "file": "layout2-browser-green-4-history-right-workspace-1024.png",
+    "run": "layout2",
+    "stage": "browser-green",
+    "test": "history geometry workspace 1024",
+    "status": "passed",
+    "attachment": "history-right-workspace-1024",
+    "metadata": {
+      "repository": "stepll2026/OntiCards",
+      "task_id": "9d4091536fb690e93975569245026844",
+      "run_id": "onti-resume42-20261105-layout2-green",
+      "tested_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "web_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "tested_base_sha": "f4fedcc084280ba4a57105180113e9d989e7487d",
+      "environment": "http://onticards_nginx:9107",
+      "actualWorkers": 1
+    },
+    "sha256": "e68bacb50528aa3a1af2a27d143ef7de6b2e046efb117f1db4c097c37ffa6515"
+  },
+  {
+    "file": "layout2-browser-red-1-history-geometry-standalone-1440.png",
+    "run": "layout2",
+    "stage": "browser-red",
+    "test": "history geometry standalone 1440",
+    "status": "failed",
+    "attachment": "history-geometry-standalone-1440",
+    "metadata": {
+      "repository": "stepll2026/OntiCards",
+      "task_id": "9d4091536fb690e93975569245026844",
+      "run_id": "onti-resume42-20261105-layout2-red",
+      "tested_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "web_head_sha": "50da42daf4f179d74668205c944e99f37cb9d53b",
+      "tested_base_sha": "f4fedcc084280ba4a57105180113e9d989e7487d",
+      "environment": "http://onticards_nginx:9107",
+      "actualWorkers": 1
+    },
+    "sha256": "055fd13baf9b9da94129d9d97fb70263704e1718dd2ac43ac17eb65bb4d96408"
+  },
+  {
+    "file": "layout2-browser-red-2-history-geometry-workspace-1440.png",
+    "run": "layout2",
+    "stage": "browser-red",
+    "test": "history geometry workspace 1440",
+    "status": "failed",
+    "attachment": "history-geometry-workspace-1440",
+    "metadata": {
+      "repository": "stepll2026/OntiCards",
+      "task_id": "9d4091536fb690e93975569245026844",
+      "run_id": "onti-resume42-20261105-layout2-red",
+      "tested_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "web_head_sha": "50da42daf4f179d74668205c944e99f37cb9d53b",
+      "tested_base_sha": "f4fedcc084280ba4a57105180113e9d989e7487d",
+      "environment": "http://onticards_nginx:9107",
+      "actualWorkers": 1
+    },
+    "sha256": "aec9960be9106ed628ab24559e0f8ac7e0691e813b8f38f78beb2260b6d46084"
+  },
+  {
+    "file": "layout2-browser-red-3-history-geometry-standalone-1024.png",
+    "run": "layout2",
+    "stage": "browser-red",
+    "test": "history geometry standalone 1024",
+    "status": "failed",
+    "attachment": "history-geometry-standalone-1024",
+    "metadata": {
+      "repository": "stepll2026/OntiCards",
+      "task_id": "9d4091536fb690e93975569245026844",
+      "run_id": "onti-resume42-20261105-layout2-red",
+      "tested_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "web_head_sha": "50da42daf4f179d74668205c944e99f37cb9d53b",
+      "tested_base_sha": "f4fedcc084280ba4a57105180113e9d989e7487d",
+      "environment": "http://onticards_nginx:9107",
+      "actualWorkers": 1
+    },
+    "sha256": "d05f985af5b1930fdc03e8784f9cbf0ffd927b756c3cfd5f209e7ae6c4938de2"
+  },
+  {
+    "file": "layout2-browser-red-4-history-geometry-workspace-1024.png",
+    "run": "layout2",
+    "stage": "browser-red",
+    "test": "history geometry workspace 1024",
+    "status": "failed",
+    "attachment": "history-geometry-workspace-1024",
+    "metadata": {
+      "repository": "stepll2026/OntiCards",
+      "task_id": "9d4091536fb690e93975569245026844",
+      "run_id": "onti-resume42-20261105-layout2-red",
+      "tested_head_sha": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+      "web_head_sha": "50da42daf4f179d74668205c944e99f37cb9d53b",
+      "tested_base_sha": "f4fedcc084280ba4a57105180113e9d989e7487d",
+      "environment": "http://onticards_nginx:9107",
+      "actualWorkers": 1
+    },
+    "sha256": "18c71632aa55991138f9d20d5e8b5694904d2d8ee8571b05ce680030b0390e63"
+  }
+]

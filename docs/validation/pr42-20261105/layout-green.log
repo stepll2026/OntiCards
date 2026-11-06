@@ -1,0 +1,9 @@
+
+Running 4 tests using 1 worker
+
+  ✓  1 tests/query-history-layout.spec.js:65:5 › history geometry standalone 1440 (4.6s)
+  ✓  2 tests/query-history-layout.spec.js:65:5 › history geometry workspace 1440 (5.1s)
+  ✓  3 tests/query-history-layout.spec.js:65:5 › history geometry standalone 1024 (4.1s)
+  ✓  4 tests/query-history-layout.spec.js:65:5 › history geometry workspace 1024 (4.4s)
+
+  4 passed (19.1s)
