@@ -302,9 +302,13 @@ class DialectAdapter:
             ]
         if self.db_type in ('oracle', 'dm'):
             literals.insert(0, r"\bq'(?:\[.*?\]|\{.*?\}|\(.*?\)|<.*?>|(?P<qmark>[^\s]).*?(?-i:(?P=qmark)))'")
-        tokens = '|'.join(literals + [
-            double_quote, r'`(?:``|[^`])*`',
-            r'\[(?:\]\]|[^\]])*\]', r'--[^\n]*', r'/\*.*?\*/', r'\bcolumn\b',
+        quoted_identifiers = [double_quote]
+        if self.db_type in ('mysql', 'mariadb', 'oceanbase', 'sqlite'):
+            quoted_identifiers.append(r'`(?:``|[^`])*`')
+        if self.db_type in ('mssql', 'sqlite'):
+            quoted_identifiers.append(r'\[(?:\]\]|[^\]])*\]')
+        tokens = '|'.join(literals + quoted_identifiers + [
+            r'--[^\n]*', r'/\*.*?\*/', r'\bcolumn\b',
         ])
         condition = re.sub(
             tokens, lambda match: quoted_col if match.group().lower() == 'column' else match.group(),

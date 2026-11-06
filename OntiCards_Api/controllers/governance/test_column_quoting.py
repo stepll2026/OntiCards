@@ -27,6 +27,13 @@ namespace = {"re": re}
 exec(compile(ast.Module(body=methods, type_ignores=[]), "<actual-preview-methods>", "exec"), namespace)
 
 class ColumnQuotingTests(unittest.TestCase):
+    def test_postgresql_array_placeholder(self):
+        adapter = DialectAdapter("postgresql")
+        self.assertEqual(
+            adapter.adapt_condition_expr("column = ANY(ARRAY[column])", "amount"),
+            '"amount" = ANY(ARRAY["amount"])',
+        )
+
     def test_delimiter_escaping(self):
         for dialect in module.DIALECT_CONFIGS:
             with self.subTest(dialect=dialect):
@@ -40,7 +47,7 @@ class ColumnQuotingTests(unittest.TestCase):
         for dialect in module.DIALECT_CONFIGS:
             with self.subTest(dialect=dialect):
                 adapter = DialectAdapter(dialect)
-                expr = """COLUMN <> 'column' AND column_name > 0 AND "column" > 0 AND [column] > 0 AND `column` > 0"""
+                expr = "COLUMN <> 'column' AND column_name > 0 AND " + adapter.quote_identifier("column") + " > 0"
                 expected = adapter.quote_identifier("column") + expr[len("COLUMN"):]
                 result = adapter.adapt_condition_expr(expr, "column")
                 self.assertEqual(result, expected)

@@ -1,0 +1,26 @@
+test_backslash_identifier_does_not_become_regex_replacement (__main__.ColumnQuotingTests.test_backslash_identifier_does_not_become_regex_replacement) ... ok
+test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) ... ok
+test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests.test_dialect_string_literals_are_preserved) ... ok
+test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) ... ok
+test_postgresql_array_placeholder (__main__.ColumnQuotingTests.test_postgresql_array_placeholder) ... FAIL
+test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) ... ok
+test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) ... ok
+test_sqlite_real_execution_and_injection_control (__main__.ColumnQuotingTests.test_sqlite_real_execution_and_injection_control) ... ok
+
+======================================================================
+FAIL: test_postgresql_array_placeholder (__main__.ColumnQuotingTests.test_postgresql_array_placeholder)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 32, in test_postgresql_array_placeholder
+    self.assertEqual(
+AssertionError: '"amount" = ANY(ARRAY[column])' != '"amount" = ANY(ARRAY["amount"])'
+- "amount" = ANY(ARRAY[column])
+?                      ^ - -
++ "amount" = ANY(ARRAY["amount"])
+?                      ^^^   ++
+
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.004s
+
+FAILED (failures=1)

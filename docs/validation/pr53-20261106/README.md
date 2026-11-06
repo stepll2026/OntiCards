@@ -17,12 +17,13 @@ MySQL、SQL Server 等生成的列引用跟随数据源方言；含引号的列�
 - 运行于 kol-stage2，宿主 Python 3.12.3，无镜像构建；只传输审阅过的四个 Python 文件，无环境文件或应用凭据。
 - 隔离目录 /tmp/onticards-pr53-b4799bf7。
 - 修正前 python3 test_column_quoting.py：exit 1，5方法中30失败、12错误（含子用例），见 [red.log](red.log)。
-- 修正后 python3 test_column_quoting.py：exit 0，7方法通过（含真实预览入口调用的两种 SQL 构建器、MySQL 默认反斜线转义及 PostgreSQL E/dollar、Oracle/DM q 字面量保持）；覆盖10方言引用、重复适配、字面量、反斜杠和 SQLite 内存数据库真实查询，见 [green.log](green.log)。
+- 修正后 python3 test_column_quoting.py：exit 0，8方法通过（含真实预览入口调用的两种 SQL 构建器、MySQL 默认反斜线转义及 PostgreSQL E/dollar、Oracle/DM q 字面量保持）；覆盖10方言引用、重复适配、字面量、反斜杠和 SQLite 内存数据库真实查询，见 [green.log](green.log)。
 - python3 test_dialect_adapter.py：exit 0，原31测试通过，见 [dialect.log](dialect.log)。
 - [实际测试文件 SHA256](tested-files.sha256)。
 - 预览测试从真实源码 AST 提取两方法，跳过应用初始化；不是完整 HTTP/API 集成测试。
 - 独审补充字符串词法缺口后新增第7方法，修正前8失败，见 [literals-red.log](literals-red.log)；修正后7+31全部通过。
 - 后续独审补充 MySQL 双引号转义与 PG dollar 标签大小写：新增子用例修正前2失败，见 [literal-edges-red.log](literal-edges-red.log)；修正后仍为7方法+31回归全通过。
+- 终审补充 PostgreSQL ARRAY[column] 不能作为方括号标识符保护：修正前新增测试1失败，见 [array-red.log](array-red.log)；保护引用符按方言限定后8方法+31回归通过。原跨方言无效引用样式测试调整为各方言实际引用符，保留全部10方言控制。
 - 独立审查与清理结果由原 PR 正文及工单最终报告记录。
 
 ## 剩余限制
