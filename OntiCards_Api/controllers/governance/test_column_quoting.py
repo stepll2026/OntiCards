@@ -58,6 +58,8 @@ class ColumnQuotingTests(unittest.TestCase):
             ("mysql", r"'it\'s column'"),
             ("mysql", r'"a\" column"'),
             ("postgresql", "$tag$a$TAG$ column$tag$"),
+            ("postgresql", "$标签$ column $标签$"),
+            ("oracle", "nq'[it's column]'"),
             ("mariadb", r"'it\'s column'"),
             ("oceanbase", r"'it\'s column'"),
             ("postgresql", r"E'it\'s column'"),

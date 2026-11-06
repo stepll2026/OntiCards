@@ -8,6 +8,6 @@ test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.te
 test_sqlite_real_execution_and_injection_control (__main__.ColumnQuotingTests.test_sqlite_real_execution_and_injection_control) ... ok
 
 ----------------------------------------------------------------------
-Ran 8 tests in 0.004s
+Ran 8 tests in 0.013s
 
 OK

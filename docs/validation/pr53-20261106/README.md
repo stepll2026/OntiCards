@@ -24,6 +24,7 @@ MySQL、SQL Server 等生成的列引用跟随数据源方言；含引号的列�
 - 独审补充字符串词法缺口后新增第7方法，修正前8失败，见 [literals-red.log](literals-red.log)；修正后7+31全部通过。
 - 后续独审补充 MySQL 双引号转义与 PG dollar 标签大小写：新增子用例修正前2失败，见 [literal-edges-red.log](literal-edges-red.log)；修正后仍为7方法+31回归全通过。
 - 终审补充 PostgreSQL ARRAY[column] 不能作为方括号标识符保护：修正前新增测试1失败，见 [array-red.log](array-red.log)；保护引用符按方言限定后8方法+31回归通过。原跨方言无效引用样式测试调整为各方言实际引用符，保留全部10方言控制。
+- 补齐前一完整审查报告的 Unicode dollar 标签缺口，并同类覆盖 Oracle nq 字面量：新增子用例修正前2失败，见 [unicode-red.log](unicode-red.log)，修正后8+31通过。
 - 独立审查与清理结果由原 PR 正文及工单最终报告记录。
 
 ## 剩余限制

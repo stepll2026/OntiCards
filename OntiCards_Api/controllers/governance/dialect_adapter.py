@@ -298,10 +298,10 @@ class DialectAdapter:
         if self.db_type in ('postgresql', 'kingbase'):
             literals[:0] = [
                 r"\bE'(?:''|\\.|[^'\\])*'",
-                r"(?P<dollar>\$(?:[A-Za-z_]\w*)?\$).*?(?-i:(?P=dollar))",
+                r"(?P<dollar>\$(?:[A-Za-z_\u0080-\U0010ffff][A-Za-z_0-9\u0080-\U0010ffff]*)?\$).*?(?-i:(?P=dollar))",
             ]
         if self.db_type in ('oracle', 'dm'):
-            literals.insert(0, r"\bq'(?:\[.*?\]|\{.*?\}|\(.*?\)|<.*?>|(?P<qmark>[^\s]).*?(?-i:(?P=qmark)))'")
+            literals.insert(0, r"\bn?q'(?:\[.*?\]|\{.*?\}|\(.*?\)|<.*?>|(?P<qmark>[^\s]).*?(?-i:(?P=qmark)))'")
         quoted_identifiers = [double_quote]
         if self.db_type in ('mysql', 'mariadb', 'oceanbase', 'sqlite'):
             quoted_identifiers.append(r'`(?:``|[^`])*`')
