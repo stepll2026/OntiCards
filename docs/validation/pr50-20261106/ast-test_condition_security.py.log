@@ -6,6 +6,6 @@ test_reject_statement_escape_and_side_effects (__main__.ConditionTests) ... ok
 test_seed_sql_templates (__main__.ConditionTests) ... ok
 
 ----------------------------------------------------------------------
-Ran 6 tests in 0.068s
+Ran 6 tests in 0.071s
 
 OK

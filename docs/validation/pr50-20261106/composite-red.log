@@ -1,0 +1,52 @@
+test_composite_sample_attribution_preserves_literal (__main__.ConditionApiTests) ... FAIL
+test_create_single_and_composite (__main__.ConditionApiTests) ... ok
+test_persisted_composite_rules_execute_and_sample (__main__.ConditionApiTests) ... test_placeholder_literals_and_escaped_identifiers (__main__.ConditionApiTests) ... ok
+test_preview_uses_actual_dialect_and_preserves_literals (__main__.ConditionApiTests) ... ok
+test_real_preview_and_sqlite_execution (__main__.ConditionApiTests) ... ok
+test_reject_before_orm_queries (__main__.ConditionApiTests) ... ok
+test_stored_rule_execution_rejects_injection (__main__.ConditionApiTests) ... ok
+test_update_single_and_composite (__main__.ConditionApiTests) ... ok
+
+======================================================================
+ERROR: test_persisted_composite_rules_execute_and_sample (__main__.ConditionApiTests) (confirmed_sql=None)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/controllers/governance/test_condition_api.py", line 140, in test_persisted_composite_rules_execute_and_sample
+    sql, params = executor._generate_sql(self.rule)
+  File "/work/controllers/governance/audit_executor.py", line 438, in _generate_sql
+    require_conditions_payload(json.loads(config) if isinstance(config, str) else config, self.db_type)
+UnboundLocalError: local variable 'json' referenced before assignment
+
+======================================================================
+ERROR: test_persisted_composite_rules_execute_and_sample (__main__.ConditionApiTests) (confirmed_sql='SELECT * FROM items WHERE NOT ("price" = \'column\') OR NOT ("qty" > 0)')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/controllers/governance/test_condition_api.py", line 140, in test_persisted_composite_rules_execute_and_sample
+    sql, params = executor._generate_sql(self.rule)
+  File "/work/controllers/governance/audit_executor.py", line 438, in _generate_sql
+    require_conditions_payload(json.loads(config) if isinstance(config, str) else config, self.db_type)
+UnboundLocalError: local variable 'json' referenced before assignment
+
+======================================================================
+FAIL: test_composite_sample_attribution_preserves_literal (__main__.ConditionApiTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/controllers/governance/test_condition_api.py", line 163, in test_composite_sample_attribution_preserves_literal
+    self.assertEqual([v["column"] for v in samples[0]["violated_conditions"]], ["qty"])
+AssertionError: Lists differ: ['price', 'qty'] != ['qty']
+
+First differing element 0:
+'price'
+'qty'
+
+First list contains 1 additional elements.
+First extra element 1:
+'qty'
+
+- ['price', 'qty']
++ ['qty']
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.174s
+
+FAILED (failures=1, errors=2)

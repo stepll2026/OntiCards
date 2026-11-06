@@ -1,4 +1,10 @@
+test_composite_sample_attribution_preserves_literal (__main__.ConditionApiTests) ... ok
 test_create_single_and_composite (__main__.ConditionApiTests) ... ok
+test_persisted_composite_rules_execute_and_sample (__main__.ConditionApiTests) ... [DEBUG] 检测多条件违规: conditions_count=2, condition_mode=AND
+[DEBUG] 检测 cond_col=price, cond_expr=column = 'column', is_violated=False
+[DEBUG] 检测 cond_col=qty, cond_expr=column > 0, is_violated=True
+[DEBUG] 最终返回 samples=[{'sample_value': [{'price': 'column', 'qty': -1}], 'violated_conditions': [{'column': 'qty', 'condition': 'column > 0', 'negated_condition': 'NOT ("qty" > 0)'}], 'condition_mode': 'AND', 'rule_type': 'composite'}]
+ok
 test_placeholder_literals_and_escaped_identifiers (__main__.ConditionApiTests) ... ok
 test_preview_uses_actual_dialect_and_preserves_literals (__main__.ConditionApiTests) ... ok
 test_real_preview_and_sqlite_execution (__main__.ConditionApiTests) ... ok
@@ -7,6 +13,6 @@ test_stored_rule_execution_rejects_injection (__main__.ConditionApiTests) ... ok
 test_update_single_and_composite (__main__.ConditionApiTests) ... ok
 
 ----------------------------------------------------------------------
-Ran 7 tests in 0.161s
+Ran 9 tests in 0.189s
 
 OK
