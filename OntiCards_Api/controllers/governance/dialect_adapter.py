@@ -290,7 +290,7 @@ class DialectAdapter:
 
         # 替换 column 占位符
         quoted_col = self.quote_identifier(column)
-        condition = replace_column(condition, quoted_col)
+        condition = replace_column(condition, quoted_col, self.db_type)
 
         return condition
 
@@ -602,7 +602,7 @@ WHERE {quoted_col} IS NOT NULL
             rule_type: 规则类型
             schema: Schema 名（可选，为空时只引用表名）
         """
-        require_condition_expr(condition)
+        require_condition_expr(condition, self.db_type)
         quoted_table = self.quote_table_reference(table, schema)
         quoted_col = self.quote_identifier(column) if column else None
 
@@ -645,7 +645,7 @@ FROM {quoted_table}
         # ============================================================
         if condition and condition.strip():
             if column and quoted_col:
-                adapted_condition = replace_column(condition.strip(), quoted_col)
+                adapted_condition = replace_column(condition.strip(), quoted_col, self.db_type)
             else:
                 adapted_condition = condition.strip()
 
@@ -728,7 +728,7 @@ FROM {quoted_table}
 
             quoted_col = self.quote_identifier(column)
             # 替换 column 占位符
-            adapted_condition = replace_column(condition.strip(), quoted_col)
+            adapted_condition = replace_column(condition.strip(), quoted_col, self.db_type)
             # 业务条件取反，得到违规条件
             where_clauses.append(f"(NOT ({adapted_condition}))")
 
@@ -767,7 +767,7 @@ FROM {quoted_table}
         """
         quoted_table = self.quote_table_reference(table, schema)
 
-        require_condition_expr(condition)
+        require_condition_expr(condition, self.db_type)
         # 适配条件表达式（表级规则中条件通常是完整的 WHERE 子句）
         adapted_condition = condition.strip() if condition else "1=1"
 

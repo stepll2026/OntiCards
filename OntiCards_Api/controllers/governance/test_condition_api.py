@@ -51,9 +51,18 @@ class ConditionApiTests(unittest.TestCase):
         query_patch = patch.object(GovernanceRule, "query", Query(self.rule))
         query_patch.start()
         self.addCleanup(query_patch.stop)
+        from models.governance_rule_library import GovernanceRuleLibrary
+        from models.datasource_infos import DatasourceInfo
+        for model, fixture in [
+            (GovernanceRuleLibrary, SimpleNamespace(datasource_id="fixture")),
+            (DatasourceInfo, SimpleNamespace(db_type="sqlite", schema_name=None)),
+        ]:
+            fixture_patch = patch.object(model, "query", Query(fixture))
+            fixture_patch.start()
+            self.addCleanup(fixture_patch.stop)
 
     def test_reject_before_orm_queries(self):
-        bad = ["column > 0); DROP TABLE users; --", "column IN (SELECT password FROM users)", "pg_sleep(1) = 0"]
+        bad = ["column > 0); DROP TABLE users; --", "column IN (SELECT pg_sleep(1))", "pg_sleep(1) = 0"]
         for expr in bad:
             for path, method, body in [
                 ("/rules", "post", {"condition_expr": expr}),
@@ -64,8 +73,10 @@ class ConditionApiTests(unittest.TestCase):
                 ("/preview", "post", {"target_table": "items", "conditions": [{"column": "price", "condition": expr}]})
             ]:
                 with self.subTest(expr=expr, path=path, method=method):
+                    body["library_id"] = str(uuid.uuid4())
                     response = getattr(self.client, method)(path, json=body)
                     self.assertEqual(response.status_code, 400, response.get_json())
+                    self.assertIn("条件表达式", response.get_json()["msg"])
 
     def test_create_single_and_composite(self):
         from models.governance_rule import GovernanceRule
@@ -100,7 +111,7 @@ class ConditionApiTests(unittest.TestCase):
 
     def test_stored_rule_execution_rejects_injection(self):
         executor = RuleExecutor(db.engine, "sqlite", "fixture")
-        self.rule.condition_expr = "column IN (SELECT secret FROM secrets)"
+        self.rule.condition_expr = "column IN (SELECT pg_sleep(1))"
         with self.assertRaises(ValueError):
             executor._generate_sql(self.rule)
         self.rule.condition_expr = "column > 0"
@@ -109,6 +120,32 @@ class ConditionApiTests(unittest.TestCase):
             conn.execute(text("INSERT INTO items VALUES (-1), (5), (150)"))
             sql, params = executor._generate_sql(self.rule)
             self.assertEqual(conn.execute(text(sql), params).mappings().one()["failed_count"], 1)
+
+    def test_preview_uses_actual_dialect_and_preserves_literals(self):
+        for dialect, name, quoted in [
+            ("mysql", "odd`column", "`odd``column`"),
+            ("mssql", "odd]column", "[odd]]column]"),
+            ("postgresql", 'odd"column', '"odd""column"'),
+            ("oracle", 'odd"column', '"odd""column"'),
+        ]:
+            with self.subTest(dialect=dialect):
+                response = self.client.post("/preview", json={
+                    "target_table": "items", "target_column": name, "db_type": dialect,
+                    "condition_expr": "COLUMN = 'column; --'"})
+                self.assertEqual(response.status_code, 200, response.get_json())
+                sql = response.get_json()["data"]["sql"]
+                self.assertIn(quoted, sql)
+                self.assertIn("'column; --'", sql)
+        for dialect, expr in [
+            ("mssql", "column >= DATEADD(day, -7, GETDATE())"),
+            ("mysql", "column >= DATE_SUB(NOW(), INTERVAL 7 DAY)"),
+            ("sqlite", "column >= datetime('now', '-7 days')"),
+        ]:
+            with self.subTest(dialect=dialect, expr=expr):
+                response = self.client.post("/preview", json={
+                    "target_table": "items", "target_column": "price",
+                    "db_type": dialect, "condition_expr": expr})
+                self.assertEqual(response.status_code, 200, response.get_json())
 
     def test_real_preview_and_sqlite_execution(self):
         response = self.client.post("/preview", json={

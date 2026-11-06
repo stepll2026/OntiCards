@@ -432,10 +432,10 @@ class RuleExecutor:
         Returns:
             (sql: str, params: dict)
         """
-        require_condition_expr(rule.condition_expr)
+        require_condition_expr(rule.condition_expr, self.db_type)
         config = rule.conditions_config
         if config:
-            require_conditions_payload(json.loads(config) if isinstance(config, str) else config)
+            require_conditions_payload(json.loads(config) if isinstance(config, str) else config, self.db_type)
 
         # 策略1：直接使用用户确认的 sql_text
         if rule.sql_text and rule.sql_text.strip():
@@ -494,7 +494,7 @@ class RuleExecutor:
 
                         quoted_cond_column = self._quote_identifier(cond_column)
                         # 替换 column 占位符
-                        adapted_cond = replace_column(cond_expr.strip(), quoted_cond_column)
+                        adapted_cond = replace_column(cond_expr.strip(), quoted_cond_column, self.db_type)
                         # 业务条件取反，得到违规条件
                         negated = f"NOT ({adapted_cond})"
                         where_clauses.append(f"({negated})")
@@ -516,7 +516,7 @@ class RuleExecutor:
 
         # 专家模式：有 condition_expr 时，直接使用条件表达式
         if condition and condition.strip():
-            adapted_condition = replace_column(condition.strip(), quoted_column)
+            adapted_condition = replace_column(condition.strip(), quoted_column, self.db_type)
 
             # 一致性校验的特殊处理：只有"双方都为 NULL"才豁免
             # 违规条件：(col1 <> col2) OR (col1 IS NULL) <> (col2 IS NULL)
@@ -795,10 +795,10 @@ class RuleExecutor:
             - rule_type: 规则类型
             - condition_expr: 条件表达式（仅专家模式时存在）
         """
-        require_condition_expr(rule.condition_expr)
+        require_condition_expr(rule.condition_expr, self.db_type)
         config = rule.conditions_config
         if config:
-            require_conditions_payload(json.loads(config) if isinstance(config, str) else config)
+            require_conditions_payload(json.loads(config) if isinstance(config, str) else config, self.db_type)
         table = rule.target_table or ''
         column = rule.target_column or ''
 
@@ -1025,7 +1025,7 @@ class RuleExecutor:
                             if not cond_col or not cond_expr_item:
                                 continue
                             quoted_cond_col = self._quote_identifier(cond_col)
-                            adapted_cond = replace_column(cond_expr_item.strip(), quoted_cond_col)
+                            adapted_cond = replace_column(cond_expr_item.strip(), quoted_cond_col, self.db_type)
                             # 业务条件取反
                             negated = f"NOT ({adapted_cond})"
                             where_clauses.append((cond_col, cond_expr_item, f"({negated})"))
@@ -1154,7 +1154,7 @@ class RuleExecutor:
             # 这样手动输入 "column IS NOT NULL" 时，样本查询与检测SQL保持一致
             if condition and condition.strip():
                 # 专家模式：附带原始条件表达式
-                adapted_condition = replace_column(condition.strip(), quoted_column)
+                adapted_condition = replace_column(condition.strip(), quoted_column, self.db_type)
                 # 优先使用全字段查询，便于用户追溯
                 all_columns = self._get_table_columns(table)
                 if all_columns:
