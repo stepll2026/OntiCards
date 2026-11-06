@@ -1,0 +1,2 @@
+column > 0 (2, 1)
+column > 0 OR (SELECT COUNT(*) FROM secrets) > 0 (2, 0)

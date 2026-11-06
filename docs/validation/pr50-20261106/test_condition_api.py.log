@@ -1,0 +1,11 @@
+test_create_single_and_composite (__main__.ConditionApiTests) ... ok
+test_placeholder_literals_and_escaped_identifiers (__main__.ConditionApiTests) ... ok
+test_real_preview_and_sqlite_execution (__main__.ConditionApiTests) ... ok
+test_reject_before_orm_queries (__main__.ConditionApiTests) ... ok
+test_stored_rule_execution_rejects_injection (__main__.ConditionApiTests) ... ok
+test_update_single_and_composite (__main__.ConditionApiTests) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.059s
+
+OK
