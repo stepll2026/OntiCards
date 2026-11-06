@@ -399,10 +399,9 @@ class RuleListApi(Resource):
                     return resp(code=400, msg="单条件模式下目标列（target_column）不能为空", http_status=400)
                 if not condition_expr:
                     return resp(code=400, msg="单条件模式下条件表达式（condition_expr）不能为空", http_status=400)
-                if condition_expr and 'column' in condition_expr and target_column:
+                if condition_expr and 'column' in condition_expr.lower() and target_column:
                     from controllers.governance.dialect_adapter import DialectAdapter
-                    _safe_col = DialectAdapter(db_type or 'postgresql').quote_identifier(target_column)
-                    condition_expr = condition_expr.replace('column', _safe_col)
+                    condition_expr = DialectAdapter(db_type or 'postgresql').adapt_condition_expr(condition_expr, target_column)
             else:
                 target_column = None
                 condition_expr = None
@@ -441,10 +440,9 @@ class RuleListApi(Resource):
                     processed_cond = dict(cond)
                     cond_expr = processed_cond.get('condition', '')
                     cond_column = processed_cond.get('column', '')
-                    if cond_expr and 'column' in cond_expr and cond_column:
+                    if cond_expr and 'column' in cond_expr.lower() and cond_column:
                         from controllers.governance.dialect_adapter import DialectAdapter
-                        _safe_col = DialectAdapter(db_type or 'postgresql').quote_identifier(cond_column)
-                        processed_cond['condition'] = cond_expr.replace('column', _safe_col)
+                        processed_cond['condition'] = DialectAdapter(db_type or 'postgresql').adapt_condition_expr(cond_expr, cond_column)
                     processed_conditions.append(processed_cond)
 
                 rule.set_conditions(processed_conditions, data.get('condition_mode', 'AND'))
@@ -685,12 +683,7 @@ class RuleListApi(Resource):
         if column_name and condition_expr:
             # 只在 condition_expr 包含 column 占位符时才替换
             if 'column' in condition_expr.lower():
-                sql_condition = re.sub(
-                    r'\bcolumn\b',
-                    quoted_col,
-                    condition_expr,
-                    flags=re.IGNORECASE
-                )
+                sql_condition = adapter.adapt_condition_expr(condition_expr, column_name)
             else:
                 # 已处理的条件表达式
                 sql_condition = condition_expr
@@ -752,7 +745,7 @@ class RuleListApi(Resource):
 
             if column and condition:
                 # 替换 column 占位符为实际列名
-                sql_cond = condition.replace('column', f'"{column}"')
+                sql_cond = adapter.adapt_condition_expr(condition, column)
                 # 业务条件取反，得到违规条件
                 condition_parts.append(f'(NOT ({sql_cond}))')
 
@@ -973,8 +966,9 @@ class RuleDetailApi(Resource):
                     processed_cond = dict(cond)
                     cond_expr = processed_cond.get('condition', '')
                     cond_column = processed_cond.get('column', '')
-                    if cond_expr and 'column' in cond_expr and cond_column:
-                        processed_cond['condition'] = cond_expr.replace('column', f'"{cond_column}"')
+                    if cond_expr and 'column' in cond_expr.lower() and cond_column:
+                        from controllers.governance.dialect_adapter import DialectAdapter
+                        processed_cond['condition'] = DialectAdapter(rule.db_type or 'postgresql').adapt_condition_expr(cond_expr, cond_column)
                     processed_conditions.append(processed_cond)
                 rule.set_conditions(processed_conditions, condition_mode)
             else:

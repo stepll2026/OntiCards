@@ -230,7 +230,9 @@ class DialectAdapter:
         """
         if not name:
             return name
-        return self.dialect.identifier_quote.format(name)
+        # Embedded closing delimiters belong to the name, never to SQL syntax.
+        closing_quote = self.dialect.identifier_quote[-1]
+        return self.dialect.identifier_quote.format(name.replace(closing_quote, closing_quote * 2))
 
     def quote_table_column(self, table: str, column: str) -> Tuple[str, str]:
         """
@@ -285,7 +287,13 @@ class DialectAdapter:
 
         # 替换 column 占位符
         quoted_col = self.quote_identifier(column)
-        condition = re.sub(r'\bcolumn\b', quoted_col, condition, flags=re.IGNORECASE)
+        # Skip string literals and already quoted identifiers. This also makes
+        # repeated adaptation safe when the actual column is named "column".
+        tokens = r"""'(?:''|[^'])*'|"(?:""|[^"])*"|`(?:``|[^`])*`|\[(?:\]\]|[^\]])*\]|\bcolumn\b"""
+        condition = re.sub(
+            tokens, lambda match: quoted_col if match.group().lower() == 'column' else match.group(),
+            condition, flags=re.IGNORECASE
+        )
 
         return condition
 
