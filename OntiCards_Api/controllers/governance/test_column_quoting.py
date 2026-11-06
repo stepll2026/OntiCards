@@ -63,6 +63,18 @@ class ColumnQuotingTests(unittest.TestCase):
                     for sql in (single, composite):
                         self.assertIn("NOT (" + expression + ")", sql)
 
+    def test_public_preview_builders_preserve_conditions(self):
+        for dialect in module.DIALECT_CONFIGS:
+            adapter = DialectAdapter(dialect)
+            for name in ("column", r"a\1"):
+                expression = adapter.quote_identifier(name) + " <> 'column'"
+                with self.subTest(dialect=dialect, name=name):
+                    single = adapter.build_check_sql("items", name, expression, "custom_sql")
+                    multi = adapter.build_multi_condition_sql(
+                        "items", [{"column": name, "condition": expression}])
+                    for sql in (single, multi):
+                        self.assertIn("NOT (" + expression + ")", sql)
+
     def test_sqlite_real_execution_and_injection_control(self):
         db = sqlite3.connect(":memory:")
         try:

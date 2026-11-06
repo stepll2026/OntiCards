@@ -13,11 +13,11 @@ MySQL、SQL Server 等生成的列引用跟随数据源方言；含引号的列�
 ## 验证结果
 
 - 基线：main 2e597d05f3673891f9ffdef08e2c45084dbd42dc；原贡献 63cc0dccfc6a078043e329ace34802e78b886891。
-- 生产代码及测试版本：2043e4099e2437a439e387461471e7d99e6db9b1。
+- 初轮生产代码及测试版本：2043e4099e2437a439e387461471e7d99e6db9b1；独审发现公开预览构建器仍重复替换，补充第6方法在修正前复现10失败/10错误（[review-red.log](review-red.log)），本目录最终日志对应包含修正的提交，文件SHA256见下。
 - 运行于 kol-stage2，宿主 Python 3.12.3，无镜像构建；只传输审阅过的四个 Python 文件，无环境文件或应用凭据。
 - 隔离目录 /tmp/onticards-pr53-b4799bf7。
 - 修正前 python3 test_column_quoting.py：exit 1，5方法中30失败、12错误（含子用例），见 [red.log](red.log)。
-- 修正后 python3 test_column_quoting.py：exit 0，5方法通过；覆盖10方言引用、重复适配、字面量、反斜杠和 SQLite 内存数据库真实查询，见 [green.log](green.log)。
+- 修正后 python3 test_column_quoting.py：exit 0，6方法通过（含真实预览入口调用的两种 SQL 构建器）；覆盖10方言引用、重复适配、字面量、反斜杠和 SQLite 内存数据库真实查询，见 [green.log](green.log)。
 - python3 test_dialect_adapter.py：exit 0，原31测试通过，见 [dialect.log](dialect.log)。
 - [实际测试文件 SHA256](tested-files.sha256)。
 - 预览测试从真实源码 AST 提取两方法，跳过应用初始化；不是完整 HTTP/API 集成测试。

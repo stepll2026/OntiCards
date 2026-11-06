@@ -647,12 +647,7 @@ FROM {quoted_table}
         # ============================================================
         if condition and condition.strip():
             if column and quoted_col:
-                adapted_condition = re.sub(
-                    r'\bcolumn\b',
-                    quoted_col,
-                    condition.strip(),
-                    flags=re.IGNORECASE
-                )
+                adapted_condition = self.adapt_condition_expr(condition.strip(), column)
             else:
                 adapted_condition = condition.strip()
 
@@ -733,14 +728,8 @@ FROM {quoted_table}
             if not column or not condition:
                 continue
 
-            quoted_col = self.quote_identifier(column)
-            # 替换 column 占位符
-            adapted_condition = re.sub(
-                r'\bcolumn\b',
-                quoted_col,
-                condition.strip(),
-                flags=re.IGNORECASE
-            )
+            # 使用统一替换，保留字面量及已引用的列名。
+            adapted_condition = self.adapt_condition_expr(condition.strip(), column)
             # 业务条件取反，得到违规条件
             where_clauses.append(f"(NOT ({adapted_condition}))")
 
