@@ -1,0 +1,26 @@
+test_business_conditions (__main__.ConditionTests) ... ok
+test_comment_delimiters_are_not_arithmetic (__main__.ConditionTests) ... ok
+test_existing_dialect_contracts (__main__.ConditionTests) ... ok
+test_input_bounds (__main__.ConditionTests) ... ok
+test_reject_statement_escape_and_side_effects (__main__.ConditionTests) ... test_seed_sql_templates (__main__.ConditionTests) ... ok
+
+======================================================================
+FAIL: test_reject_statement_escape_and_side_effects (__main__.ConditionTests) (expr='"ABS"(column) > 0')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/controllers/governance/test_condition_security.py", line 44, in test_reject_statement_escape_and_side_effects
+    self.assertFalse(validate(expr))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_reject_statement_escape_and_side_effects (__main__.ConditionTests) (expr='"LOWER"(column) = \'x\'')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/controllers/governance/test_condition_security.py", line 44, in test_reject_statement_escape_and_side_effects
+    self.assertFalse(validate(expr))
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.073s
+
+FAILED (failures=2)
