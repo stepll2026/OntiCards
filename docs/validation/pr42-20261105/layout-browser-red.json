@@ -1,0 +1,11 @@
+{
+  "stage": "red",
+  "raw_browser_exit": 1,
+  "tests": 4,
+  "accepted": true,
+  "mixed_versions": true,
+  "integrated_new_version_pass": false,
+  "web_head": "50da42daf4f179d74668205c944e99f37cb9d53b",
+  "backend_head": "fc328e9f7e2af3d36632e76ec871b1aedf0ee6d5",
+  "spec_sha256": "25339e9b86436b72d4fdf001cae379cfb368b68f10a00a781747fef117ec27b6"
+}

@@ -97,7 +97,7 @@ DIALECT_CONFIGS: Dict[str, DialectInfo] = {
     ),
     'oracle': DialectInfo(
         name='Oracle',
-        identifier_quote='"{})"'.replace('})', '}') + ")",  # 特殊处理
+        identifier_quote='"{}"',
         date_now='SYSDATE',
         date_current_date='TRUNC(SYSDATE)',
         date_add='SYSDATE + {}',
@@ -125,7 +125,7 @@ DIALECT_CONFIGS: Dict[str, DialectInfo] = {
     ),
     'trino': DialectInfo(
         name='Trino',
-        identifier_quote='"{})"'.replace('})', '}') + ")",  # 特殊处理
+        identifier_quote='"{}"',
         date_now='NOW()',
         date_current_date='CURRENT_DATE',
         date_add="INTERVAL '{}'",
@@ -176,8 +176,7 @@ DIALECT_CONFIGS: Dict[str, DialectInfo] = {
     # - 空值检测：基础空值检测需要把数字/日期类型先转字符串再比较 ''，达梦用 TO_CHAR（Oracle 风格）
     'dm': DialectInfo(
         name='达梦 DM',
-        # 与 Oracle 表达式保持一致（项目内历史遗留的特殊写法）
-        identifier_quote='"{})"'.replace('})', '}') + ")",
+        identifier_quote='"{}"',
         date_now='SYSDATE',
         date_current_date='TRUNC(SYSDATE)',
         # 达梦日期加法：与 Oracle 类似，使用 SYSDATE + N

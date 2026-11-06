@@ -1,0 +1,10 @@
+stage	exit_code
+preflight	0
+compose_startup_and_native_migration	0
+report_facts_unit26	0
+migration_current	0
+backend_tls_without_key	0
+backend_native_model_configuration	0
+original_api7_model_flow_browser3	1
+copy_results	0
+cleanup	0
