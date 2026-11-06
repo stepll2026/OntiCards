@@ -1,31 +1,48 @@
-# PR #50 本轮验证记录（候选修正，尚未交付）
+# PR #50 条件表达式验证记录
 
 ## 修复了什么
 
-原补丁使用反向引用重复第一个 token，导致普通的 `column > 0` 也不能保存，同时漏掉单条件更新、预览和历史条件执行。候选修正使用有限表达式语法校验，覆盖新增、更新、预览及执行；只替换裸 column 占位符，保留字符串和已引用标识符，并转义列名中的引用符。
+原贡献的正则错误地重复第一个 token，连 `column > 0` 都会被拒绝；单条件更新、SQL 预览和旧规则执行也未完整覆盖。现使用固定版本 SQLGlot 解析实际数据库方言，检查查询包装结构和允许的 AST 节点，再按源码位置替换裸列占位符，避免改坏字符串或已引用列名。列名中的引用符会转义。
+
+修复覆盖新增与更新的单/复合条件、模板条件、自带规则配置、预览、执行及样本查询。更新复合条件使用规则自身的数据库类型，消除原贡献中的未定义变量。
 
 ## 有什么作用
 
-在拼接治理条件前阻断语句逃逸和任意函数调用，允许比较、范围、枚举、逻辑、算术及白名单函数。治理模块内的新增和更新共用校验，避免只保护部分入口。
+在条件被拼入 SQL 前拒绝多语句、注释、结构逃逸、未知/限定名称函数、写入型子查询及外部表函数，同时保留原有日期函数、类型转换、正则、窗口表达式和只读引用子查询。
+
+例如，手机号正则里的反斜线仍保留原样，`DATEADD` 和 `DATE_SUB` 按实际方言解析；字符串 `'column; --'` 不会被改写或误当成注释。
 
 ## 验证结果
 
-基线 main：`2e597d05f3673891f9ffdef08e2c45084dbd42dc`。原贡献：`047851848fca3962571197e01274945e267df06f`。已普通合入 main，保留贡献者原历史。
+- 实际 main：`2e597d05f3673891f9ffdef08e2c45084dbd42dc`。
+- 原贡献：`047851848fca3962571197e01274945e267df06f`，已通过普通 merge 纳入 main 的后续更改。
+- 本轮最终代码/测试提交：`e227555baf553b099058afefe9c3f5b84c5bac33`。独立终审尚未完成，当前不能视为可交付。
+- kol-stage2 实测：6 项条件测试（含现有方言函数矩阵及 24 个种子 SQL 条件）、7 项 Flask/SQLite 测试、31 项既有方言测试、1 项隔离 PostgreSQL 综合测试均通过。
+- PostgreSQL 直接加载 main 的原 SQL 构造器：合成函数确实向临时标记表写入；新校验在 SQL 执行前拒绝同类条件，标记表保持为空。正常数值、类型转换、手机号正则、引用子查询在真实 PostgreSQL 上执行并核对统计结果。
+- Flask 测试实际调用新增/更新/预览方法；所有权、ORM 查询及写入使用合成 fixture，生成 SQL 在真实 SQLite 上执行。这不是完整登录/持久化服务部署测试。
+- API 依赖镜像沿用既有 `sha256:4d712690199b17ea76030095e97037b2b656bf6fba502c06fe79a0367e195f63`，源码只读挂载，SQLGlot 30.29.0 wheel 离线安装到一次性 /tmp。镜像、wheel、文件摘要与日志均在本目录。
+- 原补丁红测、初版有限语法造成的 10 项方言兼容性失败、首次 PostgreSQL 正则 fixture 多转义失败均保留；最终修正了 fixture 转义，未放宽统计断言。
 
-实测均在 kol-stage2：原贡献回归负对照失败（15 个失败子例、1 个类型错误）；候选条件测试 3 项、Flask/SQLite 测试 6 项、现有方言测试 31 项通过。基线 SQL 对照表明，同一两行数据的违规数可以被额外子查询从 1 改成 0。
-
-执行入口：
+实际入口：
 
 ```sh
 python controllers/governance/test_condition_security.py
 python controllers/governance/test_condition_api.py
 python controllers/governance/test_dialect_adapter.py
+# 仅对一次性测试数据库设置 PR50_TEST_DATABASE_URL 和 PR50_TEST_BASELINE
+python controllers/governance/test_condition_postgres.py
 ```
 
-Flask/SQLite 测试使用既有 API 镜像 `sha256:4d712690199b17ea76030095e97037b2b656bf6fba502c06fe79a0367e195f63`，只读挂载候选源码、无网络、临时 /tmp、删除 capabilities。数据库查询/所有权和写入会话使用合成 fixture；生成的 SQL 在真实内存 SQLite 上执行。文件摘要见 [tested-files.sha256](tested-files.sha256)，各项完整结果见本目录对应日志；独立终审尚未完成。
+最终记录：[条件](ast-test_condition_security.py.log)、[API/SQLite](ast-test_condition_api.py.log)、[方言](ast-test_dialect_adapter.py.log)、[PostgreSQL](test_condition_postgres.py.log)、[文件摘要](ast-tested-files.sha256)、[模板矩阵](template-matrix.jsonl)、[兼容性红测](compatibility-red.log)、[PostgreSQL 首轮失败](postgres-attempt1.log)。
+
+选择依据：源码及既有依赖中没有可用 SQL AST 库；小探针显示自制语法需要重新实现已支持的日期、CAST、正则和引用查询，而固定的 SQLGlot 能解析这些已有语法，因此选择复用库并限制实际 AST。参见 [官方 API](https://sqlglot.com/sqlglot.html) 和 [探针原始输出](ast-probe.jsonl)。并非仅调用解析器就视为安全。
+
+早期 [baseline-control.log](baseline-control.log) 只证明额外只读子查询能改变统计，本身不证明结构注入；现有引用模板本就需要只读子查询。最终安全负对照采用真实 main 构造器调用写入型函数，并检查写入标记及执行前拒绝；不沿用早期不充分的推断。
 
 ## 剩余限制
 
-候选语法目前不接受子查询、窗口函数、类型转换或含反斜线的字符串，需要在独立审查中核实这些限制对现有模板和历史规则的影响，不能视为已可交付。未进行 PostgreSQL/MySQL 等真实引擎测试、完整应用部署、模型调用或托管 CI。
+显式确认的完整 SQL（sql_text/sql_preview）是已有独立功能，本次没有重新定义其权限边界；条件校验不能当成数据库权限或任意 SQL 的沙箱。未知函数及未覆盖的 AST 结构会拒绝，需要明确评估后才扩展。
 
-显式确认的完整 SQL（sql_text/sql_preview）是现有独立功能；本变更只约束条件表达式，不能宣称完整 SQL 输入或数据源权限已获得沙箱保护。未改 UI，无截图要求。远端临时源码待审查结束后清理，本轮未新增镜像、持久卷或网络。
+PostgreSQL 和 SQLite 为本轮真实引擎；其他数据库仅验证解析/SQL 生成与引用行为，未实测对应数据库服务。未进行完整应用部署、模型调用或托管 CI。种子模板里的未填自然语言示例不被当作可执行 SQL 验证。
+
+未改 UI。隔离 PostgreSQL 容器及内部网络已清理，无生产数据库、共享服务或既有镜像改动；远端临时源码在独审完成后定向清理。
