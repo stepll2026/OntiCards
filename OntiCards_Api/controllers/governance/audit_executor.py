@@ -462,7 +462,6 @@ class RuleExecutor:
         # 优先处理多条件模式
         if conditions_config:
             try:
-                import json
                 if isinstance(conditions_config, str):
                     config = json.loads(conditions_config)
                 else:
@@ -635,7 +634,7 @@ class RuleExecutor:
         # 如果条件中包含正则匹配符号，适配语法
         if '~*' in condition or 'REGEXP' in condition.upper():
             # 替换列名
-            result = re.sub(r'\bcolumn\b', quoted_column, condition, flags=re.IGNORECASE)
+            result = replace_column(condition, quoted_column, self.db_type)
 
             # 适配正则语法
             # 人大金仓（KingBase）基于 PostgreSQL，复用 PostgreSQL 的正则语法
@@ -659,7 +658,7 @@ class RuleExecutor:
             return result
         else:
             # 非正则条件，直接替换列名
-            return re.sub(r'\bcolumn\b', quoted_column, condition, flags=re.IGNORECASE)
+            return replace_column(condition, quoted_column, self.db_type)
 
     def _process_result(self, rule: GovernanceRule, rows: List[dict]) -> Dict[str, Any]:
         """处理执行结果
@@ -915,12 +914,7 @@ class RuleExecutor:
                                         continue
 
                                     quoted_col = self._quote_identifier(cond_col)
-                                    adapted_cond = re.sub(
-                                        r'\bcolumn\b',
-                                        quoted_col,
-                                        cond_expr.strip(),
-                                        flags=re.IGNORECASE
-                                    )
+                                    adapted_cond = replace_column(cond_expr.strip(), quoted_col, self.db_type)
 
                                     # 构建该记录的判断条件
                                     row_identifiers = []
@@ -1006,7 +1000,6 @@ class RuleExecutor:
             # 优先处理多条件模式
             if conditions_config:
                 try:
-                    import json
                     if isinstance(conditions_config, str):
                         config = json.loads(conditions_config)
                     else:
@@ -1096,12 +1089,7 @@ class RuleExecutor:
                                         row_where = " AND ".join(row_identifiers)
 
                                         # 检查该行是否违反此条件（NOT原始条件 = TRUE）
-                                        adapted_cond = re.sub(
-                                            r'\bcolumn\b',
-                                            quoted_col,
-                                            cond_expr_item.strip(),
-                                            flags=re.IGNORECASE
-                                        )
+                                        adapted_cond = replace_column(cond_expr_item.strip(), quoted_col, self.db_type)
                                         check_sql = f"""
                                             SELECT CASE WHEN NOT ({adapted_cond}) THEN 1 ELSE 0 END as violated
                                             FROM {full_table}

@@ -121,6 +121,47 @@ class ConditionApiTests(unittest.TestCase):
             sql, params = executor._generate_sql(self.rule)
             self.assertEqual(conn.execute(text(sql), params).mappings().one()["failed_count"], 1)
 
+    def test_persisted_composite_rules_execute_and_sample(self):
+        executor = RuleExecutor(db.engine, "sqlite", "fixture")
+        self.rule.rule_type = "composite"
+        self.rule.target_column = None
+        self.rule.condition_expr = None
+        self.rule.set_conditions([
+            {"column": "price", "condition": "column = 'column'"},
+            {"column": "qty", "condition": "column > 0"},
+        ], "AND")
+        self.assertIsInstance(self.rule.conditions_config, str)
+        with db.engine.begin() as conn:
+            conn.execute(text("CREATE TABLE items(price TEXT, qty INTEGER)"))
+            conn.execute(text("INSERT INTO items VALUES ('column', -1)"))
+        generated_sql = executor._generate_sql(self.rule)[0]
+        for confirmed_sql in [None, generated_sql]:
+            with self.subTest(confirmed_sql=confirmed_sql):
+                self.rule.sql_text = confirmed_sql
+                sql, params = executor._generate_sql(self.rule)
+                with db.engine.begin() as conn:
+                    rows = conn.execute(text(sql), params).mappings().all()
+                    self.assertEqual(len(rows), 1)
+                    self.assertEqual(rows[0]["failed_count"], 1)
+                samples = executor._get_sample_data(self.rule)
+                self.assertEqual([v["column"] for v in samples[0]["violated_conditions"]], ["qty"])
+
+    def test_composite_sample_attribution_preserves_literal(self):
+        executor = RuleExecutor(db.engine, "sqlite", "fixture")
+        self.rule.rule_type = "composite"
+        self.rule.target_column = None
+        self.rule.condition_expr = None
+        # Also support already-decoded configuration objects.
+        self.rule.conditions_config = {"conditions": [
+            {"column": "price", "condition": "column = 'column'"},
+            {"column": "qty", "condition": "column > 0"},
+        ], "condition_mode": "AND"}
+        with db.engine.begin() as conn:
+            conn.execute(text("CREATE TABLE items(price TEXT, qty INTEGER)"))
+            conn.execute(text("INSERT INTO items VALUES ('column', -1)"))
+        samples = executor._get_sample_data(self.rule)
+        self.assertEqual([v["column"] for v in samples[0]["violated_conditions"]], ["qty"])
+
     def test_preview_uses_actual_dialect_and_preserves_literals(self):
         for dialect, name, quoted in [
             ("mysql", "odd`column", "`odd``column`"),

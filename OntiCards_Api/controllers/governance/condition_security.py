@@ -26,7 +26,7 @@ _NODES = frozenset("""
     CurrentDate CurrentTimestamp CurrentTime DateTrunc TimestampTrunc Extract
     DateAdd DateSub DateDiff TimestampAdd TimestampSub TimestampDiff AddMonths
     TimeStrToTime StrToTime TsOrDsToDate TsOrDsToTimestamp TimeToStr
-    Year Month Day Date Datetime JulianDay ToNumber StrToDate ToChar
+    Year Month Day Date Datetime JulianDay ToNumber StrToDate ToChar StrPosition
     Count Sum Avg Min Max
 """.split())
 _ANONYMOUS = {

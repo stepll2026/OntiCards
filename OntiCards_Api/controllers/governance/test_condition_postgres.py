@@ -1,4 +1,5 @@
 """Optional isolated PostgreSQL acceptance: PR50_TEST_DATABASE_URL only."""
+import json
 import ast
 import re
 import os
@@ -31,6 +32,19 @@ class PostgresTests(unittest.TestCase):
                 with self.subTest(expr=expr):
                     sql = adapter.build_check_sql("items", column, expr, "custom_sql")
                     self.assertEqual(conn.execute(text(sql)).mappings().one()["failed_count"], expected)
+
+            composite = SimpleNamespace(
+                condition_expr=None, conditions_config=json.dumps({
+                    "conditions": [
+                        {"column": "price", "condition": "column > 0"},
+                        {"column": "phone", "condition": "column = '13812345678'"},
+                    ], "condition_mode": "AND"
+                }), sql_text=None, target_table="items", target_column=None,
+                rule_type="composite")
+            composite_sql, params = executor._generate_sql(composite)
+            self.assertEqual(conn.execute(text(composite_sql), params).mappings().one()["failed_count"], 2)
+            composite.sql_text = composite_sql
+            self.assertEqual(executor._generate_sql(composite)[0], composite_sql)
 
             conn.execute(text("CREATE TEMP TABLE marker(value INTEGER)"))
             conn.execute(text("""
