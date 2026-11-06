@@ -1,0 +1,618 @@
+test_backslash_identifier_does_not_become_regex_replacement (__main__.ColumnQuotingTests.test_backslash_identifier_does_not_become_regex_replacement) ... ERROR
+test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) ... 
+  test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) (dialect='postgresql') ... FAIL
+  test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) (dialect='mysql') ... FAIL
+  test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) (dialect='mariadb') ... FAIL
+  test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) (dialect='mssql') ... FAIL
+  test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) (dialect='oracle') ... FAIL
+  test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) (dialect='sqlite') ... FAIL
+  test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) (dialect='trino') ... FAIL
+  test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) (dialect='kingbase') ... FAIL
+  test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) (dialect='oceanbase') ... FAIL
+  test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) (dialect='dm') ... FAIL
+test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) ... 
+  test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) (dialect='postgresql') ... FAIL
+  test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) (dialect='mysql') ... FAIL
+  test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) (dialect='mariadb') ... FAIL
+  test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) (dialect='mssql') ... FAIL
+  test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) (dialect='oracle') ... FAIL
+  test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) (dialect='sqlite') ... FAIL
+  test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) (dialect='trino') ... FAIL
+  test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) (dialect='kingbase') ... FAIL
+  test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) (dialect='oceanbase') ... FAIL
+  test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) (dialect='dm') ... FAIL
+test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) ... 
+  test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='postgresql', column='column') ... FAIL
+  test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='postgresql', column='a\\1') ... ERROR
+  test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='mysql', column='column') ... FAIL
+  test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='mysql', column='a\\1') ... ERROR
+  test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='mariadb', column='column') ... FAIL
+  test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='mariadb', column='a\\1') ... ERROR
+  test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='mssql', column='column') ... FAIL
+  test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='mssql', column='a\\1') ... ERROR
+  test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='oracle', column='column') ... FAIL
+  test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='oracle', column='a\\1') ... ERROR
+  test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='sqlite', column='column') ... FAIL
+  test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='sqlite', column='a\\1') ... ERROR
+  test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='trino', column='column') ... FAIL
+  test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='trino', column='a\\1') ... ERROR
+  test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='kingbase', column='column') ... FAIL
+  test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='kingbase', column='a\\1') ... ERROR
+  test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='oceanbase', column='column') ... FAIL
+  test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='oceanbase', column='a\\1') ... ERROR
+  test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='dm', column='column') ... FAIL
+  test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='dm', column='a\\1') ... ERROR
+test_sqlite_real_execution_and_injection_control (__main__.ColumnQuotingTests.test_sqlite_real_execution_and_injection_control) ... ERROR
+
+======================================================================
+ERROR: test_backslash_identifier_does_not_become_regex_replacement (__main__.ColumnQuotingTests.test_backslash_identifier_does_not_become_regex_replacement)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 50, in test_backslash_identifier_does_not_become_regex_replacement
+    self.assertEqual(DialectAdapter("postgresql").adapt_condition_expr("column > 0", r"a\1"),
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/onticards-pr53-b4799bf7/dialect_adapter.py", line 288, in adapt_condition_expr
+    condition = re.sub(r'\bcolumn\b', quoted_col, condition, flags=re.IGNORECASE)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 186, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 334, in _compile_template
+    return _sre.template(pattern, _parser.parse_template(repl, pattern))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/_parser.py", line 1069, in parse_template
+    addgroup(int(this[1:]), len(this) - 1)
+  File "/usr/lib/python3.12/re/_parser.py", line 1014, in addgroup
+    raise s.error("invalid group reference %d" % index, pos)
+re.error: invalid group reference 1 at position 3
+
+======================================================================
+ERROR: test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='postgresql', column='a\\1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 58, in test_preview_uses_dialect_and_does_not_requote
+    expression = adapter.adapt_condition_expr("column > 0", column)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/onticards-pr53-b4799bf7/dialect_adapter.py", line 288, in adapt_condition_expr
+    condition = re.sub(r'\bcolumn\b', quoted_col, condition, flags=re.IGNORECASE)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 186, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 334, in _compile_template
+    return _sre.template(pattern, _parser.parse_template(repl, pattern))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/_parser.py", line 1069, in parse_template
+    addgroup(int(this[1:]), len(this) - 1)
+  File "/usr/lib/python3.12/re/_parser.py", line 1014, in addgroup
+    raise s.error("invalid group reference %d" % index, pos)
+re.error: invalid group reference 1 at position 3
+
+======================================================================
+ERROR: test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='mysql', column='a\\1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 58, in test_preview_uses_dialect_and_does_not_requote
+    expression = adapter.adapt_condition_expr("column > 0", column)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/onticards-pr53-b4799bf7/dialect_adapter.py", line 288, in adapt_condition_expr
+    condition = re.sub(r'\bcolumn\b', quoted_col, condition, flags=re.IGNORECASE)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 186, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 334, in _compile_template
+    return _sre.template(pattern, _parser.parse_template(repl, pattern))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/_parser.py", line 1069, in parse_template
+    addgroup(int(this[1:]), len(this) - 1)
+  File "/usr/lib/python3.12/re/_parser.py", line 1014, in addgroup
+    raise s.error("invalid group reference %d" % index, pos)
+re.error: invalid group reference 1 at position 3
+
+======================================================================
+ERROR: test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='mariadb', column='a\\1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 58, in test_preview_uses_dialect_and_does_not_requote
+    expression = adapter.adapt_condition_expr("column > 0", column)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/onticards-pr53-b4799bf7/dialect_adapter.py", line 288, in adapt_condition_expr
+    condition = re.sub(r'\bcolumn\b', quoted_col, condition, flags=re.IGNORECASE)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 186, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 334, in _compile_template
+    return _sre.template(pattern, _parser.parse_template(repl, pattern))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/_parser.py", line 1069, in parse_template
+    addgroup(int(this[1:]), len(this) - 1)
+  File "/usr/lib/python3.12/re/_parser.py", line 1014, in addgroup
+    raise s.error("invalid group reference %d" % index, pos)
+re.error: invalid group reference 1 at position 3
+
+======================================================================
+ERROR: test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='mssql', column='a\\1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 58, in test_preview_uses_dialect_and_does_not_requote
+    expression = adapter.adapt_condition_expr("column > 0", column)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/onticards-pr53-b4799bf7/dialect_adapter.py", line 288, in adapt_condition_expr
+    condition = re.sub(r'\bcolumn\b', quoted_col, condition, flags=re.IGNORECASE)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 186, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 334, in _compile_template
+    return _sre.template(pattern, _parser.parse_template(repl, pattern))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/_parser.py", line 1069, in parse_template
+    addgroup(int(this[1:]), len(this) - 1)
+  File "/usr/lib/python3.12/re/_parser.py", line 1014, in addgroup
+    raise s.error("invalid group reference %d" % index, pos)
+re.error: invalid group reference 1 at position 3
+
+======================================================================
+ERROR: test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='oracle', column='a\\1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 58, in test_preview_uses_dialect_and_does_not_requote
+    expression = adapter.adapt_condition_expr("column > 0", column)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/onticards-pr53-b4799bf7/dialect_adapter.py", line 288, in adapt_condition_expr
+    condition = re.sub(r'\bcolumn\b', quoted_col, condition, flags=re.IGNORECASE)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 186, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 334, in _compile_template
+    return _sre.template(pattern, _parser.parse_template(repl, pattern))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/_parser.py", line 1069, in parse_template
+    addgroup(int(this[1:]), len(this) - 1)
+  File "/usr/lib/python3.12/re/_parser.py", line 1014, in addgroup
+    raise s.error("invalid group reference %d" % index, pos)
+re.error: invalid group reference 1 at position 3
+
+======================================================================
+ERROR: test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='sqlite', column='a\\1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 58, in test_preview_uses_dialect_and_does_not_requote
+    expression = adapter.adapt_condition_expr("column > 0", column)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/onticards-pr53-b4799bf7/dialect_adapter.py", line 288, in adapt_condition_expr
+    condition = re.sub(r'\bcolumn\b', quoted_col, condition, flags=re.IGNORECASE)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 186, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 334, in _compile_template
+    return _sre.template(pattern, _parser.parse_template(repl, pattern))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/_parser.py", line 1069, in parse_template
+    addgroup(int(this[1:]), len(this) - 1)
+  File "/usr/lib/python3.12/re/_parser.py", line 1014, in addgroup
+    raise s.error("invalid group reference %d" % index, pos)
+re.error: invalid group reference 1 at position 3
+
+======================================================================
+ERROR: test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='trino', column='a\\1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 58, in test_preview_uses_dialect_and_does_not_requote
+    expression = adapter.adapt_condition_expr("column > 0", column)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/onticards-pr53-b4799bf7/dialect_adapter.py", line 288, in adapt_condition_expr
+    condition = re.sub(r'\bcolumn\b', quoted_col, condition, flags=re.IGNORECASE)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 186, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 334, in _compile_template
+    return _sre.template(pattern, _parser.parse_template(repl, pattern))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/_parser.py", line 1069, in parse_template
+    addgroup(int(this[1:]), len(this) - 1)
+  File "/usr/lib/python3.12/re/_parser.py", line 1014, in addgroup
+    raise s.error("invalid group reference %d" % index, pos)
+re.error: invalid group reference 1 at position 3
+
+======================================================================
+ERROR: test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='kingbase', column='a\\1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 58, in test_preview_uses_dialect_and_does_not_requote
+    expression = adapter.adapt_condition_expr("column > 0", column)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/onticards-pr53-b4799bf7/dialect_adapter.py", line 288, in adapt_condition_expr
+    condition = re.sub(r'\bcolumn\b', quoted_col, condition, flags=re.IGNORECASE)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 186, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 334, in _compile_template
+    return _sre.template(pattern, _parser.parse_template(repl, pattern))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/_parser.py", line 1069, in parse_template
+    addgroup(int(this[1:]), len(this) - 1)
+  File "/usr/lib/python3.12/re/_parser.py", line 1014, in addgroup
+    raise s.error("invalid group reference %d" % index, pos)
+re.error: invalid group reference 1 at position 3
+
+======================================================================
+ERROR: test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='oceanbase', column='a\\1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 58, in test_preview_uses_dialect_and_does_not_requote
+    expression = adapter.adapt_condition_expr("column > 0", column)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/onticards-pr53-b4799bf7/dialect_adapter.py", line 288, in adapt_condition_expr
+    condition = re.sub(r'\bcolumn\b', quoted_col, condition, flags=re.IGNORECASE)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 186, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 334, in _compile_template
+    return _sre.template(pattern, _parser.parse_template(repl, pattern))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/_parser.py", line 1069, in parse_template
+    addgroup(int(this[1:]), len(this) - 1)
+  File "/usr/lib/python3.12/re/_parser.py", line 1014, in addgroup
+    raise s.error("invalid group reference %d" % index, pos)
+re.error: invalid group reference 1 at position 3
+
+======================================================================
+ERROR: test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='dm', column='a\\1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 58, in test_preview_uses_dialect_and_does_not_requote
+    expression = adapter.adapt_condition_expr("column > 0", column)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/onticards-pr53-b4799bf7/dialect_adapter.py", line 288, in adapt_condition_expr
+    condition = re.sub(r'\bcolumn\b', quoted_col, condition, flags=re.IGNORECASE)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 186, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 334, in _compile_template
+    return _sre.template(pattern, _parser.parse_template(repl, pattern))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/_parser.py", line 1069, in parse_template
+    addgroup(int(this[1:]), len(this) - 1)
+  File "/usr/lib/python3.12/re/_parser.py", line 1014, in addgroup
+    raise s.error("invalid group reference %d" % index, pos)
+re.error: invalid group reference 1 at position 3
+
+======================================================================
+ERROR: test_sqlite_real_execution_and_injection_control (__main__.ColumnQuotingTests.test_sqlite_real_execution_and_injection_control)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 72, in test_sqlite_real_execution_and_injection_control
+    db.execute("CREATE TABLE items (" + quoted + " INTEGER)")
+sqlite3.OperationalError: unrecognized token: "" INTEGER)"
+
+======================================================================
+FAIL: test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) (dialect='postgresql')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 37, in test_delimiter_escaping
+    self.assertEqual(adapter.quote_identifier(name), expected)
+AssertionError: '"a"; SELECT 1 --"' != '"a""; SELECT 1 --"'
+- "a"; SELECT 1 --"
++ "a""; SELECT 1 --"
+?    +
+
+
+======================================================================
+FAIL: test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) (dialect='mysql')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 37, in test_delimiter_escaping
+    self.assertEqual(adapter.quote_identifier(name), expected)
+AssertionError: '`a`; SELECT 1 --`' != '`a``; SELECT 1 --`'
+- `a`; SELECT 1 --`
++ `a``; SELECT 1 --`
+?    +
+
+
+======================================================================
+FAIL: test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) (dialect='mariadb')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 37, in test_delimiter_escaping
+    self.assertEqual(adapter.quote_identifier(name), expected)
+AssertionError: '`a`; SELECT 1 --`' != '`a``; SELECT 1 --`'
+- `a`; SELECT 1 --`
++ `a``; SELECT 1 --`
+?    +
+
+
+======================================================================
+FAIL: test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) (dialect='mssql')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 37, in test_delimiter_escaping
+    self.assertEqual(adapter.quote_identifier(name), expected)
+AssertionError: '[a]; SELECT 1 --]' != '[a]]; SELECT 1 --]'
+- [a]; SELECT 1 --]
++ [a]]; SELECT 1 --]
+?    +
+
+
+======================================================================
+FAIL: test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) (dialect='oracle')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 37, in test_delimiter_escaping
+    self.assertEqual(adapter.quote_identifier(name), expected)
+AssertionError: '"a"; SELECT 1 --"' != '"a""; SELECT 1 --"'
+- "a"; SELECT 1 --"
++ "a""; SELECT 1 --"
+?    +
+
+
+======================================================================
+FAIL: test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) (dialect='sqlite')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 37, in test_delimiter_escaping
+    self.assertEqual(adapter.quote_identifier(name), expected)
+AssertionError: '"a"; SELECT 1 --"' != '"a""; SELECT 1 --"'
+- "a"; SELECT 1 --"
++ "a""; SELECT 1 --"
+?    +
+
+
+======================================================================
+FAIL: test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) (dialect='trino')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 37, in test_delimiter_escaping
+    self.assertEqual(adapter.quote_identifier(name), expected)
+AssertionError: '"a"; SELECT 1 --"' != '"a""; SELECT 1 --"'
+- "a"; SELECT 1 --"
++ "a""; SELECT 1 --"
+?    +
+
+
+======================================================================
+FAIL: test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) (dialect='kingbase')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 37, in test_delimiter_escaping
+    self.assertEqual(adapter.quote_identifier(name), expected)
+AssertionError: '"a"; SELECT 1 --"' != '"a""; SELECT 1 --"'
+- "a"; SELECT 1 --"
++ "a""; SELECT 1 --"
+?    +
+
+
+======================================================================
+FAIL: test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) (dialect='oceanbase')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 37, in test_delimiter_escaping
+    self.assertEqual(adapter.quote_identifier(name), expected)
+AssertionError: '`a`; SELECT 1 --`' != '`a``; SELECT 1 --`'
+- `a`; SELECT 1 --`
++ `a``; SELECT 1 --`
+?    +
+
+
+======================================================================
+FAIL: test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) (dialect='dm')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 37, in test_delimiter_escaping
+    self.assertEqual(adapter.quote_identifier(name), expected)
+AssertionError: '"a"; SELECT 1 --"' != '"a""; SELECT 1 --"'
+- "a"; SELECT 1 --"
++ "a""; SELECT 1 --"
+?    +
+
+
+======================================================================
+FAIL: test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) (dialect='postgresql')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 46, in test_only_bare_placeholder_is_replaced
+    self.assertEqual(result, expected)
+AssertionError: '"column" <> \'"column"\' AND column_name > 0 AND ""colu[42 chars] > 0' != '"column" <> \'column\' AND column_name > 0 AND "column"[34 chars] > 0'
+- "column" <> '"column"' AND column_name > 0 AND ""column"" > 0 AND ["column"] > 0 AND `"column"` > 0
+?              -      -                          -        -          -      -           -      -
++ "column" <> 'column' AND column_name > 0 AND "column" > 0 AND [column] > 0 AND `column` > 0
+
+
+======================================================================
+FAIL: test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) (dialect='mysql')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 46, in test_only_bare_placeholder_is_replaced
+    self.assertEqual(result, expected)
+AssertionError: '`column` <> \'`column`\' AND column_name > 0 AND "`colu[42 chars] > 0' != '`column` <> \'column\' AND column_name > 0 AND "column"[34 chars] > 0'
+- `column` <> '`column`' AND column_name > 0 AND "`column`" > 0 AND [`column`] > 0 AND ``column`` > 0
++ `column` <> 'column' AND column_name > 0 AND "column" > 0 AND [column] > 0 AND `column` > 0
+
+
+======================================================================
+FAIL: test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) (dialect='mariadb')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 46, in test_only_bare_placeholder_is_replaced
+    self.assertEqual(result, expected)
+AssertionError: '`column` <> \'`column`\' AND column_name > 0 AND "`colu[42 chars] > 0' != '`column` <> \'column\' AND column_name > 0 AND "column"[34 chars] > 0'
+- `column` <> '`column`' AND column_name > 0 AND "`column`" > 0 AND [`column`] > 0 AND ``column`` > 0
++ `column` <> 'column' AND column_name > 0 AND "column" > 0 AND [column] > 0 AND `column` > 0
+
+
+======================================================================
+FAIL: test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) (dialect='mssql')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 46, in test_only_bare_placeholder_is_replaced
+    self.assertEqual(result, expected)
+AssertionError: '[column] <> \'[column]\' AND column_name > 0 AND "[colu[42 chars] > 0' != '[column] <> \'column\' AND column_name > 0 AND "column"[34 chars] > 0'
+- [column] <> '[column]' AND column_name > 0 AND "[column]" > 0 AND [[column]] > 0 AND `[column]` > 0
+?              -      -                                   -         ^^      ^^  -------------------
++ [column] <> 'column' AND column_name > 0 AND "column" > 0 AND [column] > 0 AND `column` > 0
+?                                               ++++++++++++++++                 ^      ^
+
+
+======================================================================
+FAIL: test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) (dialect='oracle')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 46, in test_only_bare_placeholder_is_replaced
+    self.assertEqual(result, expected)
+AssertionError: '"column" <> \'"column"\' AND column_name > 0 AND ""colu[42 chars] > 0' != '"column" <> \'column\' AND column_name > 0 AND "column"[34 chars] > 0'
+- "column" <> '"column"' AND column_name > 0 AND ""column"" > 0 AND ["column"] > 0 AND `"column"` > 0
+?              -      -                          -        -          -      -           -      -
++ "column" <> 'column' AND column_name > 0 AND "column" > 0 AND [column] > 0 AND `column` > 0
+
+
+======================================================================
+FAIL: test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) (dialect='sqlite')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 46, in test_only_bare_placeholder_is_replaced
+    self.assertEqual(result, expected)
+AssertionError: '"column" <> \'"column"\' AND column_name > 0 AND ""colu[42 chars] > 0' != '"column" <> \'column\' AND column_name > 0 AND "column"[34 chars] > 0'
+- "column" <> '"column"' AND column_name > 0 AND ""column"" > 0 AND ["column"] > 0 AND `"column"` > 0
+?              -      -                          -        -          -      -           -      -
++ "column" <> 'column' AND column_name > 0 AND "column" > 0 AND [column] > 0 AND `column` > 0
+
+
+======================================================================
+FAIL: test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) (dialect='trino')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 46, in test_only_bare_placeholder_is_replaced
+    self.assertEqual(result, expected)
+AssertionError: '"column" <> \'"column"\' AND column_name > 0 AND ""colu[42 chars] > 0' != '"column" <> \'column\' AND column_name > 0 AND "column"[34 chars] > 0'
+- "column" <> '"column"' AND column_name > 0 AND ""column"" > 0 AND ["column"] > 0 AND `"column"` > 0
+?              -      -                          -        -          -      -           -      -
++ "column" <> 'column' AND column_name > 0 AND "column" > 0 AND [column] > 0 AND `column` > 0
+
+
+======================================================================
+FAIL: test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) (dialect='kingbase')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 46, in test_only_bare_placeholder_is_replaced
+    self.assertEqual(result, expected)
+AssertionError: '"column" <> \'"column"\' AND column_name > 0 AND ""colu[42 chars] > 0' != '"column" <> \'column\' AND column_name > 0 AND "column"[34 chars] > 0'
+- "column" <> '"column"' AND column_name > 0 AND ""column"" > 0 AND ["column"] > 0 AND `"column"` > 0
+?              -      -                          -        -          -      -           -      -
++ "column" <> 'column' AND column_name > 0 AND "column" > 0 AND [column] > 0 AND `column` > 0
+
+
+======================================================================
+FAIL: test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) (dialect='oceanbase')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 46, in test_only_bare_placeholder_is_replaced
+    self.assertEqual(result, expected)
+AssertionError: '`column` <> \'`column`\' AND column_name > 0 AND "`colu[42 chars] > 0' != '`column` <> \'column\' AND column_name > 0 AND "column"[34 chars] > 0'
+- `column` <> '`column`' AND column_name > 0 AND "`column`" > 0 AND [`column`] > 0 AND ``column`` > 0
++ `column` <> 'column' AND column_name > 0 AND "column" > 0 AND [column] > 0 AND `column` > 0
+
+
+======================================================================
+FAIL: test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) (dialect='dm')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 46, in test_only_bare_placeholder_is_replaced
+    self.assertEqual(result, expected)
+AssertionError: '"column" <> \'"column"\' AND column_name > 0 AND ""colu[42 chars] > 0' != '"column" <> \'column\' AND column_name > 0 AND "column"[34 chars] > 0'
+- "column" <> '"column"' AND column_name > 0 AND ""column"" > 0 AND ["column"] > 0 AND `"column"` > 0
+?              -      -                          -        -          -      -           -      -
++ "column" <> 'column' AND column_name > 0 AND "column" > 0 AND [column] > 0 AND `column` > 0
+
+
+======================================================================
+FAIL: test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='postgresql', column='column')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 64, in test_preview_uses_dialect_and_does_not_requote
+    self.assertIn("NOT (" + expression + ")", sql)
+AssertionError: 'NOT ("column" > 0)' not found in 'SELECT COUNT(*) as total_count, SUM(CASE WHEN NOT (""column"" > 0) THEN 1 ELSE 0 END) as failed_count FROM "items"'
+
+======================================================================
+FAIL: test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='mysql', column='column')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 64, in test_preview_uses_dialect_and_does_not_requote
+    self.assertIn("NOT (" + expression + ")", sql)
+AssertionError: 'NOT (`column` > 0)' not found in 'SELECT COUNT(*) as total_count, SUM(CASE WHEN NOT (``column`` > 0) THEN 1 ELSE 0 END) as failed_count FROM `items`'
+
+======================================================================
+FAIL: test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='mariadb', column='column')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 64, in test_preview_uses_dialect_and_does_not_requote
+    self.assertIn("NOT (" + expression + ")", sql)
+AssertionError: 'NOT (`column` > 0)' not found in 'SELECT COUNT(*) as total_count, SUM(CASE WHEN NOT (``column`` > 0) THEN 1 ELSE 0 END) as failed_count FROM `items`'
+
+======================================================================
+FAIL: test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='mssql', column='column')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 64, in test_preview_uses_dialect_and_does_not_requote
+    self.assertIn("NOT (" + expression + ")", sql)
+AssertionError: 'NOT ([column] > 0)' not found in 'SELECT COUNT(*) as total_count, SUM(CASE WHEN NOT ([[column]] > 0) THEN 1 ELSE 0 END) as failed_count FROM [items]'
+
+======================================================================
+FAIL: test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='oracle', column='column')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 64, in test_preview_uses_dialect_and_does_not_requote
+    self.assertIn("NOT (" + expression + ")", sql)
+AssertionError: 'NOT ("column" > 0)' not found in 'SELECT COUNT(*) as total_count, SUM(CASE WHEN NOT (""column"" > 0) THEN 1 ELSE 0 END) as failed_count FROM "items"'
+
+======================================================================
+FAIL: test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='sqlite', column='column')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 64, in test_preview_uses_dialect_and_does_not_requote
+    self.assertIn("NOT (" + expression + ")", sql)
+AssertionError: 'NOT ("column" > 0)' not found in 'SELECT COUNT(*) as total_count, SUM(CASE WHEN NOT (""column"" > 0) THEN 1 ELSE 0 END) as failed_count FROM "items"'
+
+======================================================================
+FAIL: test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='trino', column='column')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 64, in test_preview_uses_dialect_and_does_not_requote
+    self.assertIn("NOT (" + expression + ")", sql)
+AssertionError: 'NOT ("column" > 0)' not found in 'SELECT COUNT(*) as total_count, SUM(CASE WHEN NOT (""column"" > 0) THEN 1 ELSE 0 END) as failed_count FROM "items"'
+
+======================================================================
+FAIL: test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='kingbase', column='column')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 64, in test_preview_uses_dialect_and_does_not_requote
+    self.assertIn("NOT (" + expression + ")", sql)
+AssertionError: 'NOT ("column" > 0)' not found in 'SELECT COUNT(*) as total_count, SUM(CASE WHEN NOT (""column"" > 0) THEN 1 ELSE 0 END) as failed_count FROM "items"'
+
+======================================================================
+FAIL: test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='oceanbase', column='column')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 64, in test_preview_uses_dialect_and_does_not_requote
+    self.assertIn("NOT (" + expression + ")", sql)
+AssertionError: 'NOT (`column` > 0)' not found in 'SELECT COUNT(*) as total_count, SUM(CASE WHEN NOT (``column`` > 0) THEN 1 ELSE 0 END) as failed_count FROM `items`'
+
+======================================================================
+FAIL: test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) (dialect='dm', column='column')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 64, in test_preview_uses_dialect_and_does_not_requote
+    self.assertIn("NOT (" + expression + ")", sql)
+AssertionError: 'NOT ("column" > 0)' not found in 'SELECT COUNT(*) as total_count, SUM(CASE WHEN NOT (""column"" > 0) THEN 1 ELSE 0 END) as failed_count FROM "items"'
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.011s
+
+FAILED (failures=30, errors=12)

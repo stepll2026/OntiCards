@@ -1,0 +1,110 @@
+
+Running 4 tests using 1 worker
+
+  ✘  1 tests/query-history-layout.spec.js:65:5 › history geometry standalone 1440 (4.2s)
+  ✘  2 tests/query-history-layout.spec.js:65:5 › history geometry workspace 1440 (4.8s)
+  ✘  3 tests/query-history-layout.spec.js:65:5 › history geometry standalone 1024 (3.9s)
+  ✘  4 tests/query-history-layout.spec.js:65:5 › history geometry workspace 1024 (4.2s)
+
+
+  1) tests/query-history-layout.spec.js:65:5 › history geometry standalone 1440 ────────────────────
+
+    Error: cell 5 right
+
+    expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 1046.75
+    Received:    1060.75
+
+       97 |         const {cell, content} = measurements[index];
+       98 |         expect(content.left, `cell ${index} left`).toBeGreaterThanOrEqual(cell.left - 1);
+    >  99 |         expect(content.right, `cell ${index} right`).toBeLessThanOrEqual(cell.right + 1);
+          |                                                      ^
+      100 |         expect(content.top, `cell ${index} top`).toBeGreaterThanOrEqual(cell.top - 1);
+      101 |         expect(content.bottom, `cell ${index} bottom`).toBeLessThanOrEqual(cell.bottom + 1);
+      102 |       }
+        at /trusted-tests/tests/query-history-layout.spec.js:99:54
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../results/browser-red/test-results/query-history-layout-history-geometry-standalone-1440/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../results/browser-red/test-results/query-history-layout-history-geometry-standalone-1440/error-context.md
+
+  2) tests/query-history-layout.spec.js:65:5 › history geometry workspace 1440 ─────────────────────
+
+    Error: cell 5 right
+
+    expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 1046.421875
+    Received:    1060.578125
+
+       97 |         const {cell, content} = measurements[index];
+       98 |         expect(content.left, `cell ${index} left`).toBeGreaterThanOrEqual(cell.left - 1);
+    >  99 |         expect(content.right, `cell ${index} right`).toBeLessThanOrEqual(cell.right + 1);
+          |                                                      ^
+      100 |         expect(content.top, `cell ${index} top`).toBeGreaterThanOrEqual(cell.top - 1);
+      101 |         expect(content.bottom, `cell ${index} bottom`).toBeLessThanOrEqual(cell.bottom + 1);
+      102 |       }
+        at /trusted-tests/tests/query-history-layout.spec.js:99:54
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../results/browser-red/test-results/query-history-layout-history-geometry-workspace-1440/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../results/browser-red/test-results/query-history-layout-history-geometry-workspace-1440/error-context.md
+
+  3) tests/query-history-layout.spec.js:65:5 › history geometry standalone 1024 ────────────────────
+
+    Error: cell 4 right
+
+    expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 719.390625
+    Received:    744.109375
+
+       97 |         const {cell, content} = measurements[index];
+       98 |         expect(content.left, `cell ${index} left`).toBeGreaterThanOrEqual(cell.left - 1);
+    >  99 |         expect(content.right, `cell ${index} right`).toBeLessThanOrEqual(cell.right + 1);
+          |                                                      ^
+      100 |         expect(content.top, `cell ${index} top`).toBeGreaterThanOrEqual(cell.top - 1);
+      101 |         expect(content.bottom, `cell ${index} bottom`).toBeLessThanOrEqual(cell.bottom + 1);
+      102 |       }
+        at /trusted-tests/tests/query-history-layout.spec.js:99:54
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../results/browser-red/test-results/query-history-layout-history-geometry-standalone-1024/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../results/browser-red/test-results/query-history-layout-history-geometry-standalone-1024/error-context.md
+
+  4) tests/query-history-layout.spec.js:65:5 › history geometry workspace 1024 ─────────────────────
+
+    Error: cell 4 right
+
+    expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 719.09375
+    Received:    744
+
+       97 |         const {cell, content} = measurements[index];
+       98 |         expect(content.left, `cell ${index} left`).toBeGreaterThanOrEqual(cell.left - 1);
+    >  99 |         expect(content.right, `cell ${index} right`).toBeLessThanOrEqual(cell.right + 1);
+          |                                                      ^
+      100 |         expect(content.top, `cell ${index} top`).toBeGreaterThanOrEqual(cell.top - 1);
+      101 |         expect(content.bottom, `cell ${index} bottom`).toBeLessThanOrEqual(cell.bottom + 1);
+      102 |       }
+        at /trusted-tests/tests/query-history-layout.spec.js:99:54
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../results/browser-red/test-results/query-history-layout-history-geometry-workspace-1024/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../results/browser-red/test-results/query-history-layout-history-geometry-workspace-1024/error-context.md
+
+  4 failed
+    tests/query-history-layout.spec.js:65:5 › history geometry standalone 1440 ─────────────────────
+    tests/query-history-layout.spec.js:65:5 › history geometry workspace 1440 ──────────────────────
+    tests/query-history-layout.spec.js:65:5 › history geometry standalone 1024 ─────────────────────
+    tests/query-history-layout.spec.js:65:5 › history geometry workspace 1024 ──────────────────────

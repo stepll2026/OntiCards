@@ -97,7 +97,7 @@ DIALECT_CONFIGS: Dict[str, DialectInfo] = {
     ),
     'oracle': DialectInfo(
         name='Oracle',
-        identifier_quote='"{})"'.replace('})', '}') + ")",  # 特殊处理
+        identifier_quote='"{}"',
         date_now='SYSDATE',
         date_current_date='TRUNC(SYSDATE)',
         date_add='SYSDATE + {}',
@@ -125,7 +125,7 @@ DIALECT_CONFIGS: Dict[str, DialectInfo] = {
     ),
     'trino': DialectInfo(
         name='Trino',
-        identifier_quote='"{})"'.replace('})', '}') + ")",  # 特殊处理
+        identifier_quote='"{}"',
         date_now='NOW()',
         date_current_date='CURRENT_DATE',
         date_add="INTERVAL '{}'",
@@ -176,8 +176,7 @@ DIALECT_CONFIGS: Dict[str, DialectInfo] = {
     # - 空值检测：基础空值检测需要把数字/日期类型先转字符串再比较 ''，达梦用 TO_CHAR（Oracle 风格）
     'dm': DialectInfo(
         name='达梦 DM',
-        # 与 Oracle 表达式保持一致（项目内历史遗留的特殊写法）
-        identifier_quote='"{})"'.replace('})', '}') + ")",
+        identifier_quote='"{}"',
         date_now='SYSDATE',
         date_current_date='TRUNC(SYSDATE)',
         # 达梦日期加法：与 Oracle 类似，使用 SYSDATE + N
@@ -231,7 +230,9 @@ class DialectAdapter:
         """
         if not name:
             return name
-        return self.dialect.identifier_quote.format(name)
+        # Embedded closing delimiters belong to the name, never to SQL syntax.
+        closing_quote = self.dialect.identifier_quote[-1]
+        return self.dialect.identifier_quote.format(name.replace(closing_quote, closing_quote * 2))
 
     def quote_table_column(self, table: str, column: str) -> Tuple[str, str]:
         """
@@ -286,7 +287,33 @@ class DialectAdapter:
 
         # 替换 column 占位符
         quoted_col = self.quote_identifier(column)
-        condition = re.sub(r'\bcolumn\b', quoted_col, condition, flags=re.IGNORECASE)
+        # Skip string literals and already quoted identifiers. This also makes
+        # repeated adaptation safe when the actual column is named "column".
+        single_quote = r"'(?:''|[^'])*'"
+        double_quote = r'"(?:""|[^"])*"'
+        if self.db_type in ('mysql', 'mariadb', 'oceanbase'):
+            single_quote = r"'(?:''|\\.|[^'\\])*'"
+            double_quote = r'"(?:""|\\.|[^"\\])*"'
+        literals = [single_quote]
+        if self.db_type in ('postgresql', 'kingbase'):
+            literals[:0] = [
+                r"\bE'(?:''|\\.|[^'\\])*'",
+                r"(?P<dollar>\$(?:[A-Za-z_\u0080-\U0010ffff][A-Za-z_0-9\u0080-\U0010ffff]*)?\$).*?(?-i:(?P=dollar))",
+            ]
+        if self.db_type in ('oracle', 'dm'):
+            literals.insert(0, r"\bn?q'(?:\[.*?\]|\{.*?\}|\(.*?\)|<.*?>|(?P<qmark>[^\s]).*?(?-i:(?P=qmark)))'")
+        quoted_identifiers = [double_quote]
+        if self.db_type in ('mysql', 'mariadb', 'oceanbase', 'sqlite'):
+            quoted_identifiers.append(r'`(?:``|[^`])*`')
+        if self.db_type in ('mssql', 'sqlite'):
+            quoted_identifiers.append(r'\[(?:\]\]|[^\]])*\]')
+        tokens = '|'.join(literals + quoted_identifiers + [
+            r'--[^\n]*', r'/\*.*?\*/', r'\bcolumn\b',
+        ])
+        condition = re.sub(
+            tokens, lambda match: quoted_col if match.group().lower() == 'column' else match.group(),
+            condition, flags=re.IGNORECASE | re.DOTALL
+        )
 
         return condition
 
@@ -640,12 +667,7 @@ FROM {quoted_table}
         # ============================================================
         if condition and condition.strip():
             if column and quoted_col:
-                adapted_condition = re.sub(
-                    r'\bcolumn\b',
-                    quoted_col,
-                    condition.strip(),
-                    flags=re.IGNORECASE
-                )
+                adapted_condition = self.adapt_condition_expr(condition.strip(), column)
             else:
                 adapted_condition = condition.strip()
 
@@ -726,14 +748,8 @@ FROM {quoted_table}
             if not column or not condition:
                 continue
 
-            quoted_col = self.quote_identifier(column)
-            # 替换 column 占位符
-            adapted_condition = re.sub(
-                r'\bcolumn\b',
-                quoted_col,
-                condition.strip(),
-                flags=re.IGNORECASE
-            )
+            # 使用统一替换，保留字面量及已引用的列名。
+            adapted_condition = self.adapt_condition_expr(condition.strip(), column)
             # 业务条件取反，得到违规条件
             where_clauses.append(f"(NOT ({adapted_condition}))")
 

@@ -1,0 +1,331 @@
+test_backslash_identifier_does_not_become_regex_replacement (__main__.ColumnQuotingTests.test_backslash_identifier_does_not_become_regex_replacement) ... ok
+test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) ... ok
+test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) ... ok
+test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) ... ok
+test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) ... 
+  test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='postgresql', name='column') ... FAIL
+  test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='postgresql', name='a\\1') ... ERROR
+  test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='mysql', name='column') ... FAIL
+  test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='mysql', name='a\\1') ... ERROR
+  test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='mariadb', name='column') ... FAIL
+  test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='mariadb', name='a\\1') ... ERROR
+  test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='mssql', name='column') ... FAIL
+  test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='mssql', name='a\\1') ... ERROR
+  test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='oracle', name='column') ... FAIL
+  test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='oracle', name='a\\1') ... ERROR
+  test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='sqlite', name='column') ... FAIL
+  test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='sqlite', name='a\\1') ... ERROR
+  test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='trino', name='column') ... FAIL
+  test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='trino', name='a\\1') ... ERROR
+  test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='kingbase', name='column') ... FAIL
+  test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='kingbase', name='a\\1') ... ERROR
+  test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='oceanbase', name='column') ... FAIL
+  test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='oceanbase', name='a\\1') ... ERROR
+  test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='dm', name='column') ... FAIL
+  test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='dm', name='a\\1') ... ERROR
+test_sqlite_real_execution_and_injection_control (__main__.ColumnQuotingTests.test_sqlite_real_execution_and_injection_control) ... ok
+
+======================================================================
+ERROR: test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='postgresql', name='a\\1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 72, in test_public_preview_builders_preserve_conditions
+    single = adapter.build_check_sql("items", name, expression, "custom_sql")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/onticards-pr53-b4799bf7/dialect_adapter.py", line 650, in build_check_sql
+    adapted_condition = re.sub(
+                        ^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 186, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 334, in _compile_template
+    return _sre.template(pattern, _parser.parse_template(repl, pattern))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/_parser.py", line 1069, in parse_template
+    addgroup(int(this[1:]), len(this) - 1)
+  File "/usr/lib/python3.12/re/_parser.py", line 1014, in addgroup
+    raise s.error("invalid group reference %d" % index, pos)
+re.error: invalid group reference 1 at position 3
+
+======================================================================
+ERROR: test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='mysql', name='a\\1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 72, in test_public_preview_builders_preserve_conditions
+    single = adapter.build_check_sql("items", name, expression, "custom_sql")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/onticards-pr53-b4799bf7/dialect_adapter.py", line 650, in build_check_sql
+    adapted_condition = re.sub(
+                        ^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 186, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 334, in _compile_template
+    return _sre.template(pattern, _parser.parse_template(repl, pattern))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/_parser.py", line 1069, in parse_template
+    addgroup(int(this[1:]), len(this) - 1)
+  File "/usr/lib/python3.12/re/_parser.py", line 1014, in addgroup
+    raise s.error("invalid group reference %d" % index, pos)
+re.error: invalid group reference 1 at position 3
+
+======================================================================
+ERROR: test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='mariadb', name='a\\1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 72, in test_public_preview_builders_preserve_conditions
+    single = adapter.build_check_sql("items", name, expression, "custom_sql")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/onticards-pr53-b4799bf7/dialect_adapter.py", line 650, in build_check_sql
+    adapted_condition = re.sub(
+                        ^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 186, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 334, in _compile_template
+    return _sre.template(pattern, _parser.parse_template(repl, pattern))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/_parser.py", line 1069, in parse_template
+    addgroup(int(this[1:]), len(this) - 1)
+  File "/usr/lib/python3.12/re/_parser.py", line 1014, in addgroup
+    raise s.error("invalid group reference %d" % index, pos)
+re.error: invalid group reference 1 at position 3
+
+======================================================================
+ERROR: test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='mssql', name='a\\1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 72, in test_public_preview_builders_preserve_conditions
+    single = adapter.build_check_sql("items", name, expression, "custom_sql")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/onticards-pr53-b4799bf7/dialect_adapter.py", line 650, in build_check_sql
+    adapted_condition = re.sub(
+                        ^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 186, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 334, in _compile_template
+    return _sre.template(pattern, _parser.parse_template(repl, pattern))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/_parser.py", line 1069, in parse_template
+    addgroup(int(this[1:]), len(this) - 1)
+  File "/usr/lib/python3.12/re/_parser.py", line 1014, in addgroup
+    raise s.error("invalid group reference %d" % index, pos)
+re.error: invalid group reference 1 at position 3
+
+======================================================================
+ERROR: test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='oracle', name='a\\1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 72, in test_public_preview_builders_preserve_conditions
+    single = adapter.build_check_sql("items", name, expression, "custom_sql")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/onticards-pr53-b4799bf7/dialect_adapter.py", line 650, in build_check_sql
+    adapted_condition = re.sub(
+                        ^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 186, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 334, in _compile_template
+    return _sre.template(pattern, _parser.parse_template(repl, pattern))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/_parser.py", line 1069, in parse_template
+    addgroup(int(this[1:]), len(this) - 1)
+  File "/usr/lib/python3.12/re/_parser.py", line 1014, in addgroup
+    raise s.error("invalid group reference %d" % index, pos)
+re.error: invalid group reference 1 at position 3
+
+======================================================================
+ERROR: test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='sqlite', name='a\\1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 72, in test_public_preview_builders_preserve_conditions
+    single = adapter.build_check_sql("items", name, expression, "custom_sql")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/onticards-pr53-b4799bf7/dialect_adapter.py", line 650, in build_check_sql
+    adapted_condition = re.sub(
+                        ^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 186, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 334, in _compile_template
+    return _sre.template(pattern, _parser.parse_template(repl, pattern))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/_parser.py", line 1069, in parse_template
+    addgroup(int(this[1:]), len(this) - 1)
+  File "/usr/lib/python3.12/re/_parser.py", line 1014, in addgroup
+    raise s.error("invalid group reference %d" % index, pos)
+re.error: invalid group reference 1 at position 3
+
+======================================================================
+ERROR: test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='trino', name='a\\1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 72, in test_public_preview_builders_preserve_conditions
+    single = adapter.build_check_sql("items", name, expression, "custom_sql")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/onticards-pr53-b4799bf7/dialect_adapter.py", line 650, in build_check_sql
+    adapted_condition = re.sub(
+                        ^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 186, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 334, in _compile_template
+    return _sre.template(pattern, _parser.parse_template(repl, pattern))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/_parser.py", line 1069, in parse_template
+    addgroup(int(this[1:]), len(this) - 1)
+  File "/usr/lib/python3.12/re/_parser.py", line 1014, in addgroup
+    raise s.error("invalid group reference %d" % index, pos)
+re.error: invalid group reference 1 at position 3
+
+======================================================================
+ERROR: test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='kingbase', name='a\\1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 72, in test_public_preview_builders_preserve_conditions
+    single = adapter.build_check_sql("items", name, expression, "custom_sql")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/onticards-pr53-b4799bf7/dialect_adapter.py", line 650, in build_check_sql
+    adapted_condition = re.sub(
+                        ^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 186, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 334, in _compile_template
+    return _sre.template(pattern, _parser.parse_template(repl, pattern))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/_parser.py", line 1069, in parse_template
+    addgroup(int(this[1:]), len(this) - 1)
+  File "/usr/lib/python3.12/re/_parser.py", line 1014, in addgroup
+    raise s.error("invalid group reference %d" % index, pos)
+re.error: invalid group reference 1 at position 3
+
+======================================================================
+ERROR: test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='oceanbase', name='a\\1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 72, in test_public_preview_builders_preserve_conditions
+    single = adapter.build_check_sql("items", name, expression, "custom_sql")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/onticards-pr53-b4799bf7/dialect_adapter.py", line 650, in build_check_sql
+    adapted_condition = re.sub(
+                        ^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 186, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 334, in _compile_template
+    return _sre.template(pattern, _parser.parse_template(repl, pattern))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/_parser.py", line 1069, in parse_template
+    addgroup(int(this[1:]), len(this) - 1)
+  File "/usr/lib/python3.12/re/_parser.py", line 1014, in addgroup
+    raise s.error("invalid group reference %d" % index, pos)
+re.error: invalid group reference 1 at position 3
+
+======================================================================
+ERROR: test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='dm', name='a\\1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 72, in test_public_preview_builders_preserve_conditions
+    single = adapter.build_check_sql("items", name, expression, "custom_sql")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/onticards-pr53-b4799bf7/dialect_adapter.py", line 650, in build_check_sql
+    adapted_condition = re.sub(
+                        ^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 186, in sub
+    return _compile(pattern, flags).sub(repl, string, count)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/__init__.py", line 334, in _compile_template
+    return _sre.template(pattern, _parser.parse_template(repl, pattern))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/re/_parser.py", line 1069, in parse_template
+    addgroup(int(this[1:]), len(this) - 1)
+  File "/usr/lib/python3.12/re/_parser.py", line 1014, in addgroup
+    raise s.error("invalid group reference %d" % index, pos)
+re.error: invalid group reference 1 at position 3
+
+======================================================================
+FAIL: test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='postgresql', name='column')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 76, in test_public_preview_builders_preserve_conditions
+    self.assertIn("NOT (" + expression + ")", sql)
+AssertionError: 'NOT ("column" <> \'column\')' not found in 'SELECT\n    COUNT(*) as total_count,\n    SUM(CASE WHEN NOT (""column"" <> \'"column"\') THEN 1 ELSE 0 END) as failed_count\nFROM "items"'
+
+======================================================================
+FAIL: test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='mysql', name='column')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 76, in test_public_preview_builders_preserve_conditions
+    self.assertIn("NOT (" + expression + ")", sql)
+AssertionError: "NOT (`column` <> 'column')" not found in "SELECT\n    COUNT(*) as total_count,\n    SUM(CASE WHEN NOT (``column`` <> '`column`') THEN 1 ELSE 0 END) as failed_count\nFROM `items`"
+
+======================================================================
+FAIL: test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='mariadb', name='column')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 76, in test_public_preview_builders_preserve_conditions
+    self.assertIn("NOT (" + expression + ")", sql)
+AssertionError: "NOT (`column` <> 'column')" not found in "SELECT\n    COUNT(*) as total_count,\n    SUM(CASE WHEN NOT (``column`` <> '`column`') THEN 1 ELSE 0 END) as failed_count\nFROM `items`"
+
+======================================================================
+FAIL: test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='mssql', name='column')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 76, in test_public_preview_builders_preserve_conditions
+    self.assertIn("NOT (" + expression + ")", sql)
+AssertionError: "NOT ([column] <> 'column')" not found in "SELECT\n    COUNT(*) as total_count,\n    SUM(CASE WHEN NOT ([[column]] <> '[column]') THEN 1 ELSE 0 END) as failed_count\nFROM [items]"
+
+======================================================================
+FAIL: test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='oracle', name='column')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 76, in test_public_preview_builders_preserve_conditions
+    self.assertIn("NOT (" + expression + ")", sql)
+AssertionError: 'NOT ("column" <> \'column\')' not found in 'SELECT\n    COUNT(*) as total_count,\n    SUM(CASE WHEN NOT (""column"" <> \'"column"\') THEN 1 ELSE 0 END) as failed_count\nFROM "items"'
+
+======================================================================
+FAIL: test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='sqlite', name='column')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 76, in test_public_preview_builders_preserve_conditions
+    self.assertIn("NOT (" + expression + ")", sql)
+AssertionError: 'NOT ("column" <> \'column\')' not found in 'SELECT\n    COUNT(*) as total_count,\n    SUM(CASE WHEN NOT (""column"" <> \'"column"\') THEN 1 ELSE 0 END) as failed_count\nFROM "items"'
+
+======================================================================
+FAIL: test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='trino', name='column')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 76, in test_public_preview_builders_preserve_conditions
+    self.assertIn("NOT (" + expression + ")", sql)
+AssertionError: 'NOT ("column" <> \'column\')' not found in 'SELECT\n    COUNT(*) as total_count,\n    SUM(CASE WHEN NOT (""column"" <> \'"column"\') THEN 1 ELSE 0 END) as failed_count\nFROM "items"'
+
+======================================================================
+FAIL: test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='kingbase', name='column')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 76, in test_public_preview_builders_preserve_conditions
+    self.assertIn("NOT (" + expression + ")", sql)
+AssertionError: 'NOT ("column" <> \'column\')' not found in 'SELECT\n    COUNT(*) as total_count,\n    SUM(CASE WHEN NOT (""column"" <> \'"column"\') THEN 1 ELSE 0 END) as failed_count\nFROM "items"'
+
+======================================================================
+FAIL: test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='oceanbase', name='column')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 76, in test_public_preview_builders_preserve_conditions
+    self.assertIn("NOT (" + expression + ")", sql)
+AssertionError: "NOT (`column` <> 'column')" not found in "SELECT\n    COUNT(*) as total_count,\n    SUM(CASE WHEN NOT (``column`` <> '`column`') THEN 1 ELSE 0 END) as failed_count\nFROM `items`"
+
+======================================================================
+FAIL: test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) (dialect='dm', name='column')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 76, in test_public_preview_builders_preserve_conditions
+    self.assertIn("NOT (" + expression + ")", sql)
+AssertionError: 'NOT ("column" <> \'column\')' not found in 'SELECT\n    COUNT(*) as total_count,\n    SUM(CASE WHEN NOT (""column"" <> \'"column"\') THEN 1 ELSE 0 END) as failed_count\nFROM "items"'
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.009s
+
+FAILED (failures=10, errors=10)

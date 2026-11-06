@@ -1,0 +1,124 @@
+test_backslash_identifier_does_not_become_regex_replacement (__main__.ColumnQuotingTests.test_backslash_identifier_does_not_become_regex_replacement) ... ok
+test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) ... ok
+test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests.test_dialect_string_literals_are_preserved) ... 
+  test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests.test_dialect_string_literals_are_preserved) (dialect='mysql', literal="'it\\'s column'") ... FAIL
+  test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests.test_dialect_string_literals_are_preserved) (dialect='mariadb', literal="'it\\'s column'") ... FAIL
+  test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests.test_dialect_string_literals_are_preserved) (dialect='oceanbase', literal="'it\\'s column'") ... FAIL
+  test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests.test_dialect_string_literals_are_preserved) (dialect='postgresql', literal="E'it\\'s column'") ... FAIL
+  test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests.test_dialect_string_literals_are_preserved) (dialect='postgresql', literal="$$it's column$$") ... FAIL
+  test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests.test_dialect_string_literals_are_preserved) (dialect='postgresql', literal="$tag$it's column$tag$") ... FAIL
+  test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests.test_dialect_string_literals_are_preserved) (dialect='oracle', literal="q'[it's column]'") ... FAIL
+  test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests.test_dialect_string_literals_are_preserved) (dialect='dm', literal="q'{it's column}'") ... FAIL
+test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) ... ok
+test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) ... ok
+test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) ... ok
+test_sqlite_real_execution_and_injection_control (__main__.ColumnQuotingTests.test_sqlite_real_execution_and_injection_control) ... ok
+
+======================================================================
+FAIL: test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests.test_dialect_string_literals_are_preserved) (dialect='mysql', literal="'it\\'s column'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 65, in test_dialect_string_literals_are_preserved
+    self.assertEqual(adapter.adapt_condition_expr(expression, "amount"), expected)
+AssertionError: "`amount` <> 'it\\'s `amount`'" != "`amount` <> 'it\\'s column'"
+- `amount` <> 'it\'s `amount`'
+?                    ^^ -- --
++ `amount` <> 'it\'s column'
+?                    ^^^^
+
+
+======================================================================
+FAIL: test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests.test_dialect_string_literals_are_preserved) (dialect='mariadb', literal="'it\\'s column'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 65, in test_dialect_string_literals_are_preserved
+    self.assertEqual(adapter.adapt_condition_expr(expression, "amount"), expected)
+AssertionError: "`amount` <> 'it\\'s `amount`'" != "`amount` <> 'it\\'s column'"
+- `amount` <> 'it\'s `amount`'
+?                    ^^ -- --
++ `amount` <> 'it\'s column'
+?                    ^^^^
+
+
+======================================================================
+FAIL: test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests.test_dialect_string_literals_are_preserved) (dialect='oceanbase', literal="'it\\'s column'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 65, in test_dialect_string_literals_are_preserved
+    self.assertEqual(adapter.adapt_condition_expr(expression, "amount"), expected)
+AssertionError: "`amount` <> 'it\\'s `amount`'" != "`amount` <> 'it\\'s column'"
+- `amount` <> 'it\'s `amount`'
+?                    ^^ -- --
++ `amount` <> 'it\'s column'
+?                    ^^^^
+
+
+======================================================================
+FAIL: test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests.test_dialect_string_literals_are_preserved) (dialect='postgresql', literal="E'it\\'s column'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 65, in test_dialect_string_literals_are_preserved
+    self.assertEqual(adapter.adapt_condition_expr(expression, "amount"), expected)
+AssertionError: '"amount" <> E\'it\\\'s "amount"\'' != '"amount" <> E\'it\\\'s column\''
+- "amount" <> E'it\'s "amount"'
+?                     ^^ -- --
++ "amount" <> E'it\'s column'
+?                     ^^^^
+
+
+======================================================================
+FAIL: test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests.test_dialect_string_literals_are_preserved) (dialect='postgresql', literal="$$it's column$$")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 65, in test_dialect_string_literals_are_preserved
+    self.assertEqual(adapter.adapt_condition_expr(expression, "amount"), expected)
+AssertionError: '"amount" <> $$it\'s "amount"$$' != '"amount" <> $$it\'s column$$'
+- "amount" <> $$it's "amount"$$
+?                    ^^ -- --
++ "amount" <> $$it's column$$
+?                    ^^^^
+
+
+======================================================================
+FAIL: test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests.test_dialect_string_literals_are_preserved) (dialect='postgresql', literal="$tag$it's column$tag$")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 65, in test_dialect_string_literals_are_preserved
+    self.assertEqual(adapter.adapt_condition_expr(expression, "amount"), expected)
+AssertionError: '"amount" <> $tag$it\'s "amount"$tag$' != '"amount" <> $tag$it\'s column$tag$'
+- "amount" <> $tag$it's "amount"$tag$
+?                       ^^ -- --
++ "amount" <> $tag$it's column$tag$
+?                       ^^^^
+
+
+======================================================================
+FAIL: test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests.test_dialect_string_literals_are_preserved) (dialect='oracle', literal="q'[it's column]'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 65, in test_dialect_string_literals_are_preserved
+    self.assertEqual(adapter.adapt_condition_expr(expression, "amount"), expected)
+AssertionError: '"amount" <> q\'[it\'s "amount"]\'' != '"amount" <> q\'[it\'s column]\''
+- "amount" <> q'[it's "amount"]'
+?                     ^^ -- --
++ "amount" <> q'[it's column]'
+?                     ^^^^
+
+
+======================================================================
+FAIL: test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests.test_dialect_string_literals_are_preserved) (dialect='dm', literal="q'{it's column}'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 65, in test_dialect_string_literals_are_preserved
+    self.assertEqual(adapter.adapt_condition_expr(expression, "amount"), expected)
+AssertionError: '"amount" <> q\'{it\'s "amount"}\'' != '"amount" <> q\'{it\'s column}\''
+- "amount" <> q'{it's "amount"}'
+?                     ^^ -- --
++ "amount" <> q'{it's column}'
+?                     ^^^^
+
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.004s
+
+FAILED (failures=8)

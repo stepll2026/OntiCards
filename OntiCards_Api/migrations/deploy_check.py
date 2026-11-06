@@ -99,6 +99,21 @@ def check_chain(revs):
         add(FAIL, "迁移链", "migrations/versions/ 下没有任何迁移文件")
         return None, None
 
+    # 从每个节点沿 down_revision 遍历，覆盖与 head 不连通的环。
+    # 已完成的路径无需重复访问；使用迭代避免长链触发递归深度限制。
+    visited = set()
+    for start in revs:
+        path = set()
+        current = start
+        while current in revs and current not in visited:
+            if current in path:
+                add(FAIL, "迁移链环检测",
+                    "存在循环引用，涉及版本：%s" % current)
+                return None, None
+            path.add(current)
+            current = revs[current]["down"]
+        visited.update(path)
+
     # ---- 单一 head
     downs = {v["down"] for v in revs.values() if v["down"]}
     heads = sorted(r for r in revs if r not in downs)

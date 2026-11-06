@@ -1,0 +1,124 @@
+
+Running 4 tests using 1 worker
+
+  ✘  1 tests/query-history-layout.spec.js:65:5 › history geometry standalone 1440 (4.2s)
+  ✘  2 tests/query-history-layout.spec.js:65:5 › history geometry workspace 1440 (19.2s)
+  ✘  3 tests/query-history-layout.spec.js:65:5 › history geometry standalone 1024 (3.9s)
+  ✘  4 tests/query-history-layout.spec.js:65:5 › history geometry workspace 1024 (18.5s)
+
+
+  1) tests/query-history-layout.spec.js:65:5 › history geometry standalone 1440 ────────────────────
+
+    Error: cell 5 right
+
+    expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 1046.75
+    Received:    1060.75
+
+       95 |         const {cell, content} = measurements[index];
+       96 |         expect(content.left, `cell ${index} left`).toBeGreaterThanOrEqual(cell.left - 1);
+    >  97 |         expect(content.right, `cell ${index} right`).toBeLessThanOrEqual(cell.right + 1);
+          |                                                      ^
+       98 |         expect(content.top, `cell ${index} top`).toBeGreaterThanOrEqual(cell.top - 1);
+       99 |         expect(content.bottom, `cell ${index} bottom`).toBeLessThanOrEqual(cell.bottom + 1);
+      100 |       }
+        at /trusted-tests/tests/query-history-layout.spec.js:97:54
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../results/browser-red/test-results/query-history-layout-history-geometry-standalone-1440/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../results/browser-red/test-results/query-history-layout-history-geometry-standalone-1440/error-context.md
+
+  2) tests/query-history-layout.spec.js:65:5 › history geometry workspace 1440 ─────────────────────
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  locator('table').filter({ has: getByRole('columnheader', { name: 'Token', exact: true }) }).locator('tbody tr')
+    Expected: 1
+    Received: 0
+    Timeout:  15000ms
+
+    Call log:
+      - Expect "toHaveCount" locator('table').filter({ has: getByRole('columnheader', { name: 'Token', exact: true }) }).locator('tbody tr') with timeout 15000ms
+      - waiting for locator('table').filter({ has: getByRole('columnheader', { name: 'Token', exact: true }) }).locator('tbody tr')
+        34 × locator resolved to 0 elements
+           - unexpected value "0"
+
+
+      84 |       // Works on the old page too, so red means a layout failure, not a missing test ID.
+      85 |       const table = page.locator('table').filter({has: page.getByRole('columnheader', {name: 'Token', exact: true})});
+    > 86 |       await expect(table.locator('tbody tr')).toHaveCount(1);
+         |                                               ^
+      87 |       await table.locator('tbody tr').scrollIntoViewIfNeeded();
+      88 |       await page.evaluate(() => document.fonts.ready);
+      89 |       const measurements = await contentGeometry(table);
+        at /trusted-tests/tests/query-history-layout.spec.js:86:47
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../results/browser-red/test-results/query-history-layout-history-geometry-workspace-1440/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../results/browser-red/test-results/query-history-layout-history-geometry-workspace-1440/error-context.md
+
+  3) tests/query-history-layout.spec.js:65:5 › history geometry standalone 1024 ────────────────────
+
+    Error: cell 4 right
+
+    expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 719.390625
+    Received:    744.109375
+
+       95 |         const {cell, content} = measurements[index];
+       96 |         expect(content.left, `cell ${index} left`).toBeGreaterThanOrEqual(cell.left - 1);
+    >  97 |         expect(content.right, `cell ${index} right`).toBeLessThanOrEqual(cell.right + 1);
+          |                                                      ^
+       98 |         expect(content.top, `cell ${index} top`).toBeGreaterThanOrEqual(cell.top - 1);
+       99 |         expect(content.bottom, `cell ${index} bottom`).toBeLessThanOrEqual(cell.bottom + 1);
+      100 |       }
+        at /trusted-tests/tests/query-history-layout.spec.js:97:54
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../results/browser-red/test-results/query-history-layout-history-geometry-standalone-1024/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../results/browser-red/test-results/query-history-layout-history-geometry-standalone-1024/error-context.md
+
+  4) tests/query-history-layout.spec.js:65:5 › history geometry workspace 1024 ─────────────────────
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  locator('table').filter({ has: getByRole('columnheader', { name: 'Token', exact: true }) }).locator('tbody tr')
+    Expected: 1
+    Received: 0
+    Timeout:  15000ms
+
+    Call log:
+      - Expect "toHaveCount" locator('table').filter({ has: getByRole('columnheader', { name: 'Token', exact: true }) }).locator('tbody tr') with timeout 15000ms
+      - waiting for locator('table').filter({ has: getByRole('columnheader', { name: 'Token', exact: true }) }).locator('tbody tr')
+        33 × locator resolved to 0 elements
+           - unexpected value "0"
+
+
+      84 |       // Works on the old page too, so red means a layout failure, not a missing test ID.
+      85 |       const table = page.locator('table').filter({has: page.getByRole('columnheader', {name: 'Token', exact: true})});
+    > 86 |       await expect(table.locator('tbody tr')).toHaveCount(1);
+         |                                               ^
+      87 |       await table.locator('tbody tr').scrollIntoViewIfNeeded();
+      88 |       await page.evaluate(() => document.fonts.ready);
+      89 |       const measurements = await contentGeometry(table);
+        at /trusted-tests/tests/query-history-layout.spec.js:86:47
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../results/browser-red/test-results/query-history-layout-history-geometry-workspace-1024/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../results/browser-red/test-results/query-history-layout-history-geometry-workspace-1024/error-context.md
+
+  4 failed
+    tests/query-history-layout.spec.js:65:5 › history geometry standalone 1440 ─────────────────────
+    tests/query-history-layout.spec.js:65:5 › history geometry workspace 1440 ──────────────────────
+    tests/query-history-layout.spec.js:65:5 › history geometry standalone 1024 ─────────────────────
+    tests/query-history-layout.spec.js:65:5 › history geometry workspace 1024 ──────────────────────
