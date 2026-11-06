@@ -1,0 +1,115 @@
+test_exact_limit_is_saved_completely (__main__.AvatarUploadTests) ... ok
+test_invalid_requests_do_not_write (__main__.AvatarUploadTests) ... /usr/local/lib/python3.10/ast.py:50: ResourceWarning: unclosed file <_io.FileIO name=3 mode='rb+' closefd=True>
+  return compile(source, filename, mode, flags,
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+/usr/local/lib/python3.10/ast.py:50: ResourceWarning: unclosed file <_io.FileIO name=4 mode='rb+' closefd=True>
+  return compile(source, filename, mode, flags,
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+test_missing_user_does_not_write (__main__.AvatarUploadTests) ... ok
+test_normal_and_traversal_uploads_stay_in_directory (__main__.AvatarUploadTests) ... ok
+test_oversize_is_http_413_without_write_or_commit (__main__.AvatarUploadTests) ... test_sanitized_basename (__main__.AvatarUploadTests) ... ok
+
+======================================================================
+ERROR: test_invalid_requests_do_not_write (__main__.AvatarUploadTests) (method='POST', name=None)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/test_avatar_upload.py", line 92, in test_invalid_requests_do_not_write
+    response = self.upload(method, name)
+  File "/work/test_avatar_upload.py", line 55, in upload
+    return self.client.open("/avatar", method=method, data=data, content_type="multipart/form-data")
+  File "/usr/local/lib/python3.10/site-packages/flask/testing.py", line 232, in open
+    response = super().open(
+  File "/usr/local/lib/python3.10/site-packages/werkzeug/test.py", line 1116, in open
+    response_parts = self.run_wsgi_app(request.environ, buffered=buffered)
+  File "/usr/local/lib/python3.10/site-packages/werkzeug/test.py", line 988, in run_wsgi_app
+    rv = run_wsgi_app(self.application, environ, buffered=buffered)
+  File "/usr/local/lib/python3.10/site-packages/werkzeug/test.py", line 1264, in run_wsgi_app
+    app_rv = app(environ, start_response)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 2213, in __call__
+    return self.wsgi_app(environ, start_response)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 2193, in wsgi_app
+    response = self.handle_exception(e)
+  File "/usr/local/lib/python3.10/site-packages/flask_restful/__init__.py", line 298, in error_router
+    return original_handler(e)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 2190, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1486, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/usr/local/lib/python3.10/site-packages/flask_restful/__init__.py", line 298, in error_router
+    return original_handler(e)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1484, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1469, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
+  File "/usr/local/lib/python3.10/site-packages/flask_restful/__init__.py", line 489, in wrapper
+    resp = resource(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/flask/views.py", line 109, in view
+    return current_app.ensure_sync(self.dispatch_request)(**kwargs)
+  File "/usr/local/lib/python3.10/site-packages/flask_restful/__init__.py", line 604, in dispatch_request
+    resp = meth(*args, **kwargs)
+  File "/work/userManagement.py", line 324, in post
+    if file.filename == '':
+AttributeError: 'NoneType' object has no attribute 'filename'
+
+======================================================================
+ERROR: test_invalid_requests_do_not_write (__main__.AvatarUploadTests) (method='POST', name='\\')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/test_avatar_upload.py", line 92, in test_invalid_requests_do_not_write
+    response = self.upload(method, name)
+  File "/work/test_avatar_upload.py", line 55, in upload
+    return self.client.open("/avatar", method=method, data=data, content_type="multipart/form-data")
+  File "/usr/local/lib/python3.10/site-packages/flask/testing.py", line 232, in open
+    response = super().open(
+  File "/usr/local/lib/python3.10/site-packages/werkzeug/test.py", line 1116, in open
+    response_parts = self.run_wsgi_app(request.environ, buffered=buffered)
+  File "/usr/local/lib/python3.10/site-packages/werkzeug/test.py", line 988, in run_wsgi_app
+    rv = run_wsgi_app(self.application, environ, buffered=buffered)
+  File "/usr/local/lib/python3.10/site-packages/werkzeug/test.py", line 1264, in run_wsgi_app
+    app_rv = app(environ, start_response)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 2213, in __call__
+    return self.wsgi_app(environ, start_response)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 2193, in wsgi_app
+    response = self.handle_exception(e)
+  File "/usr/local/lib/python3.10/site-packages/flask_restful/__init__.py", line 298, in error_router
+    return original_handler(e)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 2190, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1486, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/usr/local/lib/python3.10/site-packages/flask_restful/__init__.py", line 298, in error_router
+    return original_handler(e)
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1484, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/usr/local/lib/python3.10/site-packages/flask/app.py", line 1469, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)
+  File "/usr/local/lib/python3.10/site-packages/flask_restful/__init__.py", line 489, in wrapper
+    resp = resource(*args, **kwargs)
+  File "/usr/local/lib/python3.10/site-packages/flask/views.py", line 109, in view
+    return current_app.ensure_sync(self.dispatch_request)(**kwargs)
+  File "/usr/local/lib/python3.10/site-packages/flask_restful/__init__.py", line 604, in dispatch_request
+    resp = meth(*args, **kwargs)
+  File "/work/userManagement.py", line 324, in post
+    if file.filename == '':
+AttributeError: 'NoneType' object has no attribute 'filename'
+
+======================================================================
+FAIL: test_oversize_is_http_413_without_write_or_commit (__main__.AvatarUploadTests) (method='POST')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/test_avatar_upload.py", line 73, in test_oversize_is_http_413_without_write_or_commit
+    self.assertEqual(response.status_code, 413)
+AssertionError: 200 != 413
+
+======================================================================
+FAIL: test_oversize_is_http_413_without_write_or_commit (__main__.AvatarUploadTests) (method='PUT')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/test_avatar_upload.py", line 73, in test_oversize_is_http_413_without_write_or_commit
+    self.assertEqual(response.status_code, 413)
+AssertionError: 200 != 413
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.243s
+
+FAILED (failures=2, errors=2)

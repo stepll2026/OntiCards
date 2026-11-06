@@ -1,0 +1,89 @@
+test_exact_limit_is_saved_completely (__main__.AvatarUploadTests) ... ERROR
+test_invalid_requests_do_not_write (__main__.AvatarUploadTests) ... ERROR
+test_missing_user_does_not_write (__main__.AvatarUploadTests) ... ERROR
+test_normal_and_traversal_uploads_stay_in_directory (__main__.AvatarUploadTests) ... ERROR
+test_oversize_is_http_413_without_write_or_commit (__main__.AvatarUploadTests) ... ERROR
+test_sanitized_basename (__main__.AvatarUploadTests) ... ERROR
+
+======================================================================
+ERROR: test_exact_limit_is_saved_completely (__main__.AvatarUploadTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/test_avatar_upload.py", line 25, in setUp
+    tree = ast.parse(source, filename=str(path))
+  File "/usr/local/lib/python3.10/ast.py", line 50, in parse
+    return compile(source, filename, mode, flags,
+  File "/work/userManagement.py", line 265
+    def _safe_filename(filename: str) -> str:
+    ^^^
+SyntaxError: expected 'except' or 'finally' block
+
+======================================================================
+ERROR: test_invalid_requests_do_not_write (__main__.AvatarUploadTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/test_avatar_upload.py", line 25, in setUp
+    tree = ast.parse(source, filename=str(path))
+  File "/usr/local/lib/python3.10/ast.py", line 50, in parse
+    return compile(source, filename, mode, flags,
+  File "/work/userManagement.py", line 265
+    def _safe_filename(filename: str) -> str:
+    ^^^
+SyntaxError: expected 'except' or 'finally' block
+
+======================================================================
+ERROR: test_missing_user_does_not_write (__main__.AvatarUploadTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/test_avatar_upload.py", line 25, in setUp
+    tree = ast.parse(source, filename=str(path))
+  File "/usr/local/lib/python3.10/ast.py", line 50, in parse
+    return compile(source, filename, mode, flags,
+  File "/work/userManagement.py", line 265
+    def _safe_filename(filename: str) -> str:
+    ^^^
+SyntaxError: expected 'except' or 'finally' block
+
+======================================================================
+ERROR: test_normal_and_traversal_uploads_stay_in_directory (__main__.AvatarUploadTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/test_avatar_upload.py", line 25, in setUp
+    tree = ast.parse(source, filename=str(path))
+  File "/usr/local/lib/python3.10/ast.py", line 50, in parse
+    return compile(source, filename, mode, flags,
+  File "/work/userManagement.py", line 265
+    def _safe_filename(filename: str) -> str:
+    ^^^
+SyntaxError: expected 'except' or 'finally' block
+
+======================================================================
+ERROR: test_oversize_is_http_413_without_write_or_commit (__main__.AvatarUploadTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/test_avatar_upload.py", line 25, in setUp
+    tree = ast.parse(source, filename=str(path))
+  File "/usr/local/lib/python3.10/ast.py", line 50, in parse
+    return compile(source, filename, mode, flags,
+  File "/work/userManagement.py", line 265
+    def _safe_filename(filename: str) -> str:
+    ^^^
+SyntaxError: expected 'except' or 'finally' block
+
+======================================================================
+ERROR: test_sanitized_basename (__main__.AvatarUploadTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/test_avatar_upload.py", line 25, in setUp
+    tree = ast.parse(source, filename=str(path))
+  File "/usr/local/lib/python3.10/ast.py", line 50, in parse
+    return compile(source, filename, mode, flags,
+  File "/work/userManagement.py", line 265
+    def _safe_filename(filename: str) -> str:
+    ^^^
+SyntaxError: expected 'except' or 'finally' block
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.012s
+
+FAILED (errors=6)
