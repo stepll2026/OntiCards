@@ -1,0 +1,11 @@
+test_exact_limit_is_saved_completely (__main__.AvatarUploadTests) ... ok
+test_invalid_requests_do_not_write (__main__.AvatarUploadTests) ... ok
+test_missing_user_does_not_write (__main__.AvatarUploadTests) ... ok
+test_normal_and_traversal_uploads_stay_in_directory (__main__.AvatarUploadTests) ... ok
+test_oversize_is_http_413_without_write_or_commit (__main__.AvatarUploadTests) ... ok
+test_sanitized_basename (__main__.AvatarUploadTests) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.239s
+
+OK
