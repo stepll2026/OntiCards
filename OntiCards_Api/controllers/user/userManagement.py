@@ -260,17 +260,6 @@ class ChangePasswordAPI(Resource):
 try:
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'storage', 'avatars')
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-    MAX_AVATAR_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB — 与 UPLOAD_IMAGE_FILE_SIZE_LIMIT 对齐
-
-def _safe_filename(filename: str) -> str:
-    """过滤文件名中的路径分隔符与 null，防路径穿越"""
-    if not filename:
-        return ''
-    # 防止 path traversal
-    cleaned = filename.replace('..', '').replace('/', '').replace('\\', '').replace('\x00', '')
-    # 只保留 basename
-    return os.path.basename(cleaned)
-
     # 确保上传目录存在（只在需要时创建）
     # 注意：目录创建延迟到实际上传时进行，不影响模块导入
 except Exception as e:
@@ -278,6 +267,14 @@ except Exception as e:
     UPLOAD_FOLDER = None
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
     print(f"[警告] 头像上传路径配置失败: {e}，头像上传功能将不可用")
+
+
+MAX_AVATAR_SIZE_BYTES = 10 * 1024 * 1024  # 10 MiB per avatar
+
+
+def _safe_filename(filename: str) -> str:
+    """保留纯文件名；兼容客户端使用两种路径分隔符。"""
+    return os.path.basename(filename.replace('\\', '/').replace('\x00', ''))
 
 
 def allowed_file(filename):
@@ -322,9 +319,9 @@ class UploadAvatarAPI(Resource):
             size = file.tell()
             file.seek(0)
             if size > MAX_AVATAR_SIZE_BYTES:
-                return {'message': f'File too large (max {MAX_AVATAR_SIZE_BYTES // (1024*1024)}MB)', 'code': 413}
+                return {'message': f'File too large (max {MAX_AVATAR_SIZE_BYTES // (1024*1024)}MB)', 'code': 413}, 413
             file.filename = safe_name
-        if file.filename == '':
+        if not file or file.filename == '':
             return {'message': 'No file selected', 'code': 400}
 
         if file and allowed_file(file.filename):
@@ -370,7 +367,7 @@ class UploadAvatarAPI(Resource):
             size = file.tell()
             file.seek(0)
             if size > MAX_AVATAR_SIZE_BYTES:
-                return {'message': f'File too large (max {MAX_AVATAR_SIZE_BYTES // (1024*1024)}MB)', 'code': 413}
+                return {'message': f'File too large (max {MAX_AVATAR_SIZE_BYTES // (1024*1024)}MB)', 'code': 413}, 413
             file.filename = safe_name
 
         if not file or file.filename == '':
