@@ -22,6 +22,7 @@ MySQL、SQL Server 等生成的列引用跟随数据源方言；含引号的列�
 - [实际测试文件 SHA256](tested-files.sha256)。
 - 预览测试从真实源码 AST 提取两方法，跳过应用初始化；不是完整 HTTP/API 集成测试。
 - 独审补充字符串词法缺口后新增第7方法，修正前8失败，见 [literals-red.log](literals-red.log)；修正后7+31全部通过。
+- 后续独审补充 MySQL 双引号转义与 PG dollar 标签大小写：新增子用例修正前2失败，见 [literal-edges-red.log](literal-edges-red.log)；修正后仍为7方法+31回归全通过。
 - 独立审查与清理结果由原 PR 正文及工单最终报告记录。
 
 ## 剩余限制

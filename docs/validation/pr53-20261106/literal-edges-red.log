@@ -1,0 +1,40 @@
+test_backslash_identifier_does_not_become_regex_replacement (__main__.ColumnQuotingTests.test_backslash_identifier_does_not_become_regex_replacement) ... ok
+test_delimiter_escaping (__main__.ColumnQuotingTests.test_delimiter_escaping) ... ok
+test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests.test_dialect_string_literals_are_preserved) ... 
+  test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests.test_dialect_string_literals_are_preserved) (dialect='mysql', literal='"a\\" column"') ... FAIL
+  test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests.test_dialect_string_literals_are_preserved) (dialect='postgresql', literal='$tag$a$TAG$ column$tag$') ... FAIL
+test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests.test_only_bare_placeholder_is_replaced) ... ok
+test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests.test_preview_uses_dialect_and_does_not_requote) ... ok
+test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests.test_public_preview_builders_preserve_conditions) ... ok
+test_sqlite_real_execution_and_injection_control (__main__.ColumnQuotingTests.test_sqlite_real_execution_and_injection_control) ... ok
+
+======================================================================
+FAIL: test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests.test_dialect_string_literals_are_preserved) (dialect='mysql', literal='"a\\" column"')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 67, in test_dialect_string_literals_are_preserved
+    self.assertEqual(adapter.adapt_condition_expr(expression, "amount"), expected)
+AssertionError: '`amount` <> "a\\" `amount`"' != '`amount` <> "a\\" column"'
+- `amount` <> "a\" `amount`"
+?                  ^^ -- --
++ `amount` <> "a\" column"
+?                  ^^^^
+
+
+======================================================================
+FAIL: test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests.test_dialect_string_literals_are_preserved) (dialect='postgresql', literal='$tag$a$TAG$ column$tag$')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onticards-pr53-b4799bf7/test_column_quoting.py", line 67, in test_dialect_string_literals_are_preserved
+    self.assertEqual(adapter.adapt_condition_expr(expression, "amount"), expected)
+AssertionError: '"amount" <> $tag$a$TAG$ "amount"$tag$' != '"amount" <> $tag$a$TAG$ column$tag$'
+- "amount" <> $tag$a$TAG$ "amount"$tag$
+?                         ^^ -- --
++ "amount" <> $tag$a$TAG$ column$tag$
+?                         ^^^^
+
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.005s
+
+FAILED (failures=2)

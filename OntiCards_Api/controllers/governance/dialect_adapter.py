@@ -290,18 +290,20 @@ class DialectAdapter:
         # Skip string literals and already quoted identifiers. This also makes
         # repeated adaptation safe when the actual column is named "column".
         single_quote = r"'(?:''|[^'])*'"
+        double_quote = r'"(?:""|[^"])*"'
         if self.db_type in ('mysql', 'mariadb', 'oceanbase'):
             single_quote = r"'(?:''|\\.|[^'\\])*'"
+            double_quote = r'"(?:""|\\.|[^"\\])*"'
         literals = [single_quote]
         if self.db_type in ('postgresql', 'kingbase'):
             literals[:0] = [
                 r"\bE'(?:''|\\.|[^'\\])*'",
-                r"(?P<dollar>\$(?:[A-Za-z_]\w*)?\$).*?(?P=dollar)",
+                r"(?P<dollar>\$(?:[A-Za-z_]\w*)?\$).*?(?-i:(?P=dollar))",
             ]
         if self.db_type in ('oracle', 'dm'):
-            literals.insert(0, r"\bq'(?:\[.*?\]|\{.*?\}|\(.*?\)|<.*?>|(?P<qmark>[^\s]).*?(?P=qmark))'")
+            literals.insert(0, r"\bq'(?:\[.*?\]|\{.*?\}|\(.*?\)|<.*?>|(?P<qmark>[^\s]).*?(?-i:(?P=qmark)))'")
         tokens = '|'.join(literals + [
-            r'"(?:""|[^"])*"', r'`(?:``|[^`])*`',
+            double_quote, r'`(?:``|[^`])*`',
             r'\[(?:\]\]|[^\]])*\]', r'--[^\n]*', r'/\*.*?\*/', r'\bcolumn\b',
         ])
         condition = re.sub(

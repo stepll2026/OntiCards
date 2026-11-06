@@ -49,6 +49,8 @@ class ColumnQuotingTests(unittest.TestCase):
     def test_dialect_string_literals_are_preserved(self):
         cases = [
             ("mysql", r"'it\'s column'"),
+            ("mysql", r'"a\" column"'),
+            ("postgresql", "$tag$a$TAG$ column$tag$"),
             ("mariadb", r"'it\'s column'"),
             ("oceanbase", r"'it\'s column'"),
             ("postgresql", r"E'it\'s column'"),
