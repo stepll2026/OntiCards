@@ -289,10 +289,24 @@ class DialectAdapter:
         quoted_col = self.quote_identifier(column)
         # Skip string literals and already quoted identifiers. This also makes
         # repeated adaptation safe when the actual column is named "column".
-        tokens = r"""'(?:''|[^'])*'|"(?:""|[^"])*"|`(?:``|[^`])*`|\[(?:\]\]|[^\]])*\]|\bcolumn\b"""
+        single_quote = r"'(?:''|[^'])*'"
+        if self.db_type in ('mysql', 'mariadb', 'oceanbase'):
+            single_quote = r"'(?:''|\\.|[^'\\])*'"
+        literals = [single_quote]
+        if self.db_type in ('postgresql', 'kingbase'):
+            literals[:0] = [
+                r"\bE'(?:''|\\.|[^'\\])*'",
+                r"(?P<dollar>\$(?:[A-Za-z_]\w*)?\$).*?(?P=dollar)",
+            ]
+        if self.db_type in ('oracle', 'dm'):
+            literals.insert(0, r"\bq'(?:\[.*?\]|\{.*?\}|\(.*?\)|<.*?>|(?P<qmark>[^\s]).*?(?P=qmark))'")
+        tokens = '|'.join(literals + [
+            r'"(?:""|[^"])*"', r'`(?:``|[^`])*`',
+            r'\[(?:\]\]|[^\]])*\]', r'--[^\n]*', r'/\*.*?\*/', r'\bcolumn\b',
+        ])
         condition = re.sub(
             tokens, lambda match: quoted_col if match.group().lower() == 'column' else match.group(),
-            condition, flags=re.IGNORECASE
+            condition, flags=re.IGNORECASE | re.DOTALL
         )
 
         return condition

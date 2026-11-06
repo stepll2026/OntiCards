@@ -46,6 +46,26 @@ class ColumnQuotingTests(unittest.TestCase):
                 self.assertEqual(result, expected)
                 self.assertEqual(adapter.adapt_condition_expr(result, "column"), result)
 
+    def test_dialect_string_literals_are_preserved(self):
+        cases = [
+            ("mysql", r"'it\'s column'"),
+            ("mariadb", r"'it\'s column'"),
+            ("oceanbase", r"'it\'s column'"),
+            ("postgresql", r"E'it\'s column'"),
+            ("postgresql", "$$it's column$$"),
+            ("postgresql", "$tag$it's column$tag$"),
+            ("oracle", "q'[it's column]'"),
+            ("dm", "q'{it's column}'"),
+        ]
+        for dialect, literal in cases:
+            with self.subTest(dialect=dialect, literal=literal):
+                adapter = DialectAdapter(dialect)
+                expression = "column <> " + literal
+                expected = adapter.quote_identifier("amount") + " <> " + literal
+                self.assertEqual(adapter.adapt_condition_expr(expression, "amount"), expected)
+                self.assertIn("NOT (" + expected + ")",
+                              adapter.build_check_sql("items", "amount", expression, "custom_sql"))
+
     def test_backslash_identifier_does_not_become_regex_replacement(self):
         self.assertEqual(DialectAdapter("postgresql").adapt_condition_expr("column > 0", r"a\1"),
                          '"a\\1" > 0')

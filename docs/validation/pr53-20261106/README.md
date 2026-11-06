@@ -17,14 +17,15 @@ MySQL、SQL Server 等生成的列引用跟随数据源方言；含引号的列�
 - 运行于 kol-stage2，宿主 Python 3.12.3，无镜像构建；只传输审阅过的四个 Python 文件，无环境文件或应用凭据。
 - 隔离目录 /tmp/onticards-pr53-b4799bf7。
 - 修正前 python3 test_column_quoting.py：exit 1，5方法中30失败、12错误（含子用例），见 [red.log](red.log)。
-- 修正后 python3 test_column_quoting.py：exit 0，6方法通过（含真实预览入口调用的两种 SQL 构建器）；覆盖10方言引用、重复适配、字面量、反斜杠和 SQLite 内存数据库真实查询，见 [green.log](green.log)。
+- 修正后 python3 test_column_quoting.py：exit 0，7方法通过（含真实预览入口调用的两种 SQL 构建器、MySQL 默认反斜线转义及 PostgreSQL E/dollar、Oracle/DM q 字面量保持）；覆盖10方言引用、重复适配、字面量、反斜杠和 SQLite 内存数据库真实查询，见 [green.log](green.log)。
 - python3 test_dialect_adapter.py：exit 0，原31测试通过，见 [dialect.log](dialect.log)。
 - [实际测试文件 SHA256](tested-files.sha256)。
 - 预览测试从真实源码 AST 提取两方法，跳过应用初始化；不是完整 HTTP/API 集成测试。
+- 独审补充字符串词法缺口后新增第7方法，修正前8失败，见 [literals-red.log](literals-red.log)；修正后7+31全部通过。
 - 独立审查与清理结果由原 PR 正文及工单最终报告记录。
 
 ## 剩余限制
 
 没有执行真实 MySQL、SQL Server、Oracle 等引擎或完整业务服务/浏览器；无 UI 改动，无截图要求。
 没有运行 GitHub-hosted CI、调用模型或访问生产数据库。
-引用和占位符处理不是完整 SQL 验证器；表达式本身的安全治理属于另一项独立工作。
+MySQL 字符串按默认反斜线转义语法处理，未验证 SQL mode 自定义配置。引用和占位符处理不是完整 SQL 验证器；表达式本身的安全治理属于另一项独立工作。
