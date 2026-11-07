@@ -875,20 +875,29 @@ def get_records_by_doc_id(doc_id: str, class_name: str) -> list:
         # 使用 where 过滤器精确匹配 doc_id
         from weaviate.classes.query import Filter
 
-        response = collection.query.fetch_objects(
-            filters=Filter.by_property("doc_id").equal(doc_id),
-            limit=1000
-        )
-
         results = []
-        for obj in response.objects:
-            results.append({
-                "uuid": str(obj.uuid),
-                "doc_id": obj.properties.get("doc_id"),
-                "abstract": obj.properties.get("abstract"),
-                "creation_time": getattr(obj.metadata, "creation_time_unix", None),
-                "last_update_time": getattr(obj.metadata, "last_update_time_unix", None)
-            })
+        offset = 0
+        while True:
+            # Filtered queries cannot use the UUID cursor ("after").
+            # Propagate query errors (including QUERY_MAXIMUM_RESULTS) rather
+            # than returning a partial list that cleanup could mistake for all.
+            response = collection.query.fetch_objects(
+                filters=Filter.by_property("doc_id").equal(doc_id),
+                limit=1000,
+                offset=offset
+            )
+            if not response.objects:
+                break
+
+            for obj in response.objects:
+                results.append({
+                    "uuid": str(obj.uuid),
+                    "doc_id": obj.properties.get("doc_id"),
+                    "abstract": obj.properties.get("abstract"),
+                    "creation_time": getattr(obj.metadata, "creation_time_unix", None),
+                    "last_update_time": getattr(obj.metadata, "last_update_time_unix", None)
+                })
+            offset += len(response.objects)
 
         print(f"[向量库查询][STRICT] class={target_class} doc_id={doc_id} 找到 {len(results)} 条记录")
         for i, record in enumerate(results, 1):
