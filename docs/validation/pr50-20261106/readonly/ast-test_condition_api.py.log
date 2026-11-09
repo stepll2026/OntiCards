@@ -1,0 +1,46 @@
+test_composite_sample_attribution_preserves_literal (__main__.ConditionApiTests) ... ok
+test_create_single_and_composite (__main__.ConditionApiTests) ... ok
+test_execute_rule_runs_detection_query (__main__.ConditionApiTests) ... 
+[环节二 - 执行规则] 开始执行
+  规则ID:     a867cfbb-04bb-4088-b935-e4573e47ed78
+  规则名称:   fixture
+  规则类型:   custom_sql
+  执行模式:   scoped_single
+  目标表:     items
+  目标列:     price
+  条件表达式: column > 0
+  生成SQL耗时: 2.18ms
+  执行的SQL:
+SELECT
+                    COUNT(*) as total_count,
+                    SUM(CASE WHEN NOT ("price" > 0) THEN 1 ELSE 0 END) as failed_count
+                FROM "items"
+  SQL执行耗时: 0.34ms
+  执行结果:
+    total_count = 3
+    passed_count = 2
+    failed_count = 1
+    failed_rate  = 33.33%
+    status       = failed
+    raw_result   = {'total_count': 3, 'failed_count': 1}
+  正在获取失败样本...
+  失败样本数: 1
+[环节二 - 执行规则] ✅ fixture 执行完成 | status=failed
+
+ok
+test_persisted_composite_rules_execute_and_sample (__main__.ConditionApiTests) ... [DEBUG] 检测多条件违规: conditions_count=2, condition_mode=AND
+[DEBUG] 检测 cond_col=price, cond_expr=column = 'column', is_violated=False
+[DEBUG] 检测 cond_col=qty, cond_expr=column > 0, is_violated=True
+[DEBUG] 最终返回 samples=[{'sample_value': [{'price': 'column', 'qty': -1}], 'violated_conditions': [{'column': 'qty', 'condition': 'column > 0', 'negated_condition': 'NOT ("qty" > 0)'}], 'condition_mode': 'AND', 'rule_type': 'composite'}]
+ok
+test_placeholder_literals_and_escaped_identifiers (__main__.ConditionApiTests) ... ok
+test_preview_uses_actual_dialect_and_preserves_literals (__main__.ConditionApiTests) ... ok
+test_real_preview_and_sqlite_execution (__main__.ConditionApiTests) ... ok
+test_reject_before_orm_queries (__main__.ConditionApiTests) ... ok
+test_stored_rule_execution_rejects_injection (__main__.ConditionApiTests) ... ok
+test_update_single_and_composite (__main__.ConditionApiTests) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.195s
+
+OK

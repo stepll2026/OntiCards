@@ -14,6 +14,7 @@
 
 import re
 import json
+from contextlib import contextmanager
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, date
 from decimal import Decimal
@@ -348,6 +349,22 @@ class RuleExecutor:
         if self.schema_name:
             return f"{self._quote_identifier(self.schema_name)}.{self._quote_identifier(table_name)}"
         return self._quote_identifier(table_name)
+
+    # 检测查询只读取数据。PostgreSQL（及兼容的金仓）可在目标库预先存在同名
+    # 用户函数重载，未限定名称的合法内建函数因此可能被解析到带写入副作用的
+    # 实现；条件校验无法确定实际绑定的函数签名，所以在执行边界再加一道
+    # 数据库只读事务保护，拒绝一切写入而不是执行破坏性操作。
+    _READ_ONLY_TRANSACTION_DIALECTS = ('postgresql', 'kingbase')
+
+    @contextmanager
+    def _read_only_connection(self):
+        """打开一个禁止写入目标库的连接，供检测 SQL 和失败样本查询使用。"""
+        with self.engine.begin() as conn:
+            if self.db_type in self._READ_ONLY_TRANSACTION_DIALECTS:
+                # 必须是事务中的第一条语句；只影响本次查询事务，不改变
+                # 数据源账号权限、连接配置或生产库设置。
+                conn.execute(text('SET TRANSACTION READ ONLY'))
+            yield conn
 
     def _get_table_columns(self, table_name: str) -> List[str]:
         """获取表的所有列名（不带引号）
@@ -861,7 +878,7 @@ class RuleExecutor:
                 """
 
                 # 将所有数据库操作放在一个 with 块内
-                with self.engine.begin() as conn:
+                with self._read_only_connection() as conn:
                     result = conn.execute(text(sample_sql), {'limit': limit})
                     raw_samples = [dict(row) for row in result.mappings().all()]  # 全字段原始记录
 
@@ -1045,7 +1062,7 @@ class RuleExecutor:
                                 WHERE {all_where}
                                 LIMIT :limit
                             """
-                            with self.engine.begin() as conn:
+                            with self._read_only_connection() as conn:
                                 result = conn.execute(text(sql), {'limit': limit})
                                 raw_samples = [dict(row) for row in result.mappings().all()]  # 全字段原始记录
 
@@ -1157,7 +1174,7 @@ class RuleExecutor:
                     WHERE NOT ({adapted_condition})
                     LIMIT :limit
                 """
-                with self.engine.begin() as conn:
+                with self._read_only_connection() as conn:
                     result = conn.execute(text(sql), {'limit': limit})
                     all_records = []
                     for row in result.mappings().all():
@@ -1206,7 +1223,7 @@ class RuleExecutor:
                     LIMIT :limit
                 """
 
-            with self.engine.begin() as conn:
+            with self._read_only_connection() as conn:
                 result = conn.execute(text(sql), {'limit': limit})
                 all_records = []
                 for row in result.mappings().all():
@@ -1283,7 +1300,7 @@ class RuleExecutor:
 
             # 执行 SQL
             start_exec = time_module.time()
-            with self.engine.begin() as conn:
+            with self._read_only_connection() as conn:
                 result_query = conn.execute(text(sql), params)
                 rows = [dict(row) for row in result_query.mappings().all()]
 

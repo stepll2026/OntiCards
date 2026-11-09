@@ -162,6 +162,17 @@ class ConditionApiTests(unittest.TestCase):
         samples = executor._get_sample_data(self.rule)
         self.assertEqual([v["column"] for v in samples[0]["violated_conditions"]], ["qty"])
 
+    def test_execute_rule_runs_detection_query(self):
+        executor = RuleExecutor(db.engine, "sqlite", "fixture")
+        self.rule.condition_expr = "column > 0"
+        with db.engine.begin() as conn:
+            conn.execute(text("CREATE TABLE items(price INTEGER)"))
+            conn.execute(text("INSERT INTO items VALUES (-1), (5), (150)"))
+        result = executor.execute_rule(self.rule)
+        self.assertNotEqual(result.status, "error", result.error_message)
+        self.assertEqual((result.total_count, result.failed_count), (3, 1))
+        self.assertTrue(result.failed_samples)
+
     def test_preview_uses_actual_dialect_and_preserves_literals(self):
         for dialect, name, quoted in [
             ("mysql", "odd`column", "`odd``column`"),

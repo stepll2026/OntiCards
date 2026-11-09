@@ -1,0 +1,53 @@
+test_quote_identifier_no_trailing_paren (__main__.TestDMIdentifierQuoting)
+DM: 引用结果不应以 ) 结尾 ... ok
+test_quote_identifier_simple (__main__.TestDMIdentifierQuoting)
+DM: 简单标识符引用不应包含多余右括号 ... ok
+test_quote_table_reference_with_schema (__main__.TestDMIdentifierQuoting)
+DM: schema.table 引用格式正确 ... ok
+test_quote_table_reference_without_schema (__main__.TestDMIdentifierQuoting)
+DM: 无 schema 时只返回带引号的表名 ... ok
+test_all_affected_dialects_consistent (__main__.TestEdgeCases)
+Oracle/Trino/DM 三个受影响方言的引用行为应一致 ... ok
+test_empty_identifier (__main__.TestEdgeCases)
+空字符串标识符应原样返回 ... ok
+test_none_schema_table_reference (__main__.TestEdgeCases)
+schema=None 时应只返回表名 ... ok
+test_whitespace_only_schema (__main__.TestEdgeCases)
+空白 schema 应视为无 schema ... ok
+test_quote_identifier_no_trailing_paren (__main__.TestOracleIdentifierQuoting)
+Oracle: 引用结果不应以 ) 结尾 ... ok
+test_quote_identifier_simple (__main__.TestOracleIdentifierQuoting)
+Oracle: 简单标识符引用不应包含多余右括号 ... ok
+test_quote_table_column (__main__.TestOracleIdentifierQuoting)
+Oracle: 同时引用表名和列名 ... ok
+test_quote_table_reference_with_schema (__main__.TestOracleIdentifierQuoting)
+Oracle: schema.table 引用格式正确 ... ok
+test_quote_table_reference_without_schema (__main__.TestOracleIdentifierQuoting)
+Oracle: 无 schema 时只返回带引号的表名 ... ok
+test_quote_identifier_no_trailing_paren (__main__.TestTrinoIdentifierQuoting)
+Trino: 引用结果不应以 ) 结尾 ... ok
+test_quote_identifier_simple (__main__.TestTrinoIdentifierQuoting)
+Trino: 简单标识符引用不应包含多余右括号 ... ok
+test_quote_table_reference_with_schema (__main__.TestTrinoIdentifierQuoting)
+Trino: schema.table 引用格式正确 ... ok
+test_quote_table_reference_without_schema (__main__.TestTrinoIdentifierQuoting)
+Trino: 无 schema 时只返回带引号的表名 ... ok
+test_kingbase_quote_identifier (__main__.TestUnaffectedDialectsRegression) ... ok
+test_kingbase_quote_table_reference (__main__.TestUnaffectedDialectsRegression) ... ok
+test_mariadb_quote_identifier (__main__.TestUnaffectedDialectsRegression) ... ok
+test_mariadb_quote_table_reference (__main__.TestUnaffectedDialectsRegression) ... ok
+test_mssql_quote_identifier (__main__.TestUnaffectedDialectsRegression) ... ok
+test_mssql_quote_table_reference (__main__.TestUnaffectedDialectsRegression) ... ok
+test_mysql_quote_identifier (__main__.TestUnaffectedDialectsRegression) ... ok
+test_mysql_quote_table_reference (__main__.TestUnaffectedDialectsRegression) ... ok
+test_oceanbase_quote_identifier (__main__.TestUnaffectedDialectsRegression) ... ok
+test_oceanbase_quote_table_reference (__main__.TestUnaffectedDialectsRegression) ... ok
+test_postgresql_quote_identifier (__main__.TestUnaffectedDialectsRegression) ... ok
+test_postgresql_quote_table_reference (__main__.TestUnaffectedDialectsRegression) ... ok
+test_sqlite_quote_identifier (__main__.TestUnaffectedDialectsRegression) ... ok
+test_sqlite_quote_table_reference (__main__.TestUnaffectedDialectsRegression) ... ok
+
+----------------------------------------------------------------------
+Ran 31 tests in 0.001s
+
+OK

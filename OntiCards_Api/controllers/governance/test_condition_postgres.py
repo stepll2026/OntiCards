@@ -51,12 +51,9 @@ class PostgresTests(unittest.TestCase):
                 CREATE FUNCTION pg_temp.mark_write() RETURNS INTEGER
                 LANGUAGE plpgsql AS $$ BEGIN INSERT INTO marker VALUES (1); RETURN 1; END $$;
             """))
-            conn.execute(text("""
-                CREATE FUNCTION public."ABS"(INTEGER) RETURNS INTEGER
-                LANGUAGE plpgsql AS $$ BEGIN INSERT INTO marker VALUES (2); RETURN 1; END $$;
-            """))
-            # A quoted upper-case name is a different PostgreSQL function,
-            # even when a parser normalizes it to the built-in ABS node.
+            # A quoted name is a different PostgreSQL function than the
+            # built-in, even when the SQL parser normalizes the node; those
+            # calls are rejected before any SQL is built (checked below).
             quoted_expr = '"ABS"(column) > 0'
             # Real baseline control: an unconstrained expression can invoke a
             # database function with a write effect in the disposable database.
@@ -71,10 +68,6 @@ class PostgresTests(unittest.TestCase):
                 "custom_sql", db_type="postgresql")
             conn.execute(text(baseline_sql))
             self.assertGreater(conn.execute(text("SELECT COUNT(*) FROM marker")).scalar(), 0)
-            quoted_baseline_sql = namespace["_generate_preview_sql"](
-                None, "items", "price", quoted_expr, "custom_sql", db_type="postgresql")
-            conn.execute(text(quoted_baseline_sql))
-            self.assertGreater(conn.execute(text("SELECT COUNT(*) FROM marker WHERE value = 2")).scalar(), 0)
             conn.execute(text("DELETE FROM marker"))
             for expr in [
                 quoted_expr, '"LOWER"(column) = \'x\'',
@@ -91,6 +84,71 @@ class PostgresTests(unittest.TestCase):
                         executor._generate_sql(rule)
             self.assertEqual(conn.execute(text("SELECT COUNT(*) FROM marker")).scalar(), 0)
         engine.dispose()
+
+    def test_execution_is_read_only_against_function_overloads(self):
+        engine = create_engine(os.environ["PR50_TEST_DATABASE_URL"])
+        executor = RuleExecutor(engine, "postgresql", "onti")
+        with engine.begin() as conn:
+            conn.execute(text("DROP TABLE IF EXISTS pr50_items CASCADE"))
+            conn.execute(text("DROP TABLE IF EXISTS pr50_marker CASCADE"))
+            conn.execute(text("CREATE TABLE pr50_items(phone TEXT, price INTEGER)"))
+            conn.execute(text("INSERT INTO pr50_items VALUES ('x', -1), ('y', 5), ('z', 150)"))
+            conn.execute(text("CREATE TABLE pr50_marker(value INTEGER)"))
+            conn.execute(text("""
+                CREATE OR REPLACE FUNCTION public.abs(TEXT) RETURNS INTEGER
+                LANGUAGE plpgsql VOLATILE AS
+                $$ BEGIN INSERT INTO pr50_marker VALUES (9); RETURN 1; END $$;
+            """))
+        try:
+            # The AST alone cannot know which overload the database binds, so a
+            # legal-looking builtin name stays valid at the text layer.
+            self.assertTrue(validate_condition_expr("ABS(column) > 0", "postgresql"))
+
+            # Real baseline control: the unguarded detection SQL picks the
+            # TEXT overload and writes, matching the reported P1.
+            baseline_path = pathlib.Path(os.environ["PR50_TEST_BASELINE"])
+            baseline = ast.parse(baseline_path.read_text(encoding="utf-8"))
+            api_class = next(n for n in baseline.body if isinstance(n, ast.ClassDef) and n.name == "RuleListApi")
+            method = next(n for n in api_class.body if isinstance(n, ast.FunctionDef) and n.name == "_generate_preview_sql")
+            namespace = {"re": re}
+            exec(compile(ast.Module([method], []), str(baseline_path), "exec"), namespace)
+            baseline_sql = namespace["_generate_preview_sql"](
+                None, "pr50_items", "phone", "ABS(column) > 0", "custom_sql", db_type="postgresql")
+            with engine.begin() as conn:
+                conn.execute(text(baseline_sql))
+                self.assertGreater(conn.execute(text("SELECT COUNT(*) FROM pr50_marker")).scalar(), 0)
+                conn.execute(text("DELETE FROM pr50_marker"))
+
+            overload_rule = SimpleNamespace(
+                library_id=None, id=None, rule_name="overload", rule_type="custom_sql",
+                severity="warning", target_table="pr50_items", target_column="phone",
+                condition_expr="ABS(column) > 0", conditions_config=None, sql_text=None,
+                enabled=True)
+            # The guarded execution path fails closed instead of writing.
+            result = executor.execute_rule(overload_rule)
+            self.assertEqual(result.status, "error", result.error_message)
+            self.assertIn("read-only", (result.error_message or "").lower())
+            with engine.begin() as conn:
+                self.assertEqual(conn.execute(text("SELECT COUNT(*) FROM pr50_marker")).scalar(), 0)
+
+            # Normal detection queries, including failure samples, still run.
+            normal_rule = SimpleNamespace(
+                library_id=None, id=None, rule_name="normal", rule_type="custom_sql",
+                severity="warning", target_table="pr50_items", target_column="price",
+                condition_expr="column > 0", conditions_config=None, sql_text=None,
+                enabled=True)
+            normal = executor.execute_rule(normal_rule)
+            self.assertEqual(normal.status, "failed", normal.error_message)
+            self.assertEqual((normal.total_count, normal.failed_count), (3, 1))
+            self.assertTrue(normal.failed_samples)
+            with engine.begin() as conn:
+                self.assertEqual(conn.execute(text("SELECT COUNT(*) FROM pr50_marker")).scalar(), 0)
+        finally:
+            with engine.begin() as conn:
+                conn.execute(text("DROP FUNCTION IF EXISTS public.abs(TEXT)"))
+                conn.execute(text("DROP TABLE IF EXISTS pr50_items CASCADE"))
+                conn.execute(text("DROP TABLE IF EXISTS pr50_marker CASCADE"))
+            engine.dispose()
 
 
 if __name__ == "__main__":

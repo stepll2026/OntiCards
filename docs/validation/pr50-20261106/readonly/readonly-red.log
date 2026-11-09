@@ -1,0 +1,43 @@
+test_conditions_and_side_effect_boundary (__main__.PostgresTests) ... ok
+test_execution_is_read_only_against_function_overloads (__main__.PostgresTests) ... 
+[环节二 - 执行规则] 开始执行
+  规则ID:     None
+  规则名称:   overload
+  规则类型:   custom_sql
+  执行模式:   scoped_single
+  目标表:     pr50_items
+  目标列:     phone
+  条件表达式: ABS(column) > 0
+  生成SQL耗时: 1.59ms
+  执行的SQL:
+SELECT
+                    COUNT(*) as total_count,
+                    SUM(CASE WHEN NOT (ABS("phone") > 0) THEN 1 ELSE 0 END) as failed_count
+                FROM "public"."pr50_items"
+  SQL执行耗时: 0.95ms
+  执行结果:
+    total_count = 3
+    passed_count = 3
+    failed_count = 0
+    failed_rate  = 0.0%
+    status       = passed
+    raw_result   = {'total_count': 3, 'failed_count': 0}
+[环节二 - 执行规则] ✅ overload 执行完成 | status=passed
+
+FAIL
+
+======================================================================
+FAIL: test_execution_is_read_only_against_function_overloads (__main__.PostgresTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/work/controllers/governance/test_condition_postgres.py", line 129, in test_execution_is_read_only_against_function_overloads
+    self.assertEqual(result.status, "error", result.error_message)
+AssertionError: 'passed' != 'error'
+- passed
++ error
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.184s
+
+FAILED (failures=1)
