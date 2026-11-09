@@ -20,7 +20,7 @@
 - 原贡献：`047851848fca3962571197e01274945e267df06f`，已通过普通 merge 纳入 main 的后续更改。
 - 上一轮代码/测试提交：`bfc484636406249db127298d2eb4ec36bba322c6`；本轮新增只读事务保护与对应回归用例。
 - kol-stage2 实测：6 项条件测试（含现有方言函数矩阵及 24 个种子 SQL 条件）、10 项 Flask/SQLite 测试、31 项既有方言测试、3 项隔离 PostgreSQL 测试均通过（含 psycopg3 `?autocommit=true` 数据源必须被拒绝的用例）。
-- PostgreSQL 直接加载 main 的原 SQL 构造器：合成函数确实向标记表写入；带只读保护的实际 `execute_rule` 执行路径把同一条件判为规则错误，标记表保持为空，而正常条件规则及其失败样本仍可执行并返回正确统计。数据源启用 autocommit 时，只读事务无法建立，执行器回读 `transaction_read_only` 确认不到只读即报错，不会静默执行。
+- PostgreSQL 直接加载基线 `governance_api.py` 的 `_generate_preview_sql`（独立终审核对：它生成的 SQL 与 base `2e597d05` 同一方法逐字一致）：合成函数确实向标记表写入；带只读保护的实际 `execute_rule` 执行路径把同一条件判为规则错误，标记表保持为空，而正常条件规则及其失败样本仍可执行并返回正确统计。数据源启用 autocommit 时，只读事务无法建立，执行器回读 `transaction_read_only` 确认不到只读即报错，不会静默执行。
 - 红测对照：同一新用例在未加保护的执行器上失败，`ABS(column) > 0` 被当作正常规则执行（`passed`），证明该用例确实覆盖了写入型重载；见 [只读红测](readonly/readonly-red.log) 与 [只读绿测](readonly/test_condition_postgres.py.log)。最初一次红测（[readonly-red-1.log](readonly/readonly-red-1.log)）同样暴露该行为，但其中另一个用例因测试自身依赖已修复的旧基线而报错；该断言已改为只验证“引用函数名被拒绝”，未放宽任何安全断言。
 - autocommit 红测：上一版只读保护在 `?autocommit=true` 连接上不生效（`SET TRANSACTION READ ONLY` 只产生警告），同一恶意条件被当作正常规则执行；加入回读校验后该用例通过。见 [autocommit 红测](readonly/autocommit-red.log)。
 - Flask 测试实际调用新增/更新/预览方法；所有权、ORM 查询及写入使用合成 fixture，生成 SQL 在真实 SQLite 上执行。这不是完整登录/持久化服务部署测试。
@@ -48,7 +48,9 @@ python controllers/governance/test_condition_postgres.py
 
 显式确认的完整 SQL（sql_text/sql_preview）是已有独立功能，本次没有重新定义其权限边界；条件校验不能当成数据库权限或任意 SQL 的沙箱。未知函数、引用函数名及未覆盖的 AST 结构会拒绝，需要明确评估后才扩展。
 
-只读事务目前只加在已实证存在同名函数重载写入风险的 PostgreSQL/金仓检测查询上；其他方言仍只做条件校验与 SQL 生成，未实测对应数据库的同类风险，也未加同样的执行期保护。数据源若配置了 `autocommit`（连接没有事务块，`SET TRANSACTION READ ONLY` 不生效），治理检测会直接报错而不是静默执行，需要修正数据源配置；该保护也不等同于数据库沙箱，不覆盖临时表、外部连接（如 dblink）等数据库自身能力。若某条规则原本依赖检测 SQL 的写入副作用（含显式 `sql_text` 里的写语句或 `FOR UPDATE`），现在会直接报错而不是写入，这是本次修复的预期行为变化。
+只读事务目前只加在已实证存在同名函数重载写入风险的 PostgreSQL/金仓检测查询上；其他方言仍只做条件校验与 SQL 生成，未实测对应数据库的同类风险，也未加同样的执行期保护。数据源若配置了 `autocommit`（连接没有事务块，`SET TRANSACTION READ ONLY` 不生效），治理检测会直接报错而不是静默执行，需要修正数据源配置；该保护也不等同于数据库沙箱，不覆盖临时表、外部连接（如 dblink）等数据库自身能力。
+
+只读事务对单条检测语句里的事务写入、`FOR UPDATE`/`FOR SHARE` 会直接报错；但显式 `sql_text` 若包含事务控制（例如多语句里的 `COMMIT`）仍可写入，这属于本次未重新定义的既有完整 SQL 功能，不是条件表达式所能到达的路径。金仓虽按 PostgreSQL 兼容加入该保护，但未在真实金仓上验证 `SET TRANSACTION READ ONLY`/`SHOW transaction_read_only`；若不被支持，该数据源上的治理检测会 fail-closed 全部报错（不会静默写入）。
 
 PostgreSQL 和 SQLite 为本轮真实引擎；其他数据库仅验证解析/SQL 生成与引用行为，未实测对应数据库服务。未进行完整应用部署、模型调用或托管 CI。种子模板里的未填自然语言示例不被当作可执行 SQL 验证。
 
