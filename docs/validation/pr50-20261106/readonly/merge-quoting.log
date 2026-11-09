@@ -1,0 +1,13 @@
+test_backslash_identifier_does_not_become_regex_replacement (__main__.ColumnQuotingTests) ... ok
+test_delimiter_escaping (__main__.ColumnQuotingTests) ... ok
+test_dialect_string_literals_are_preserved (__main__.ColumnQuotingTests) ... ok
+test_only_bare_placeholder_is_replaced (__main__.ColumnQuotingTests) ... ok
+test_postgresql_array_placeholder (__main__.ColumnQuotingTests) ... ok
+test_preview_uses_dialect_and_does_not_requote (__main__.ColumnQuotingTests) ... ok
+test_public_preview_builders_preserve_conditions (__main__.ColumnQuotingTests) ... ok
+test_sqlite_real_execution_and_injection_control (__main__.ColumnQuotingTests) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.234s
+
+OK

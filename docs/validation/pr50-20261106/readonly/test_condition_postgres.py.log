@@ -1,0 +1,138 @@
+test_autocommit_connection_is_rejected_before_writing (__main__.PostgresTests)
+数据源 autocommit 时 SET TRANSACTION READ ONLY 不生效，必须拒绝执行。 ... 
+[环节二 - 执行规则] 开始执行
+  规则ID:     None
+  规则名称:   autocommit
+  规则类型:   custom_sql
+  执行模式:   scoped_single
+  目标表:     pr50_ac_items
+  目标列:     phone
+  条件表达式: ABS(column) > 0
+  生成SQL耗时: 6.14ms
+  执行的SQL:
+SELECT
+                    COUNT(*) as total_count,
+                    SUM(CASE WHEN NOT (ABS("phone") > 0) THEN 1 ELSE 0 END) as failed_count
+                FROM "public"."pr50_ac_items"
+Traceback (most recent call last):
+  File "/work/controllers/governance/audit_executor.py", line 1319, in execute_rule
+    with self._read_only_connection() as conn:
+  File "/usr/local/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/work/controllers/governance/audit_executor.py", line 380, in _read_only_connection
+    raise ValueError(
+ValueError: 数据库连接未处于只读事务（数据源可能启用了 autocommit），已拒绝执行治理检测 SQL
+[环节二 - 执行规则] ❌ autocommit 执行异常: 数据库连接未处于只读事务（数据源可能启用了 autocommit），已拒绝执行治理检测 SQL
+
+ok
+test_conditions_and_side_effect_boundary (__main__.PostgresTests) ... ok
+test_execution_is_read_only_against_function_overloads (__main__.PostgresTests) ... 
+[环节二 - 执行规则] 开始执行
+  规则ID:     None
+  规则名称:   overload
+  规则类型:   custom_sql
+  执行模式:   scoped_single
+  目标表:     pr50_items
+  目标列:     phone
+  条件表达式: ABS(column) > 0
+  生成SQL耗时: 1.49ms
+  执行的SQL:
+SELECT
+                    COUNT(*) as total_count,
+                    SUM(CASE WHEN NOT (ABS("phone") > 0) THEN 1 ELSE 0 END) as failed_count
+                FROM "public"."pr50_items"
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+psycopg2.errors.ReadOnlySqlTransaction: cannot execute INSERT in a read-only transaction
+CONTEXT:  SQL statement "INSERT INTO pr50_marker VALUES (9)"
+PL/pgSQL function abs(text) line 1 at SQL statement
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/work/controllers/governance/audit_executor.py", line 1320, in execute_rule
+    result_query = conn.execute(text(sql), params)
+  File "/usr/local/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+    return meth(
+  File "/usr/local/lib/python3.10/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+  File "/usr/local/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+    ret = self._execute_context(
+  File "/usr/local/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+  File "/usr/local/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/usr/local/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/usr/local/lib/python3.10/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+  File "/usr/local/lib/python3.10/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.InternalError: (psycopg2.errors.ReadOnlySqlTransaction) cannot execute INSERT in a read-only transaction
+CONTEXT:  SQL statement "INSERT INTO pr50_marker VALUES (9)"
+PL/pgSQL function abs(text) line 1 at SQL statement
+
+[SQL: SELECT
+                    COUNT(*) as total_count,
+                    SUM(CASE WHEN NOT (ABS("phone") > 0) THEN 1 ELSE 0 END) as failed_count
+                FROM "public"."pr50_items"]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+[环节二 - 执行规则] ❌ overload 执行异常: (psycopg2.errors.ReadOnlySqlTransaction) cannot execute INSERT in a read-only transaction
+CONTEXT:  SQL statement "INSERT INTO pr50_marker VALUES (9)"
+PL/pgSQL function abs(text) line 1 at SQL statement
+
+[SQL: SELECT
+                    COUNT(*) as total_count,
+                    SUM(CASE WHEN NOT (ABS("phone") > 0) THEN 1 ELSE 0 END) as failed_count
+                FROM "public"."pr50_items"]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+
+[WARN] 获取失败样本失败 | rule_id=None | rule_name=overload | error=(psycopg2.errors.ReadOnlySqlTransaction) cannot execute INSERT in a read-only transaction
+CONTEXT:  SQL statement "INSERT INTO pr50_marker VALUES (9)"
+PL/pgSQL function abs(text) line 1 at SQL statement
+
+[SQL: 
+                    SELECT "phone", "price"
+                    FROM "public"."pr50_items"
+                    WHERE NOT (ABS("phone") > 0)
+                    LIMIT %(limit)s
+                ]
+[parameters: {'limit': 20}]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
+
+[环节二 - 执行规则] 开始执行
+  规则ID:     None
+  规则名称:   normal
+  规则类型:   custom_sql
+  执行模式:   scoped_single
+  目标表:     pr50_items
+  目标列:     price
+  条件表达式: column > 0
+  生成SQL耗时: 1.31ms
+  执行的SQL:
+SELECT
+                    COUNT(*) as total_count,
+                    SUM(CASE WHEN NOT ("price" > 0) THEN 1 ELSE 0 END) as failed_count
+                FROM "public"."pr50_items"
+  SQL执行耗时: 0.81ms
+  执行结果:
+    total_count = 3
+    passed_count = 2
+    failed_count = 1
+    failed_rate  = 33.33%
+    status       = failed
+    raw_result   = {'total_count': 3, 'failed_count': 1}
+  正在获取失败样本...
+  失败样本数: 1
+[环节二 - 执行规则] ✅ normal 执行完成 | status=failed
+
+ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.291s
+
+OK

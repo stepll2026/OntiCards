@@ -1,0 +1,11 @@
+test_business_conditions (__main__.ConditionTests) ... ok
+test_comment_delimiters_are_not_arithmetic (__main__.ConditionTests) ... ok
+test_existing_dialect_contracts (__main__.ConditionTests) ... ok
+test_input_bounds (__main__.ConditionTests) ... ok
+test_reject_statement_escape_and_side_effects (__main__.ConditionTests) ... ok
+test_seed_sql_templates (__main__.ConditionTests) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.071s
+
+OK

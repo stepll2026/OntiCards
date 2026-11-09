@@ -5,6 +5,12 @@
 @Create: 2026-06-01
 """
 import json
+from controllers.governance.condition_security import (
+    validate_condition_expr as _validate_condition_expr,
+    require_conditions_payload, replace_column,
+)
+
+
 
 """
 接口列表:
@@ -360,6 +366,11 @@ class RuleListApi(Resource):
         else:
             return resp(code=400, msg="library_id 不能为空", http_status=400)
 
+        try:
+            require_conditions_payload(data, db_type)
+        except ValueError as e:
+            return resp(code=400, msg=str(e), http_status=400)
+
         # ============================================
         # 手动专家模式（提前验证，避免后续重复代码）
         # ============================================
@@ -399,9 +410,12 @@ class RuleListApi(Resource):
                     return resp(code=400, msg="单条件模式下目标列（target_column）不能为空", http_status=400)
                 if not condition_expr:
                     return resp(code=400, msg="单条件模式下条件表达式（condition_expr）不能为空", http_status=400)
+                if not _validate_condition_expr(condition_expr, db_type):
+                    return resp(code=400, msg="条件表达式包含非法字符", http_status=400)
                 if condition_expr and 'column' in condition_expr.lower() and target_column:
                     from controllers.governance.dialect_adapter import DialectAdapter
-                    condition_expr = DialectAdapter(db_type or 'postgresql').adapt_condition_expr(condition_expr, target_column)
+                    condition_expr = DialectAdapter(
+                        db_type or 'postgresql').adapt_condition_expr(condition_expr, target_column)
             else:
                 target_column = None
                 condition_expr = None
@@ -440,9 +454,13 @@ class RuleListApi(Resource):
                     processed_cond = dict(cond)
                     cond_expr = processed_cond.get('condition', '')
                     cond_column = processed_cond.get('column', '')
-                    if cond_expr and 'column' in cond_expr.lower() and cond_column:
-                        from controllers.governance.dialect_adapter import DialectAdapter
-                        processed_cond['condition'] = DialectAdapter(db_type or 'postgresql').adapt_condition_expr(cond_expr, cond_column)
+                    if cond_expr:
+                        if not _validate_condition_expr(cond_expr, rule.db_type):
+                            return resp(code=400, msg=f"条件表达式包含非法字符: {cond_expr}", http_status=400)
+                        if 'column' in cond_expr.lower() and cond_column:
+                            from controllers.governance.dialect_adapter import DialectAdapter
+                            processed_cond['condition'] = DialectAdapter(
+                                rule.db_type or 'postgresql').adapt_condition_expr(cond_expr, cond_column)
                     processed_conditions.append(processed_cond)
 
                 rule.set_conditions(processed_conditions, data.get('condition_mode', 'AND'))
@@ -481,6 +499,10 @@ class RuleListApi(Resource):
             if rule_type not in GovernanceRule.RULE_TYPES:
                 rule_type = 'custom_sql'
 
+            try:
+                require_conditions_payload(rule_config, db_type)
+            except ValueError as e:
+                return resp(code=400, msg=str(e), http_status=400)
             ai_conditions = rule_config.get('conditions', [])
             ai_condition_mode = rule_config.get('condition_mode', 'AND')
 
@@ -589,9 +611,12 @@ class RuleListApi(Resource):
             tmpl_condition_expr = (data.get('condition_expr') or '').strip()
             if not tmpl_condition_expr:
                 tmpl_condition_expr = template.default_condition or ''
+            if not _validate_condition_expr(tmpl_condition_expr, db_type):
+                return resp(code=400, msg="条件表达式包含不支持的内容", http_status=400)
             if tmpl_condition_expr and 'column' in tmpl_condition_expr and tmpl_target_column:
-                tmpl_condition_expr = tmpl_condition_expr.replace(
-                    'column', f'"{tmpl_target_column}"'
+                from controllers.governance.dialect_adapter import DialectAdapter
+                tmpl_condition_expr = replace_column(
+                    tmpl_condition_expr, DialectAdapter(db_type or 'postgresql').quote_identifier(tmpl_target_column), db_type
                 )
 
             # SQL 预览
@@ -657,6 +682,8 @@ class RuleListApi(Resource):
 
         from controllers.governance.dialect_adapter import DialectAdapter
         adapter = DialectAdapter(db_type)
+        # 预览也是条件进入 SQL 的入口，先校验结构（非法时抛 ValueError）。
+        adapter.require_condition(condition_expr)
         quoted_table = adapter.quote_table_reference(table_name, schema)
         quoted_col = adapter.quote_identifier(column_name) if column_name else None
 
@@ -885,6 +912,11 @@ class RuleDetailApi(Resource):
         if not data:
             return resp(code=400, msg="请求参数不能为空", http_status=400)
 
+        try:
+            require_conditions_payload(data, rule.db_type)
+        except ValueError as e:
+            return resp(code=400, msg=str(e), http_status=400)
+
         if 'rule_name' in data:
             name = data['rule_name'].strip()
             valid, err_msg = _validate_name(name, max_length=255)
@@ -966,9 +998,13 @@ class RuleDetailApi(Resource):
                     processed_cond = dict(cond)
                     cond_expr = processed_cond.get('condition', '')
                     cond_column = processed_cond.get('column', '')
-                    if cond_expr and 'column' in cond_expr.lower() and cond_column:
-                        from controllers.governance.dialect_adapter import DialectAdapter
-                        processed_cond['condition'] = DialectAdapter(rule.db_type or 'postgresql').adapt_condition_expr(cond_expr, cond_column)
+                    if cond_expr:
+                        if not _validate_condition_expr(cond_expr, rule.db_type):
+                            return resp(code=400, msg=f"条件表达式包含非法字符: {cond_expr}", http_status=400)
+                        if 'column' in cond_expr.lower() and cond_column:
+                            from controllers.governance.dialect_adapter import DialectAdapter
+                            processed_cond['condition'] = DialectAdapter(
+                                rule.db_type or 'postgresql').adapt_condition_expr(cond_expr, cond_column)
                     processed_conditions.append(processed_cond)
                 rule.set_conditions(processed_conditions, condition_mode)
             else:
@@ -3908,6 +3944,11 @@ class RulePreviewApi(Resource):
         if not target_table:
             return resp(code=400, msg="目标表不能为空", http_status=400)
 
+        try:
+            require_conditions_payload(data, db_type)
+        except ValueError as e:
+            return resp(code=400, msg=str(e), http_status=400)
+
         # ---- 模板模式 ----
         template_id = data.get('template_id')
         template = None
@@ -4010,6 +4051,8 @@ class RulePreviewApi(Resource):
                 'template_name': template.template_name if template else None
             })
 
+        except ValueError as e:
+            return resp(code=400, msg=str(e), http_status=400)
         except Exception as e:
             import traceback
             traceback.print_exc()

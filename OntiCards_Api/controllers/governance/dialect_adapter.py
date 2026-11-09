@@ -15,6 +15,10 @@
 import re
 from typing import Dict, Any, Tuple, List, Optional
 from dataclasses import dataclass
+try:
+    from .condition_security import require_condition_expr, replace_column
+except ImportError:  # Existing standalone dialect test entry point.
+    from condition_security import require_condition_expr, replace_column
 
 
 @dataclass
@@ -269,6 +273,14 @@ class DialectAdapter:
             return f"{quoted_schema}.{quoted_table}"
         return quoted_table
 
+    def require_condition(self, condition: str) -> None:
+        """校验条件表达式结构；不合法时抛 ValueError。
+
+        通过适配器暴露，便于预览构造器等只依赖 DialectAdapter 的调用点
+        复用同一套校验，而无需额外导入校验模块。
+        """
+        require_condition_expr(condition, self.db_type)
+
     def adapt_condition_expr(self, condition: str, column: str) -> str:
         """
         适配条件表达式
@@ -285,35 +297,10 @@ class DialectAdapter:
         if not condition:
             return ""
 
-        # 替换 column 占位符
+        # 替换 column 占位符：只替换真正的列引用，保留字符串字面量、
+        # 注释和已引用的标识符；替换前先校验表达式结构。
         quoted_col = self.quote_identifier(column)
-        # Skip string literals and already quoted identifiers. This also makes
-        # repeated adaptation safe when the actual column is named "column".
-        single_quote = r"'(?:''|[^'])*'"
-        double_quote = r'"(?:""|[^"])*"'
-        if self.db_type in ('mysql', 'mariadb', 'oceanbase'):
-            single_quote = r"'(?:''|\\.|[^'\\])*'"
-            double_quote = r'"(?:""|\\.|[^"\\])*"'
-        literals = [single_quote]
-        if self.db_type in ('postgresql', 'kingbase'):
-            literals[:0] = [
-                r"\bE'(?:''|\\.|[^'\\])*'",
-                r"(?P<dollar>\$(?:[A-Za-z_\u0080-\U0010ffff][A-Za-z_0-9\u0080-\U0010ffff]*)?\$).*?(?-i:(?P=dollar))",
-            ]
-        if self.db_type in ('oracle', 'dm'):
-            literals.insert(0, r"\bn?q'(?:\[.*?\]|\{.*?\}|\(.*?\)|<.*?>|(?P<qmark>[^\s]).*?(?-i:(?P=qmark)))'")
-        quoted_identifiers = [double_quote]
-        if self.db_type in ('mysql', 'mariadb', 'oceanbase', 'sqlite'):
-            quoted_identifiers.append(r'`(?:``|[^`])*`')
-        if self.db_type in ('mssql', 'sqlite'):
-            quoted_identifiers.append(r'\[(?:\]\]|[^\]])*\]')
-        tokens = '|'.join(literals + quoted_identifiers + [
-            r'--[^\n]*', r'/\*.*?\*/', r'\bcolumn\b',
-        ])
-        condition = re.sub(
-            tokens, lambda match: quoted_col if match.group().lower() == 'column' else match.group(),
-            condition, flags=re.IGNORECASE | re.DOTALL
-        )
+        condition = replace_column(condition, quoted_col, self.db_type)
 
         return condition
 
@@ -625,6 +612,7 @@ WHERE {quoted_col} IS NOT NULL
             rule_type: 规则类型
             schema: Schema 名（可选，为空时只引用表名）
         """
+        require_condition_expr(condition, self.db_type)
         quoted_table = self.quote_table_reference(table, schema)
         quoted_col = self.quote_identifier(column) if column else None
 
@@ -788,6 +776,7 @@ FROM {quoted_table}
         """
         quoted_table = self.quote_table_reference(table, schema)
 
+        require_condition_expr(condition, self.db_type)
         # 适配条件表达式（表级规则中条件通常是完整的 WHERE 子句）
         adapted_condition = condition.strip() if condition else "1=1"
 

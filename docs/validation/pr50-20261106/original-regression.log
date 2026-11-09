@@ -1,0 +1,155 @@
+test_business_conditions (__main__.ConditionTests.test_business_conditions) ... 
+  test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr='column > 0') ... FAIL
+  test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr='column>0 AND column<100') ... FAIL
+  test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr='column IS NOT NULL') ... FAIL
+  test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr='column NOT IN (1, 2, 3)') ... FAIL
+  test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr='column BETWEEN -1 AND 2.5') ... FAIL
+  test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr="column LIKE 'col%'") ... FAIL
+  test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr='CHAR_LENGTH(column) <= 20') ... FAIL
+  test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr='price >= cost') ... FAIL
+  test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr="column = 'O''Brien'") ... FAIL
+  test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr="column ~ '^a.*$'") ... FAIL
+  test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr="(column IS NULL OR column = '')") ... FAIL
+  test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr="column >= CURRENT_DATE - INTERVAL '7 days'") ... FAIL
+test_input_bounds (__main__.ConditionTests.test_input_bounds) ... 
+  test_input_bounds (__main__.ConditionTests.test_input_bounds) (expr='[]') ... FAIL
+  test_input_bounds (__main__.ConditionTests.test_input_bounds) (expr='{}') ... FAIL
+  test_input_bounds (__main__.ConditionTests.test_input_bounds) (expr='1') ... ERROR
+test_reject_statement_escape_and_side_effects (__main__.ConditionTests.test_reject_statement_escape_and_side_effects) ... 
+  test_reject_statement_escape_and_side_effects (__main__.ConditionTests.test_reject_statement_escape_and_side_effects) (expr='column column') ... FAIL
+
+======================================================================
+ERROR: test_input_bounds (__main__.ConditionTests.test_input_bounds) (expr='1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onti-pr50-red/OntiCards_Api/controllers/governance/test_condition_security.py", line 49, in test_input_bounds
+    self.assertFalse(validate(expr))
+                     ^^^^^^^^^^^^^^
+  File "<original>", line 35, in _validate_condition_expr
+  File "<original>", line 35, in <genexpr>
+TypeError: argument of type 'int' is not iterable
+
+======================================================================
+FAIL: test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr='column > 0')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onti-pr50-red/OntiCards_Api/controllers/governance/test_condition_security.py", line 33, in test_business_conditions
+    self.assertTrue(validate(expr))
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr='column>0 AND column<100')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onti-pr50-red/OntiCards_Api/controllers/governance/test_condition_security.py", line 33, in test_business_conditions
+    self.assertTrue(validate(expr))
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr='column IS NOT NULL')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onti-pr50-red/OntiCards_Api/controllers/governance/test_condition_security.py", line 33, in test_business_conditions
+    self.assertTrue(validate(expr))
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr='column NOT IN (1, 2, 3)')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onti-pr50-red/OntiCards_Api/controllers/governance/test_condition_security.py", line 33, in test_business_conditions
+    self.assertTrue(validate(expr))
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr='column BETWEEN -1 AND 2.5')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onti-pr50-red/OntiCards_Api/controllers/governance/test_condition_security.py", line 33, in test_business_conditions
+    self.assertTrue(validate(expr))
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr="column LIKE 'col%'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onti-pr50-red/OntiCards_Api/controllers/governance/test_condition_security.py", line 33, in test_business_conditions
+    self.assertTrue(validate(expr))
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr='CHAR_LENGTH(column) <= 20')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onti-pr50-red/OntiCards_Api/controllers/governance/test_condition_security.py", line 33, in test_business_conditions
+    self.assertTrue(validate(expr))
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr='price >= cost')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onti-pr50-red/OntiCards_Api/controllers/governance/test_condition_security.py", line 33, in test_business_conditions
+    self.assertTrue(validate(expr))
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr="column = 'O''Brien'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onti-pr50-red/OntiCards_Api/controllers/governance/test_condition_security.py", line 33, in test_business_conditions
+    self.assertTrue(validate(expr))
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr="column ~ '^a.*$'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onti-pr50-red/OntiCards_Api/controllers/governance/test_condition_security.py", line 33, in test_business_conditions
+    self.assertTrue(validate(expr))
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr="(column IS NULL OR column = '')")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onti-pr50-red/OntiCards_Api/controllers/governance/test_condition_security.py", line 33, in test_business_conditions
+    self.assertTrue(validate(expr))
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_business_conditions (__main__.ConditionTests.test_business_conditions) (expr="column >= CURRENT_DATE - INTERVAL '7 days'")
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onti-pr50-red/OntiCards_Api/controllers/governance/test_condition_security.py", line 33, in test_business_conditions
+    self.assertTrue(validate(expr))
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_input_bounds (__main__.ConditionTests.test_input_bounds) (expr='[]')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onti-pr50-red/OntiCards_Api/controllers/governance/test_condition_security.py", line 49, in test_input_bounds
+    self.assertFalse(validate(expr))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_input_bounds (__main__.ConditionTests.test_input_bounds) (expr='{}')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onti-pr50-red/OntiCards_Api/controllers/governance/test_condition_security.py", line 49, in test_input_bounds
+    self.assertFalse(validate(expr))
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_reject_statement_escape_and_side_effects (__main__.ConditionTests.test_reject_statement_escape_and_side_effects) (expr='column column')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onti-pr50-red/OntiCards_Api/controllers/governance/test_condition_security.py", line 44, in test_reject_statement_escape_and_side_effects
+    self.assertFalse(validate(expr))
+AssertionError: True is not false
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.002s
+
+FAILED (failures=15, errors=1)

@@ -14,6 +14,7 @@
 
 import re
 import json
+from contextlib import contextmanager
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, date
 from decimal import Decimal
@@ -28,6 +29,7 @@ from models.governance_rule import GovernanceRule
 from models.governance_report import GovernanceReport
 from models.rule_execution_result import RuleExecutionResult
 from controllers.governance.dialect_adapter import DialectAdapter
+from controllers.governance.condition_security import require_condition_expr, require_conditions_payload, replace_column
 
 
 # ========== JSON 序列化辅助 ==========
@@ -348,6 +350,38 @@ class RuleExecutor:
             return f"{self._quote_identifier(self.schema_name)}.{self._quote_identifier(table_name)}"
         return self._quote_identifier(table_name)
 
+    # 检测查询只读取数据。PostgreSQL（及兼容的金仓）可在目标库预先存在同名
+    # 用户函数重载，未限定名称的合法内建函数因此可能被解析到带写入副作用的
+    # 实现；条件校验无法确定实际绑定的函数签名，所以在执行边界再加一道
+    # 数据库只读事务保护：普通事务连接上永久表写入会被数据库拒绝；无法建立
+    # 只读事务的连接（如数据源配置了 autocommit）直接报错，不静默放行。
+    _READ_ONLY_TRANSACTION_DIALECTS = ('postgresql', 'kingbase')
+
+    def _requires_read_only_transaction(self) -> bool:
+        """判断是否需要只读事务保护（容忍空白/大小写与方言自报名）。"""
+        db_type = (self.db_type or '').strip().lower()
+        dialect = (getattr(self.engine.dialect, 'name', '') or '').strip().lower()
+        return (db_type in self._READ_ONLY_TRANSACTION_DIALECTS
+                or dialect in ('postgresql', 'postgres', 'kingbase'))
+
+    @contextmanager
+    def _read_only_connection(self):
+        """打开一个禁止写入目标库的连接，供检测 SQL 和失败样本查询使用。"""
+        with self.engine.begin() as conn:
+            if self._requires_read_only_transaction():
+                # 必须是事务中的第一条语句；只影响本次查询事务，不改变
+                # 数据源账号权限、连接配置或生产库设置。
+                conn.execute(text('SET TRANSACTION READ ONLY'))
+                # autocommit 或 AUTOCOMMIT 隔离级别下不会开启事务块，
+                # SET TRANSACTION 只是一条警告；必须回读确认，否则会
+                # 静默放行写入。无法确认时按失败处理（fail-closed）。
+                state = conn.execute(text('SHOW transaction_read_only')).scalar()
+                if str(state).strip().lower() not in ('on', 'true', '1'):
+                    raise ValueError(
+                        '数据库连接未处于只读事务（数据源可能启用了 autocommit），'
+                        '已拒绝执行治理检测 SQL')
+            yield conn
+
     def _get_table_columns(self, table_name: str) -> List[str]:
         """获取表的所有列名（不带引号）
 
@@ -431,6 +465,11 @@ class RuleExecutor:
         Returns:
             (sql: str, params: dict)
         """
+        require_condition_expr(rule.condition_expr, self.db_type)
+        config = rule.conditions_config
+        if config:
+            require_conditions_payload(json.loads(config) if isinstance(config, str) else config, self.db_type)
+
         # 策略1：直接使用用户确认的 sql_text
         if rule.sql_text and rule.sql_text.strip():
             # sql_text 是用户已确认的最终 SQL，直接使用，不做任何修改
@@ -456,7 +495,6 @@ class RuleExecutor:
         # 优先处理多条件模式
         if conditions_config:
             try:
-                import json
                 if isinstance(conditions_config, str):
                     config = json.loads(conditions_config)
                 else:
@@ -488,12 +526,7 @@ class RuleExecutor:
 
                         quoted_cond_column = self._quote_identifier(cond_column)
                         # 替换 column 占位符
-                        adapted_cond = re.sub(
-                            r'\bcolumn\b',
-                            quoted_cond_column,
-                            cond_expr.strip(),
-                            flags=re.IGNORECASE
-                        )
+                        adapted_cond = replace_column(cond_expr.strip(), quoted_cond_column, self.db_type)
                         # 业务条件取反，得到违规条件
                         negated = f"NOT ({adapted_cond})"
                         where_clauses.append(f"({negated})")
@@ -515,12 +548,7 @@ class RuleExecutor:
 
         # 专家模式：有 condition_expr 时，直接使用条件表达式
         if condition and condition.strip():
-            adapted_condition = re.sub(
-                r'\bcolumn\b',
-                quoted_column,
-                condition.strip(),
-                flags=re.IGNORECASE
-            )
+            adapted_condition = replace_column(condition.strip(), quoted_column, self.db_type)
 
             # 一致性校验的特殊处理：只有"双方都为 NULL"才豁免
             # 违规条件：(col1 <> col2) OR (col1 IS NULL) <> (col2 IS NULL)
@@ -639,7 +667,7 @@ class RuleExecutor:
         # 如果条件中包含正则匹配符号，适配语法
         if '~*' in condition or 'REGEXP' in condition.upper():
             # 替换列名
-            result = re.sub(r'\bcolumn\b', quoted_column, condition, flags=re.IGNORECASE)
+            result = replace_column(condition, quoted_column, self.db_type)
 
             # 适配正则语法
             # 人大金仓（KingBase）基于 PostgreSQL，复用 PostgreSQL 的正则语法
@@ -663,7 +691,7 @@ class RuleExecutor:
             return result
         else:
             # 非正则条件，直接替换列名
-            return re.sub(r'\bcolumn\b', quoted_column, condition, flags=re.IGNORECASE)
+            return replace_column(condition, quoted_column, self.db_type)
 
     def _process_result(self, rule: GovernanceRule, rows: List[dict]) -> Dict[str, Any]:
         """处理执行结果
@@ -799,6 +827,10 @@ class RuleExecutor:
             - rule_type: 规则类型
             - condition_expr: 条件表达式（仅专家模式时存在）
         """
+        require_condition_expr(rule.condition_expr, self.db_type)
+        config = rule.conditions_config
+        if config:
+            require_conditions_payload(json.loads(config) if isinstance(config, str) else config, self.db_type)
         table = rule.target_table or ''
         column = rule.target_column or ''
 
@@ -862,7 +894,7 @@ class RuleExecutor:
                 """
 
                 # 将所有数据库操作放在一个 with 块内
-                with self.engine.begin() as conn:
+                with self._read_only_connection() as conn:
                     result = conn.execute(text(sample_sql), {'limit': limit})
                     raw_samples = [dict(row) for row in result.mappings().all()]  # 全字段原始记录
 
@@ -915,12 +947,7 @@ class RuleExecutor:
                                         continue
 
                                     quoted_col = self._quote_identifier(cond_col)
-                                    adapted_cond = re.sub(
-                                        r'\bcolumn\b',
-                                        quoted_col,
-                                        cond_expr.strip(),
-                                        flags=re.IGNORECASE
-                                    )
+                                    adapted_cond = replace_column(cond_expr.strip(), quoted_col, self.db_type)
 
                                     # 构建该记录的判断条件
                                     row_identifiers = []
@@ -1006,7 +1033,6 @@ class RuleExecutor:
             # 优先处理多条件模式
             if conditions_config:
                 try:
-                    import json
                     if isinstance(conditions_config, str):
                         config = json.loads(conditions_config)
                     else:
@@ -1025,12 +1051,7 @@ class RuleExecutor:
                             if not cond_col or not cond_expr_item:
                                 continue
                             quoted_cond_col = self._quote_identifier(cond_col)
-                            adapted_cond = re.sub(
-                                r'\bcolumn\b',
-                                quoted_cond_col,
-                                cond_expr_item.strip(),
-                                flags=re.IGNORECASE
-                            )
+                            adapted_cond = replace_column(cond_expr_item.strip(), quoted_cond_col, self.db_type)
                             # 业务条件取反
                             negated = f"NOT ({adapted_cond})"
                             where_clauses.append((cond_col, cond_expr_item, f"({negated})"))
@@ -1057,7 +1078,7 @@ class RuleExecutor:
                                 WHERE {all_where}
                                 LIMIT :limit
                             """
-                            with self.engine.begin() as conn:
+                            with self._read_only_connection() as conn:
                                 result = conn.execute(text(sql), {'limit': limit})
                                 raw_samples = [dict(row) for row in result.mappings().all()]  # 全字段原始记录
 
@@ -1101,12 +1122,7 @@ class RuleExecutor:
                                         row_where = " AND ".join(row_identifiers)
 
                                         # 检查该行是否违反此条件（NOT原始条件 = TRUE）
-                                        adapted_cond = re.sub(
-                                            r'\bcolumn\b',
-                                            quoted_col,
-                                            cond_expr_item.strip(),
-                                            flags=re.IGNORECASE
-                                        )
+                                        adapted_cond = replace_column(cond_expr_item.strip(), quoted_col, self.db_type)
                                         check_sql = f"""
                                             SELECT CASE WHEN NOT ({adapted_cond}) THEN 1 ELSE 0 END as violated
                                             FROM {full_table}
@@ -1159,12 +1175,7 @@ class RuleExecutor:
             # 这样手动输入 "column IS NOT NULL" 时，样本查询与检测SQL保持一致
             if condition and condition.strip():
                 # 专家模式：附带原始条件表达式
-                adapted_condition = re.sub(
-                    r'\bcolumn\b',
-                    quoted_column,
-                    condition.strip(),
-                    flags=re.IGNORECASE
-                )
+                adapted_condition = replace_column(condition.strip(), quoted_column, self.db_type)
                 # 优先使用全字段查询，便于用户追溯
                 all_columns = self._get_table_columns(table)
                 if all_columns:
@@ -1179,7 +1190,7 @@ class RuleExecutor:
                     WHERE NOT ({adapted_condition})
                     LIMIT :limit
                 """
-                with self.engine.begin() as conn:
+                with self._read_only_connection() as conn:
                     result = conn.execute(text(sql), {'limit': limit})
                     all_records = []
                     for row in result.mappings().all():
@@ -1228,7 +1239,7 @@ class RuleExecutor:
                     LIMIT :limit
                 """
 
-            with self.engine.begin() as conn:
+            with self._read_only_connection() as conn:
                 result = conn.execute(text(sql), {'limit': limit})
                 all_records = []
                 for row in result.mappings().all():
@@ -1305,7 +1316,7 @@ class RuleExecutor:
 
             # 执行 SQL
             start_exec = time_module.time()
-            with self.engine.begin() as conn:
+            with self._read_only_connection() as conn:
                 result_query = conn.execute(text(sql), params)
                 rows = [dict(row) for row in result_query.mappings().all()]
 
