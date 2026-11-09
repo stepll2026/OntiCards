@@ -273,6 +273,14 @@ class DialectAdapter:
             return f"{quoted_schema}.{quoted_table}"
         return quoted_table
 
+    def require_condition(self, condition: str) -> None:
+        """校验条件表达式结构；不合法时抛 ValueError。
+
+        通过适配器暴露，便于预览构造器等只依赖 DialectAdapter 的调用点
+        复用同一套校验，而无需额外导入校验模块。
+        """
+        require_condition_expr(condition, self.db_type)
+
     def adapt_condition_expr(self, condition: str, column: str) -> str:
         """
         适配条件表达式

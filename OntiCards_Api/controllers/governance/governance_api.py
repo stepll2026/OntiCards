@@ -7,7 +7,7 @@
 import json
 from controllers.governance.condition_security import (
     validate_condition_expr as _validate_condition_expr,
-    require_conditions_payload, require_condition_expr, replace_column,
+    require_conditions_payload, replace_column,
 )
 
 
@@ -677,12 +677,13 @@ class RuleListApi(Resource):
         Returns:
             预览SQL字符串
         """
-        require_condition_expr(condition_expr, db_type)
         if not table_name:
             return ""
 
         from controllers.governance.dialect_adapter import DialectAdapter
         adapter = DialectAdapter(db_type)
+        # 预览也是条件进入 SQL 的入口，先校验结构（非法时抛 ValueError）。
+        adapter.require_condition(condition_expr)
         quoted_table = adapter.quote_table_reference(table_name, schema)
         quoted_col = adapter.quote_identifier(column_name) if column_name else None
 
