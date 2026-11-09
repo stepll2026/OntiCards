@@ -8,7 +8,7 @@ test_autocommit_connection_is_rejected_before_writing (__main__.PostgresTests)
   目标表:     pr50_ac_items
   目标列:     phone
   条件表达式: ABS(column) > 0
-  生成SQL耗时: 5.49ms
+  生成SQL耗时: 5.69ms
   执行的SQL:
 SELECT
                     COUNT(*) as total_count,
@@ -35,7 +35,7 @@ test_execution_is_read_only_against_function_overloads (__main__.PostgresTests) 
   目标表:     pr50_items
   目标列:     phone
   条件表达式: ABS(column) > 0
-  生成SQL耗时: 1.5ms
+  生成SQL耗时: 1.51ms
   执行的SQL:
 SELECT
                     COUNT(*) as total_count,
@@ -91,6 +91,18 @@ PL/pgSQL function abs(text) line 1 at SQL statement
                 FROM "public"."pr50_items"]
 (Background on this error at: https://sqlalche.me/e/20/2j85)
 
+[WARN] 获取失败样本失败 | rule_id=None | rule_name=overload | error=(psycopg2.errors.ReadOnlySqlTransaction) cannot execute INSERT in a read-only transaction
+CONTEXT:  SQL statement "INSERT INTO pr50_marker VALUES (9)"
+PL/pgSQL function abs(text) line 1 at SQL statement
+
+[SQL: 
+                    SELECT "phone", "price"
+                    FROM "public"."pr50_items"
+                    WHERE NOT (ABS("phone") > 0)
+                    LIMIT %(limit)s
+                ]
+[parameters: {'limit': 20}]
+(Background on this error at: https://sqlalche.me/e/20/2j85)
 
 [环节二 - 执行规则] 开始执行
   规则ID:     None
@@ -100,13 +112,13 @@ PL/pgSQL function abs(text) line 1 at SQL statement
   目标表:     pr50_items
   目标列:     price
   条件表达式: column > 0
-  生成SQL耗时: 1.25ms
+  生成SQL耗时: 1.28ms
   执行的SQL:
 SELECT
                     COUNT(*) as total_count,
                     SUM(CASE WHEN NOT ("price" > 0) THEN 1 ELSE 0 END) as failed_count
                 FROM "public"."pr50_items"
-  SQL执行耗时: 0.68ms
+  SQL执行耗时: 0.77ms
   执行结果:
     total_count = 3
     passed_count = 2
@@ -121,6 +133,6 @@ SELECT
 ok
 
 ----------------------------------------------------------------------
-Ran 3 tests in 0.265s
+Ran 3 tests in 0.280s
 
 OK

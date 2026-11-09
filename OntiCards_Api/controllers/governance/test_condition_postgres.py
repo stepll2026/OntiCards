@@ -128,6 +128,8 @@ class PostgresTests(unittest.TestCase):
             result = executor.execute_rule(overload_rule)
             self.assertEqual(result.status, "error", result.error_message)
             self.assertIn("read-only", (result.error_message or "").lower())
+            # 失败样本查询走同一条保护路径，也不能触发写入型重载。
+            self.assertEqual(executor._get_sample_data(overload_rule), [])
             with engine.begin() as conn:
                 self.assertEqual(conn.execute(text("SELECT COUNT(*) FROM pr50_marker")).scalar(), 0)
 
