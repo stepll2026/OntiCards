@@ -1,0 +1,3 @@
+test_condition_security.py exit=0
+test_condition_api.py exit=0
+test_dialect_adapter.py exit=0

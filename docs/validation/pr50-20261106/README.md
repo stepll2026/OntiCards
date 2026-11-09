@@ -16,10 +16,10 @@
 
 ## 验证结果
 
-- 实际 main：`2e597d05f3673891f9ffdef08e2c45084dbd42dc`。
+- 实际 main：`33512c2e654bf8c86db3912a62d87e39c51838a4`（合并前为 `2e597d05…`，期间上游合入 PR #53/#54；本分支已用普通 merge 纳入，冲突按“保留上游字面量/数组支持 + 本分支校验”解决）。
 - 原贡献：`047851848fca3962571197e01274945e267df06f`，已通过普通 merge 纳入 main 的后续更改。
 - 上一轮代码/测试提交：`bfc484636406249db127298d2eb4ec36bba322c6`；本轮新增只读事务保护与对应回归用例。
-- kol-stage2 实测：6 项条件测试（含现有方言函数矩阵及 24 个种子 SQL 条件）、10 项 Flask/SQLite 测试、31 项既有方言测试、3 项隔离 PostgreSQL 测试均通过（含 psycopg3 `?autocommit=true` 数据源必须被拒绝的用例）。
+- kol-stage2 实测：6 项条件测试（含现有方言函数矩阵及 24 个种子 SQL 条件）、10 项 Flask/SQLite 测试、31 项既有方言测试、8 项上游 PR #53 的列引用/字面量测试、3 项隔离 PostgreSQL 测试均通过（含 psycopg3 `?autocommit=true` 数据源必须被拒绝的用例）。为兼容上游已支持的写法，AST 允许列表补入 `ARRAY[...]`、`ANY/ALL`、数组运算符、下标、`E''`/`N''`/`q''`/美元引用等只读结构；它们仍受“单一谓词、无语句、无危险函数”约束。
 - PostgreSQL 直接加载基线 `governance_api.py` 的 `_generate_preview_sql`（独立终审核对：它生成的 SQL 与 base `2e597d05` 同一方法逐字一致）：合成函数确实向标记表写入；带只读保护的实际 `execute_rule` 执行路径把同一条件判为规则错误，标记表保持为空，而正常条件规则及其失败样本仍可执行并返回正确统计。数据源启用 autocommit 时，只读事务无法建立，执行器回读 `transaction_read_only` 确认不到只读即报错，不会静默执行。
 - 红测对照：同一新用例在未加保护的执行器上失败，`ABS(column) > 0` 被当作正常规则执行（`passed`），证明该用例确实覆盖了写入型重载；见 [只读红测](readonly/readonly-red.log) 与 [只读绿测](readonly/test_condition_postgres.py.log)。最初一次红测（[readonly-red-1.log](readonly/readonly-red-1.log)）同样暴露该行为，但其中另一个用例因测试自身依赖已修复的旧基线而报错；该断言已改为只验证“引用函数名被拒绝”，未放宽任何安全断言。
 - autocommit 红测：上一版只读保护在 `?autocommit=true` 连接上不生效（`SET TRANSACTION READ ONLY` 只产生警告），同一恶意条件被当作正常规则执行；加入回读校验后该用例通过。见 [autocommit 红测](readonly/autocommit-red.log)。
