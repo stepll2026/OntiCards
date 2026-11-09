@@ -150,6 +150,45 @@ class PostgresTests(unittest.TestCase):
                 conn.execute(text("DROP TABLE IF EXISTS pr50_marker CASCADE"))
             engine.dispose()
 
+    @unittest.skipUnless(os.environ.get("PR50_TEST_DATABASE_URL_AUTOCOMMIT"),
+                         "isolated autocommit database URL required")
+    def test_autocommit_connection_is_rejected_before_writing(self):
+        """数据源 autocommit 时 SET TRANSACTION READ ONLY 不生效，必须拒绝执行。"""
+        engine = create_engine(os.environ["PR50_TEST_DATABASE_URL_AUTOCOMMIT"])
+        executor = RuleExecutor(engine, "postgresql", "onti")
+        with engine.begin() as conn:
+            conn.execute(text("DROP TABLE IF EXISTS pr50_ac_items CASCADE"))
+            conn.execute(text("DROP TABLE IF EXISTS pr50_ac_marker CASCADE"))
+            conn.execute(text("CREATE TABLE pr50_ac_items(phone TEXT, price INTEGER)"))
+            conn.execute(text("INSERT INTO pr50_ac_items VALUES ('x', -1), ('y', 5)"))
+            conn.execute(text("CREATE TABLE pr50_ac_marker(value INTEGER)"))
+            conn.execute(text("""
+                CREATE OR REPLACE FUNCTION public.abs(TEXT) RETURNS INTEGER
+                LANGUAGE plpgsql VOLATILE AS
+                $$ BEGIN INSERT INTO pr50_ac_marker VALUES (7); RETURN 1; END $$;
+            """))
+        try:
+            rule = SimpleNamespace(
+                library_id=None, id=None, rule_name="autocommit", rule_type="custom_sql",
+                severity="warning", target_table="pr50_ac_items", target_column="phone",
+                condition_expr="ABS(column) > 0", conditions_config=None, sql_text=None,
+                enabled=True)
+            result = executor.execute_rule(rule)
+            self.assertEqual(result.status, "error", result.error_message)
+            self.assertIn("只读事务", result.error_message or "")
+            with engine.begin() as conn:
+                self.assertEqual(conn.execute(text("SELECT COUNT(*) FROM pr50_ac_marker")).scalar(), 0)
+                # 反证：同一 SQL 在 autocommit 连接上直接执行确实会写入。
+                conn.execute(text('SELECT COUNT(*) FROM pr50_ac_items WHERE NOT (ABS("phone") > 0)'))
+                self.assertGreater(
+                    conn.execute(text("SELECT COUNT(*) FROM pr50_ac_marker")).scalar(), 0)
+        finally:
+            with engine.begin() as conn:
+                conn.execute(text("DROP FUNCTION IF EXISTS public.abs(TEXT)"))
+                conn.execute(text("DROP TABLE IF EXISTS pr50_ac_items CASCADE"))
+                conn.execute(text("DROP TABLE IF EXISTS pr50_ac_marker CASCADE"))
+            engine.dispose()
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

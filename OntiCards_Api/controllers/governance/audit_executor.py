@@ -353,17 +353,33 @@ class RuleExecutor:
     # 检测查询只读取数据。PostgreSQL（及兼容的金仓）可在目标库预先存在同名
     # 用户函数重载，未限定名称的合法内建函数因此可能被解析到带写入副作用的
     # 实现；条件校验无法确定实际绑定的函数签名，所以在执行边界再加一道
-    # 数据库只读事务保护，拒绝一切写入而不是执行破坏性操作。
+    # 数据库只读事务保护：普通事务连接上永久表写入会被数据库拒绝；无法建立
+    # 只读事务的连接（如数据源配置了 autocommit）直接报错，不静默放行。
     _READ_ONLY_TRANSACTION_DIALECTS = ('postgresql', 'kingbase')
+
+    def _requires_read_only_transaction(self) -> bool:
+        """判断是否需要只读事务保护（容忍空白/大小写与方言自报名）。"""
+        db_type = (self.db_type or '').strip().lower()
+        dialect = (getattr(self.engine.dialect, 'name', '') or '').strip().lower()
+        return (db_type in self._READ_ONLY_TRANSACTION_DIALECTS
+                or dialect in ('postgresql', 'postgres', 'kingbase'))
 
     @contextmanager
     def _read_only_connection(self):
         """打开一个禁止写入目标库的连接，供检测 SQL 和失败样本查询使用。"""
         with self.engine.begin() as conn:
-            if self.db_type in self._READ_ONLY_TRANSACTION_DIALECTS:
+            if self._requires_read_only_transaction():
                 # 必须是事务中的第一条语句；只影响本次查询事务，不改变
                 # 数据源账号权限、连接配置或生产库设置。
                 conn.execute(text('SET TRANSACTION READ ONLY'))
+                # autocommit 或 AUTOCOMMIT 隔离级别下不会开启事务块，
+                # SET TRANSACTION 只是一条警告；必须回读确认，否则会
+                # 静默放行写入。无法确认时按失败处理（fail-closed）。
+                state = conn.execute(text('SHOW transaction_read_only')).scalar()
+                if str(state).strip().lower() not in ('on', 'true', '1'):
+                    raise ValueError(
+                        '数据库连接未处于只读事务（数据源可能启用了 autocommit），'
+                        '已拒绝执行治理检测 SQL')
             yield conn
 
     def _get_table_columns(self, table_name: str) -> List[str]:
