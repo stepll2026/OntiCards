@@ -28,6 +28,8 @@ _NODES = frozenset("""
     TimeStrToTime StrToTime TsOrDsToDate TsOrDsToTimestamp TimeToStr
     Year Month Day Date Datetime JulianDay ToNumber StrToDate ToChar StrPosition
     Count Sum Avg Min Max
+    Array Bracket Any ArrayContainsAll ArrayContainedBy ArrayOverlaps ArraySize
+    ByteString National
 """.split())
 _ANONYMOUS = {
     "postgres": frozenset({"NOW"}),
@@ -37,6 +39,8 @@ _ANONYMOUS = {
     "oracle": frozenset({"TO_NUMBER", "TO_DATE", "TO_CHAR"}),
     "trino": frozenset({"NOW"}),
 }
+# 只读的比较量词（ANY/ALL/ARRAY[...] 等由 SQLGlot 记为函数名节点）。
+_SHARED_ANONYMOUS = frozenset({"ALL"})
 _TYPES = frozenset("""
     BOOLEAN TINYINT SMALLINT INT BIGINT UINT UBIGINT FLOAT DOUBLE DECIMAL
     CHAR NCHAR VARCHAR NVARCHAR TEXT DATE TIME TIMESTAMP TIMESTAMPTZ DATETIME
@@ -97,7 +101,8 @@ def _parse(expr, db_type=None):
         for node in condition.walk():
             name = type(node).__name__
             if name == "Anonymous":
-                if node.name.upper() not in _ANONYMOUS.get(dialect, ()):
+                if (node.name.upper() not in _ANONYMOUS.get(dialect, ())
+                        and node.name.upper() not in _SHARED_ANONYMOUS):
                     raise ValueError("条件表达式不允许调用此函数")
             elif name not in _NODES:
                 raise ValueError("条件表达式包含不支持的结构")

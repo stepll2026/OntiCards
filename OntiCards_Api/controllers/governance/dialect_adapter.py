@@ -234,8 +234,9 @@ class DialectAdapter:
         """
         if not name:
             return name
-        delimiter = self.dialect.identifier_quote.format("")[-1:]
-        return self.dialect.identifier_quote.format(name.replace(delimiter, delimiter * 2))
+        # Embedded closing delimiters belong to the name, never to SQL syntax.
+        closing_quote = self.dialect.identifier_quote[-1]
+        return self.dialect.identifier_quote.format(name.replace(closing_quote, closing_quote * 2))
 
     def quote_table_column(self, table: str, column: str) -> Tuple[str, str]:
         """
@@ -288,7 +289,8 @@ class DialectAdapter:
         if not condition:
             return ""
 
-        # 替换 column 占位符
+        # 替换 column 占位符：只替换真正的列引用，保留字符串字面量、
+        # 注释和已引用的标识符；替换前先校验表达式结构。
         quoted_col = self.quote_identifier(column)
         condition = replace_column(condition, quoted_col, self.db_type)
 
@@ -645,7 +647,7 @@ FROM {quoted_table}
         # ============================================================
         if condition and condition.strip():
             if column and quoted_col:
-                adapted_condition = replace_column(condition.strip(), quoted_col, self.db_type)
+                adapted_condition = self.adapt_condition_expr(condition.strip(), column)
             else:
                 adapted_condition = condition.strip()
 
@@ -726,9 +728,8 @@ FROM {quoted_table}
             if not column or not condition:
                 continue
 
-            quoted_col = self.quote_identifier(column)
-            # 替换 column 占位符
-            adapted_condition = replace_column(condition.strip(), quoted_col, self.db_type)
+            # 使用统一替换，保留字面量及已引用的列名。
+            adapted_condition = self.adapt_condition_expr(condition.strip(), column)
             # 业务条件取反，得到违规条件
             where_clauses.append(f"(NOT ({adapted_condition}))")
 

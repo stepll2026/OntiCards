@@ -1,0 +1,53 @@
+test_quote_identifier_no_trailing_paren (__main__.TestDMIdentifierQuoting.test_quote_identifier_no_trailing_paren)
+DM: 引用结果不应以 ) 结尾 ... ok
+test_quote_identifier_simple (__main__.TestDMIdentifierQuoting.test_quote_identifier_simple)
+DM: 简单标识符引用不应包含多余右括号 ... ok
+test_quote_table_reference_with_schema (__main__.TestDMIdentifierQuoting.test_quote_table_reference_with_schema)
+DM: schema.table 引用格式正确 ... ok
+test_quote_table_reference_without_schema (__main__.TestDMIdentifierQuoting.test_quote_table_reference_without_schema)
+DM: 无 schema 时只返回带引号的表名 ... ok
+test_all_affected_dialects_consistent (__main__.TestEdgeCases.test_all_affected_dialects_consistent)
+Oracle/Trino/DM 三个受影响方言的引用行为应一致 ... ok
+test_empty_identifier (__main__.TestEdgeCases.test_empty_identifier)
+空字符串标识符应原样返回 ... ok
+test_none_schema_table_reference (__main__.TestEdgeCases.test_none_schema_table_reference)
+schema=None 时应只返回表名 ... ok
+test_whitespace_only_schema (__main__.TestEdgeCases.test_whitespace_only_schema)
+空白 schema 应视为无 schema ... ok
+test_quote_identifier_no_trailing_paren (__main__.TestOracleIdentifierQuoting.test_quote_identifier_no_trailing_paren)
+Oracle: 引用结果不应以 ) 结尾 ... ok
+test_quote_identifier_simple (__main__.TestOracleIdentifierQuoting.test_quote_identifier_simple)
+Oracle: 简单标识符引用不应包含多余右括号 ... ok
+test_quote_table_column (__main__.TestOracleIdentifierQuoting.test_quote_table_column)
+Oracle: 同时引用表名和列名 ... ok
+test_quote_table_reference_with_schema (__main__.TestOracleIdentifierQuoting.test_quote_table_reference_with_schema)
+Oracle: schema.table 引用格式正确 ... ok
+test_quote_table_reference_without_schema (__main__.TestOracleIdentifierQuoting.test_quote_table_reference_without_schema)
+Oracle: 无 schema 时只返回带引号的表名 ... ok
+test_quote_identifier_no_trailing_paren (__main__.TestTrinoIdentifierQuoting.test_quote_identifier_no_trailing_paren)
+Trino: 引用结果不应以 ) 结尾 ... ok
+test_quote_identifier_simple (__main__.TestTrinoIdentifierQuoting.test_quote_identifier_simple)
+Trino: 简单标识符引用不应包含多余右括号 ... ok
+test_quote_table_reference_with_schema (__main__.TestTrinoIdentifierQuoting.test_quote_table_reference_with_schema)
+Trino: schema.table 引用格式正确 ... ok
+test_quote_table_reference_without_schema (__main__.TestTrinoIdentifierQuoting.test_quote_table_reference_without_schema)
+Trino: 无 schema 时只返回带引号的表名 ... ok
+test_kingbase_quote_identifier (__main__.TestUnaffectedDialectsRegression.test_kingbase_quote_identifier) ... ok
+test_kingbase_quote_table_reference (__main__.TestUnaffectedDialectsRegression.test_kingbase_quote_table_reference) ... ok
+test_mariadb_quote_identifier (__main__.TestUnaffectedDialectsRegression.test_mariadb_quote_identifier) ... ok
+test_mariadb_quote_table_reference (__main__.TestUnaffectedDialectsRegression.test_mariadb_quote_table_reference) ... ok
+test_mssql_quote_identifier (__main__.TestUnaffectedDialectsRegression.test_mssql_quote_identifier) ... ok
+test_mssql_quote_table_reference (__main__.TestUnaffectedDialectsRegression.test_mssql_quote_table_reference) ... ok
+test_mysql_quote_identifier (__main__.TestUnaffectedDialectsRegression.test_mysql_quote_identifier) ... ok
+test_mysql_quote_table_reference (__main__.TestUnaffectedDialectsRegression.test_mysql_quote_table_reference) ... ok
+test_oceanbase_quote_identifier (__main__.TestUnaffectedDialectsRegression.test_oceanbase_quote_identifier) ... ok
+test_oceanbase_quote_table_reference (__main__.TestUnaffectedDialectsRegression.test_oceanbase_quote_table_reference) ... ok
+test_postgresql_quote_identifier (__main__.TestUnaffectedDialectsRegression.test_postgresql_quote_identifier) ... ok
+test_postgresql_quote_table_reference (__main__.TestUnaffectedDialectsRegression.test_postgresql_quote_table_reference) ... ok
+test_sqlite_quote_identifier (__main__.TestUnaffectedDialectsRegression.test_sqlite_quote_identifier) ... ok
+test_sqlite_quote_table_reference (__main__.TestUnaffectedDialectsRegression.test_sqlite_quote_table_reference) ... ok
+
+----------------------------------------------------------------------
+Ran 31 tests in 0.001s
+
+OK

@@ -412,10 +412,10 @@ class RuleListApi(Resource):
                     return resp(code=400, msg="单条件模式下条件表达式（condition_expr）不能为空", http_status=400)
                 if not _validate_condition_expr(condition_expr, db_type):
                     return resp(code=400, msg="条件表达式包含非法字符", http_status=400)
-                if condition_expr and 'column' in condition_expr and target_column:
+                if condition_expr and 'column' in condition_expr.lower() and target_column:
                     from controllers.governance.dialect_adapter import DialectAdapter
-                    _safe_col = DialectAdapter(db_type or 'postgresql').quote_identifier(target_column)
-                    condition_expr = replace_column(condition_expr, _safe_col, db_type)
+                    condition_expr = DialectAdapter(
+                        db_type or 'postgresql').adapt_condition_expr(condition_expr, target_column)
             else:
                 target_column = None
                 condition_expr = None
@@ -457,10 +457,10 @@ class RuleListApi(Resource):
                     if cond_expr:
                         if not _validate_condition_expr(cond_expr, rule.db_type):
                             return resp(code=400, msg=f"条件表达式包含非法字符: {cond_expr}", http_status=400)
-                        if 'column' in cond_expr and cond_column:
+                        if 'column' in cond_expr.lower() and cond_column:
                             from controllers.governance.dialect_adapter import DialectAdapter
-                            _safe_col = DialectAdapter(rule.db_type or 'postgresql').quote_identifier(cond_column)
-                            processed_cond['condition'] = replace_column(cond_expr, _safe_col, rule.db_type)
+                            processed_cond['condition'] = DialectAdapter(
+                                rule.db_type or 'postgresql').adapt_condition_expr(cond_expr, cond_column)
                     processed_conditions.append(processed_cond)
 
                 rule.set_conditions(processed_conditions, data.get('condition_mode', 'AND'))
@@ -709,7 +709,7 @@ class RuleListApi(Resource):
         if column_name and condition_expr:
             # 只在 condition_expr 包含 column 占位符时才替换
             if 'column' in condition_expr.lower():
-                sql_condition = replace_column(condition_expr, quoted_col, db_type)
+                sql_condition = adapter.adapt_condition_expr(condition_expr, column_name)
             else:
                 # 已处理的条件表达式
                 sql_condition = condition_expr
@@ -1000,10 +1000,10 @@ class RuleDetailApi(Resource):
                     if cond_expr:
                         if not _validate_condition_expr(cond_expr, rule.db_type):
                             return resp(code=400, msg=f"条件表达式包含非法字符: {cond_expr}", http_status=400)
-                        if 'column' in cond_expr and cond_column:
+                        if 'column' in cond_expr.lower() and cond_column:
                             from controllers.governance.dialect_adapter import DialectAdapter
-                            _safe_col = DialectAdapter(rule.db_type or 'postgresql').quote_identifier(cond_column)
-                            processed_cond['condition'] = replace_column(cond_expr, _safe_col, rule.db_type)
+                            processed_cond['condition'] = DialectAdapter(
+                                rule.db_type or 'postgresql').adapt_condition_expr(cond_expr, cond_column)
                     processed_conditions.append(processed_cond)
                 rule.set_conditions(processed_conditions, condition_mode)
             else:
