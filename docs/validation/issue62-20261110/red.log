@@ -1,0 +1,37 @@
+F.FF......F.
+======================================================================
+FAIL: test_batch_all_failed_returns_false (__main__.DocIdCleanupTests.test_batch_all_failed_returns_false)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onti-issue62-0f569596/test_doc_id_cleanup.py", line 106, in test_batch_all_failed_returns_false
+    self.assertIs(self.ns["batch_delete_by_uuids"](["bad", "missing"], "user"), False)
+AssertionError: True is not False
+
+======================================================================
+FAIL: test_batch_false_response_is_failure (__main__.DocIdCleanupTests.test_batch_false_response_is_failure)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onti-issue62-0f569596/test_doc_id_cleanup.py", line 98, in test_batch_false_response_is_failure
+    self.assertIs(result, False)
+AssertionError: True is not False
+
+======================================================================
+FAIL: test_batch_partial_failure_continues_and_returns_false (__main__.DocIdCleanupTests.test_batch_partial_failure_continues_and_returns_false)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onti-issue62-0f569596/test_doc_id_cleanup.py", line 86, in test_batch_partial_failure_continues_and_returns_false
+    self.assertIs(result, False)
+AssertionError: True is not False
+
+======================================================================
+FAIL: test_relationship_cleanup_propagates_batch_failure (__main__.DocIdCleanupTests.test_relationship_cleanup_propagates_batch_failure)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/onti-issue62-0f569596/test_doc_id_cleanup.py", line 118, in test_relationship_cleanup_propagates_batch_failure
+    self.assertIs(self.ns["delete_relationship_card_vector"]("target", "user"), False)
+AssertionError: True is not False
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.114s
+
+FAILED (failures=4)
