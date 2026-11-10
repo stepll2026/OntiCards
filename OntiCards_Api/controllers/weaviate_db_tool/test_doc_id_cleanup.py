@@ -29,6 +29,9 @@ class DocIdCleanupTests(unittest.TestCase):
         self.collection_names = []
         self.closed = 0
         self.page_cap = 1000
+        self.delete_failures = {}
+        self.delete_results = {}
+        self.attempted = []
 
         class Filter:
             @staticmethod
@@ -45,9 +48,18 @@ class DocIdCleanupTests(unittest.TestCase):
             rows = [r for r in self.rows if r.properties["doc_id"] == filters[1]]
             return SimpleNamespace(objects=rows[offset:offset + min(limit, self.page_cap)])
 
+        def delete_by_id(uuid):
+            self.attempted.append(uuid)
+            if uuid in self.delete_failures:
+                raise self.delete_failures[uuid]
+            result = self.delete_results.get(uuid, True)
+            if result:
+                self.deleted.append(uuid)
+            return result
+
         collection = SimpleNamespace(
             query=SimpleNamespace(fetch_objects=fetch_objects),
-            data=SimpleNamespace(delete_by_id=self.deleted.append))
+            data=SimpleNamespace(delete_by_id=delete_by_id))
         def get(name):
             self.collection_names.append(name)
             return collection
@@ -66,6 +78,53 @@ class DocIdCleanupTests(unittest.TestCase):
         self.output = redirect_stdout(io.StringIO())
         self.output.__enter__()
         self.addCleanup(self.output.__exit__, None, None, None)
+
+    def test_batch_partial_failure_continues_and_returns_false(self):
+        self.delete_failures["bad"] = RuntimeError("service refused deletion")
+        with redirect_stdout(io.StringIO()) as output:
+            result = self.ns["batch_delete_by_uuids"](["ok", "bad", "later"], "user-space")
+        self.assertIs(result, False)
+        self.assertEqual(self.attempted, ["ok", "bad", "later"])
+        self.assertEqual(self.deleted, ["ok", "later"])
+        self.assertIn("bad", output.getvalue())
+        self.assertIn("service refused deletion", output.getvalue())
+        self.assertIn("success=2 failed=1", output.getvalue())
+        self.assertEqual(self.closed, 1)
+
+    def test_batch_false_response_is_failure(self):
+        self.delete_results["missing"] = False
+        with redirect_stdout(io.StringIO()) as output:
+            result = self.ns["batch_delete_by_uuids"](["missing", "later"], "user")
+        self.assertIs(result, False)
+        self.assertEqual(self.attempted, ["missing", "later"])
+        self.assertIn("missing", output.getvalue())
+        self.assertIn("success=1 failed=1", output.getvalue())
+
+    def test_batch_all_failed_returns_false(self):
+        self.delete_failures["bad"] = TimeoutError("timeout")
+        self.delete_results["missing"] = False
+        self.assertIs(self.ns["batch_delete_by_uuids"](["bad", "missing"], "user"), False)
+        self.assertEqual(self.attempted, ["bad", "missing"])
+        self.assertEqual(self.deleted, [])
+
+    def test_batch_success_preserves_bool_contract(self):
+        self.assertIs(self.ns["batch_delete_by_uuids"](["a", "b"], "user-space"), True)
+        self.assertEqual(self.deleted, ["a", "b"])
+        self.assertEqual(self.collection_names, ["user_space"])
+
+    def test_relationship_cleanup_propagates_batch_failure(self):
+        self.populate(3)
+        self.delete_failures["id-1"] = RuntimeError("refused")
+        self.assertIs(self.ns["delete_relationship_card_vector"]("target", "user"), False)
+        self.assertEqual(self.attempted, ["id-0", "id-1", "id-2"])
+
+    def test_batch_empty_and_missing_collection_remain_errors(self):
+        with self.assertRaises(ValueError):
+            self.ns["batch_delete_by_uuids"]([], "user")
+        self.exists = False
+        with self.assertRaises(RuntimeError):
+            self.ns["batch_delete_by_uuids"](["a"], "user")
+        self.assertEqual(self.attempted, [])
 
     def populate(self, count):
         self.rows = [SimpleNamespace(

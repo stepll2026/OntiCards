@@ -835,11 +835,22 @@ def batch_delete_by_uuids(uuids: list, class_name: str) -> bool:
         _require_collection_exists(client, target_class)
 
         collection = client.collections.get(target_class)
-        from contextlib import suppress
+        # 保持 bool 契约：只有每条删除都得到 SDK 确认才报告全部成功。
+        # 单条失败不阻止后续删除，部分完成和全部失败均返回 False。
+        succeeded = 0
+        failed = 0
         for uuid in uuids:
-            with suppress(Exception):
-                collection.data.delete_by_id(uuid)
-        return True
+            try:
+                if collection.data.delete_by_id(uuid):
+                    succeeded += 1
+                else:
+                    failed += 1
+                    print(f"[Weaviate][DELETE] class={target_class} uuid={uuid} failed: delete_by_id returned False")
+            except Exception as exc:
+                failed += 1
+                print(f"[Weaviate][DELETE] class={target_class} uuid={uuid} failed: {type(exc).__name__}: {exc}")
+        print(f"[Weaviate][DELETE] class={target_class} success={succeeded} failed={failed}")
+        return failed == 0
 
 # 获取某个class中的所有记录数
 def get_total_count(class_name: str) -> int:
