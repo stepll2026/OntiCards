@@ -7,7 +7,7 @@
 import json
 from controllers.governance.condition_security import (
     validate_condition_expr as _validate_condition_expr,
-    require_conditions_payload, replace_column,
+    require_conditions_payload, require_read_only_sql, replace_column,
 )
 
 
@@ -643,6 +643,11 @@ class RuleListApi(Resource):
                 db_type=db_type
             )
 
+        try:
+            if rule.sql_text:
+                require_read_only_sql(rule.sql_text, db_type)
+        except ValueError as e:
+            return resp(code=400, msg=str(e), http_status=400)
         db.session.add(rule)
         db.session.commit()
 
@@ -4040,6 +4045,7 @@ class RulePreviewApi(Resource):
                     )
                 mode_desc = '自动模式：根据规则类型生成默认条件'
 
+            require_read_only_sql(sql, db_type)
             return resp(data={
                 'success': True,
                 'sql': sql,
