@@ -1705,6 +1705,11 @@ const WorkspaceDetailPage = () => {
       const stepDuration = duration / steps
 
       askProgressIntervalRef.current = setInterval(() => {
+        if (typeof window === 'undefined' || !askProgressIntervalRef.current) {
+          clearInterval(askProgressIntervalRef.current);
+          askProgressIntervalRef.current = null;
+          return;
+        }
         if (askCancelFlagRef.current) {
           if (askProgressIntervalRef.current) {
             clearInterval(askProgressIntervalRef.current)
