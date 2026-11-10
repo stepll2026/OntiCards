@@ -170,6 +170,7 @@ def require_read_only_sql(sql, db_type=None):
         tokens = sqlglot.Dialect.get_or_raise(dialect).tokenize(sql)
         if len(tokens) > 4096:
             raise ValueError("查询过于复杂")
+        quoted_calls = []
         depth = 0
         for index, token in enumerate(tokens):
             if token.comments:
@@ -179,7 +180,7 @@ def require_read_only_sql(sql, db_type=None):
             if (token.token_type == TokenType.IDENTIFIER
                     and index + 1 < len(tokens)
                     and tokens[index + 1].token_type == TokenType.L_PAREN):
-                raise ValueError("不允许引用函数名")
+                quoted_calls.append(token.start)
             if token.token_type == TokenType.L_PAREN:
                 depth += 1
                 if depth > 64:
@@ -190,6 +191,15 @@ def require_read_only_sql(sql, db_type=None):
         if len(statements) != 1 or not isinstance(
                 statements[0], (exp.Select, exp.SetOperation, exp.Subquery)):
             raise ValueError("仅允许单条只读 SELECT 查询")
+        # SQLGlot normalizes quoted built-ins, but quoted CTE/table aliases
+        # followed by a column list are declarations, not function calls.
+        alias_starts = {
+            node.this.meta.get("start")
+            for node in statements[0].find_all(exp.TableAlias)
+            if isinstance(node.this, exp.Identifier)
+        }
+        if any(start not in alias_starts for start in quoted_calls):
+            raise ValueError("不允许引用函数名")
         for node in statements[0].walk():
             name = type(node).__name__
             if name == "Anonymous":

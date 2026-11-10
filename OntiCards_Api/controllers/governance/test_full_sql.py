@@ -41,6 +41,7 @@ class FullSqlTests(unittest.TestCase):
         queries = [
             "SELECT COUNT(*) AS total_count, SUM(CASE WHEN price<0 THEN 1 ELSE 0 END) AS failed_count FROM items;",
             "WITH x AS (SELECT price FROM items) SELECT * FROM x UNION ALL SELECT price FROM items",
+            'WITH "x"(price) AS (SELECT 1) SELECT * FROM "x"',
             "SELECT price, ROW_NUMBER() OVER (ORDER BY price) AS n FROM items",
             "SELECT * FROM items WHERE price IN (SELECT price FROM reference_items)",
             "SELECT '; -- literal' AS label",
@@ -92,6 +93,7 @@ class FullSqlApiTests(unittest.TestCase):
     def test_read_cte_and_reference_queries_execute_and_sample(self):
         queries = [
             "WITH x AS (SELECT price FROM items) SELECT COUNT(*) AS total_count, SUM(CASE WHEN price<0 THEN 1 ELSE 0 END) AS failed_count FROM x",
+            'WITH "x"(price) AS (SELECT price FROM items) SELECT COUNT(*) AS total_count, SUM(CASE WHEN price<0 THEN 1 ELSE 0 END) AS failed_count FROM "x"',
             "SELECT COUNT(*) AS total_count, SUM(CASE WHEN price IN (SELECT price FROM reference_items) THEN 1 ELSE 0 END) AS failed_count FROM items",
         ]
         with db.engine.begin() as conn:

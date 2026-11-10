@@ -45,6 +45,7 @@ class PostgresFullSqlTests(unittest.TestCase):
             queries = [
                 "SELECT COUNT(*) AS total_count, SUM(CASE WHEN price<0 THEN 1 ELSE 0 END) AS failed_count FROM items;",
                 "WITH x AS (SELECT * FROM items) SELECT COUNT(*) AS total_count, SUM(CASE WHEN price<0 THEN 1 ELSE 0 END) AS failed_count FROM x",
+                'WITH "x"(price) AS (SELECT price FROM items) SELECT COUNT(*) AS total_count, SUM(CASE WHEN price<0 THEN 1 ELSE 0 END) AS failed_count FROM "x"',
                 "SELECT COUNT(*) AS total_count, SUM(CASE WHEN price<0 THEN 1 ELSE 0 END) AS failed_count FROM items WHERE price IN (SELECT price FROM items)",
             ]
             for sql in queries:
