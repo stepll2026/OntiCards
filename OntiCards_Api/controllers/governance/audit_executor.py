@@ -29,7 +29,7 @@ from models.governance_rule import GovernanceRule
 from models.governance_report import GovernanceReport
 from models.rule_execution_result import RuleExecutionResult
 from controllers.governance.dialect_adapter import DialectAdapter
-from controllers.governance.condition_security import require_condition_expr, require_conditions_payload, replace_column
+from controllers.governance.condition_security import require_condition_expr, require_conditions_payload, require_read_only_sql, replace_column
 
 
 # ========== JSON 序列化辅助 ==========
@@ -465,6 +465,8 @@ class RuleExecutor:
         Returns:
             (sql: str, params: dict)
         """
+        if rule.sql_text is not None and rule.sql_text != "":
+            require_read_only_sql(rule.sql_text, self.db_type)
         require_condition_expr(rule.condition_expr, self.db_type)
         config = rule.conditions_config
         if config:
@@ -827,6 +829,8 @@ class RuleExecutor:
             - rule_type: 规则类型
             - condition_expr: 条件表达式（仅专家模式时存在）
         """
+        if rule.sql_text is not None and rule.sql_text != "":
+            require_read_only_sql(rule.sql_text, self.db_type)
         require_condition_expr(rule.condition_expr, self.db_type)
         config = rule.conditions_config
         if config:
@@ -893,6 +897,8 @@ class RuleExecutor:
                     LIMIT :limit
                 """
 
+                # 提取条件后重新检查实际执行的样本 SQL，避免文本提取改变查询边界。
+                require_read_only_sql(sample_sql, self.db_type)
                 # 将所有数据库操作放在一个 with 块内
                 with self._read_only_connection() as conn:
                     result = conn.execute(text(sample_sql), {'limit': limit})

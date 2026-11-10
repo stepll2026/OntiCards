@@ -2,7 +2,7 @@
 
 Keep the original SQL spelling: dialect functions/regex literals must not be
 silently transpiled. Read-only subqueries remain supported (reference template).
-This is a predicate boundary, not a sandbox for the separate full-SQL feature.
+Full queries share the built-in expression allowlist and are checked at API and execution boundaries.
 """
 import sqlglot
 from sqlglot import exp
@@ -154,9 +154,68 @@ def replace_column(expr, quoted_column, db_type=None):
     return result
 
 
+_QUERY_NODES = _NODES | frozenset("""
+    Alias TableAlias With CTE Union Intersect Except Filter Qualify Fetch Placeholder
+    RowNumber Rank DenseRank Lag Lead FirstValue LastValue NthValue
+""".split())
+_QUERY_SELECT_ARGS = _SELECT_ARGS | {"with_", "qualify"}
+
+
+def require_read_only_sql(sql, db_type=None):
+    """Accept one supported read query without rewriting its dialect spelling."""
+    if not isinstance(sql, str) or not sql.strip() or len(sql) > 65536 or "\\x00" in sql:
+        raise ValueError("完整 SQL 不能为空、类型错误或过长")
+    dialect = _dialect(db_type)
+    try:
+        tokens = sqlglot.Dialect.get_or_raise(dialect).tokenize(sql)
+        if len(tokens) > 4096:
+            raise ValueError("查询过于复杂")
+        depth = 0
+        for index, token in enumerate(tokens):
+            if token.comments:
+                raise ValueError("不支持注释或查询提示")
+            if token.token_type == TokenType.SEMICOLON and index != len(tokens) - 1:
+                raise ValueError("只允许一条查询及可选的结尾分号")
+            if (token.token_type == TokenType.IDENTIFIER
+                    and index + 1 < len(tokens)
+                    and tokens[index + 1].token_type == TokenType.L_PAREN):
+                raise ValueError("不允许引用函数名")
+            if token.token_type == TokenType.L_PAREN:
+                depth += 1
+                if depth > 64:
+                    raise ValueError("查询嵌套过深")
+            elif token.token_type == TokenType.R_PAREN:
+                depth -= 1
+        statements = sqlglot.parse(sql, read=dialect)
+        if len(statements) != 1 or not isinstance(
+                statements[0], (exp.Select, exp.SetOperation, exp.Subquery)):
+            raise ValueError("仅允许单条只读 SELECT 查询")
+        for node in statements[0].walk():
+            name = type(node).__name__
+            if name == "Anonymous":
+                if (node.name.upper() not in _ANONYMOUS.get(dialect, ())
+                        and node.name.upper() not in _SHARED_ANONYMOUS):
+                    raise ValueError("不允许调用此函数")
+            elif name not in _QUERY_NODES:
+                raise ValueError("包含不支持的结构: " + name)
+            if isinstance(node, exp.Select):
+                if any(v and k not in _QUERY_SELECT_ARGS for k, v in node.args.items()):
+                    raise ValueError("查询不能写入、加锁或改变数据库状态")
+            if isinstance(node, exp.Table) and not isinstance(node.this, exp.Identifier):
+                raise ValueError("不允许外部表函数")
+            if isinstance(node, exp.DataType) and node.this.name not in _TYPES:
+                raise ValueError("不支持此类型转换")
+    except (SqlglotError, RecursionError, KeyError, ValueError) as error:
+        raise ValueError("完整 SQL 必须是受支持的单条只读查询：" + str(error)) from error
+
+
 def require_conditions_payload(data, db_type=None):
     if not isinstance(data, dict):
         raise ValueError("请求参数必须是对象")
+    for field in ("sql_text", "sql_preview"):
+        value = data.get(field)
+        if value is not None and value != "":
+            require_read_only_sql(value, db_type)
     require_condition_expr(data.get("condition_expr"), db_type)
     conditions = data.get("conditions")
     if conditions is not None:
