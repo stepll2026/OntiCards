@@ -156,7 +156,7 @@ class PostgresTests(unittest.TestCase):
                          "isolated autocommit database URL required")
     def test_autocommit_connection_is_rejected_before_writing(self):
         """数据源 autocommit 时 SET TRANSACTION READ ONLY 不生效，必须拒绝执行。"""
-        engine = create_engine(os.environ["PR50_TEST_DATABASE_URL_AUTOCOMMIT"])
+        engine = create_engine(os.environ["PR50_TEST_DATABASE_URL_AUTOCOMMIT"], isolation_level="AUTOCOMMIT")
         executor = RuleExecutor(engine, "postgresql", "onti")
         with engine.begin() as conn:
             conn.execute(text("DROP TABLE IF EXISTS pr50_ac_items CASCADE"))

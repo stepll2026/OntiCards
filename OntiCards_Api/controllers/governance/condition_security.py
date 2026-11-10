@@ -163,7 +163,7 @@ _QUERY_SELECT_ARGS = _SELECT_ARGS | {"with_", "qualify"}
 
 def require_read_only_sql(sql, db_type=None):
     """Accept one supported read query without rewriting its dialect spelling."""
-    if not isinstance(sql, str) or not sql.strip() or len(sql) > 65536 or "\\x00" in sql:
+    if not isinstance(sql, str) or not sql.strip() or len(sql) > 65536 or "\x00" in sql:
         raise ValueError("完整 SQL 不能为空、类型错误或过长")
     dialect = _dialect(db_type)
     try:

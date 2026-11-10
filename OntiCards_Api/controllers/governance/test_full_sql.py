@@ -2,6 +2,7 @@
 import pathlib
 import sys
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
 from sqlalchemy import text
@@ -28,6 +29,13 @@ class FullSqlTests(unittest.TestCase):
                 with self.subTest(sql=sql, field=field):
                     with self.assertRaises(ValueError):
                         require_conditions_payload({field: sql})
+
+    def test_nul_boundary_preserves_ordinary_literal_escape(self):
+        for sql in ["SELECT '" + chr(0) + "'", "SELECT 1" + chr(0)]:
+            with self.subTest(sql=repr(sql)):
+                with self.assertRaises(ValueError):
+                    require_conditions_payload({"sql_text": sql})
+        require_conditions_payload({"sql_text": r"SELECT '\x00' AS label"})
 
     def test_read_queries(self):
         queries = [
@@ -80,6 +88,51 @@ class FullSqlApiTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     executor._get_sample_data(self.rule)
                 connection.assert_not_called()
+
+    def test_read_cte_and_reference_queries_execute_and_sample(self):
+        queries = [
+            "WITH x AS (SELECT price FROM items) SELECT COUNT(*) AS total_count, SUM(CASE WHEN price<0 THEN 1 ELSE 0 END) AS failed_count FROM x",
+            "SELECT COUNT(*) AS total_count, SUM(CASE WHEN price IN (SELECT price FROM reference_items) THEN 1 ELSE 0 END) AS failed_count FROM items",
+        ]
+        with db.engine.begin() as conn:
+            conn.execute(text("CREATE TABLE items(price INTEGER)"))
+            conn.execute(text("INSERT INTO items VALUES (-1), (5), (150)"))
+            conn.execute(text("CREATE TABLE reference_items(price INTEGER)"))
+            conn.execute(text("INSERT INTO reference_items VALUES (-1)"))
+        executor = RuleExecutor(db.engine, "sqlite", "fixture")
+        for sql in queries:
+            self.rule.sql_text = sql
+            with self.subTest(sql=sql):
+                result = executor.execute_rule(self.rule)
+                self.assertEqual((result.total_count, result.failed_count), (3, 1), result.error_message)
+                samples = executor._get_sample_data(self.rule)
+                self.assertEqual(samples[0]["sample_value"][0]["price"], -1)
+
+    def test_valid_sql_survives_create_modes_update_and_preview(self):
+        from models.governance_rule import GovernanceRule
+        from models.governance_rule_template import GovernanceRuleTemplate
+        sql = "SELECT COUNT(*) AS total_count, SUM(CASE WHEN price<0 THEN 1 ELSE 0 END) AS failed_count FROM items"
+        template = SimpleNamespace(rule_type="custom_sql", template_name="synthetic",
+            default_severity="warning", description="", default_condition="column > 0")
+        for source in ("manual", "template", "ai"):
+            payload = dict(library_id="fixture", rule_name="new", create_source=source,
+                target_table="items", target_column="price", condition_expr="column > 0",
+                sql_text=sql, template_id="synthetic",
+                rule_config={"target_table": "items", "target_column": "price", "sql_preview": sql})
+            with self.subTest(source=source), patch.object(GovernanceRule, "query", fixtures.Query(None)), \
+                 patch.object(GovernanceRuleTemplate, "query", fixtures.Query(template)), \
+                 patch.object(db.session, "add") as add, patch.object(db.session, "commit"):
+                response = self.client.post("/rules", json=payload)
+                self.assertEqual(response.status_code, 200, response.get_json())
+                self.assertEqual(add.call_args.args[0].sql_text, sql)
+        response = self.client.post("/preview", json={"target_table": "items", "target_column": "price", "db_type": "sqlite",
+            "sql_text": sql, "condition_expr": "price > 0"})
+        self.assertEqual(response.status_code, 200, response.get_json())
+        with db.engine.begin() as conn:
+            conn.execute(text("CREATE TABLE items(price INTEGER)"))
+            conn.execute(text("INSERT INTO items VALUES (-1),(5),(150)"))
+            row = conn.execute(text(response.get_json()["data"]["sql"])).mappings().one()
+            self.assertEqual((row["total_count"], row["failed_count"]), (3, 1))
 
     def test_update_and_execute_full_statistics(self):
         sql = "SELECT COUNT(*) AS total_count, SUM(CASE WHEN price<0 THEN 1 ELSE 0 END) AS failed_count FROM items WHERE price < 0 OR price >= 0"

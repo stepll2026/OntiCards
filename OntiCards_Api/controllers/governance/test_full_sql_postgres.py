@@ -51,10 +51,11 @@ class PostgresFullSqlTests(unittest.TestCase):
                 rule.sql_text = sql
                 result = executor.execute_rule(rule)
                 self.assertEqual((result.total_count, result.failed_count), (3, 1), result.error_message)
-            # Normal sample path still returns the actual violating row.
-            rule.sql_text = queries[0]
-            samples = executor._get_sample_data(rule)
-            self.assertEqual(samples[0]["sample_value"][0]["price"], -1)
+            # Both the CTE and referenced subquery execute and retain usable samples.
+            for sql in queries:
+                rule.sql_text = sql
+                samples = executor._get_sample_data(rule)
+                self.assertEqual(samples[0]["sample_value"][0]["price"], -1)
             for sql in [
                 "SELECT price, ROW_NUMBER() OVER (ORDER BY price) FROM items",
                 "SELECT price FROM items UNION SELECT price FROM items",
