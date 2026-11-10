@@ -63,8 +63,16 @@ class QueryHistoryListResource(Resource):
         """
         try:
             # 获取请求参数
-            page = int(request.args.get('page', 1))
-            page_size = int(request.args.get('page_size', 20))
+            try:
+                page = int(request.args.get('page', 1))
+            except (TypeError, ValueError):
+                page = 1
+            try:
+                page_size = int(request.args.get('page_size', 20))
+            except (TypeError, ValueError):
+                page_size = 20
+            page = max(1, page)
+            page_size = max(1, min(page_size, 200))
             keyword = request.args.get('keyword', '').strip()
             status = request.args.get('status', 'all')
             start_date = request.args.get('start_date', '')
