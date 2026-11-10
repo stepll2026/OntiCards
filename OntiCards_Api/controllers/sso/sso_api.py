@@ -28,14 +28,23 @@ def get_sso_secret_key():
     """获取SSO共享密钥
 
     ⚠️ 配置说明：
-    - 生产环境：请设置环境变量 SSO_SECRET_KEY
-    - 本地开发：使用默认值 'my_jwt_secret_key_123'（仅用于测试）
+    - 生产/测试/本地环境：必须设置环境变量 SSO_SECRET_KEY
+    - 未设置时直接抛出 RuntimeError，拒绝以弱默认值启动
     """
     import os
     from environs import Env
     env = Env()
-    # 生产环境务必设置此环境变量
-    return env.str('SSO_SECRET_KEY', 'onticards_sso_secret_key_for_step2')
+    key = os.getenv('SSO_SECRET_KEY') or (env.str('SSO_SECRET_KEY', '') or '').strip()
+    if not key:
+        raise RuntimeError(
+            "SSO_SECRET_KEY is not configured. Set a strong value via environment "
+            "variable before starting. Example:
+"
+            "  SSO_SECRET_KEY=$(python3 -c "import secrets;print(secrets.token_urlsafe(48))")"
+        )
+    if len(key) < 32:
+        raise RuntimeError("SSO_SECRET_KEY is too short (min 32 chars). Use a cryptographically strong value.")
+    return key
 
 
 # ============================================================
