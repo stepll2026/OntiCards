@@ -690,7 +690,7 @@ class DatasourceToolAPI(Resource):
         schema_rows = schema_id_query.all()
         schema_doc_ids = [str(r[0]) for r in schema_rows]  # 转成字符串用于 IN 查询
 
-        # 这些 schema 的卡片里对应的向量 UUID 列表（先拿出来，等 SQL 删除成功后删向量库）
+        # 这些 schema 的卡片里对应的向量 UUID 列表（先拿出来，清理确认后才删除 SQL 关联）
         w_uuids = []
         cards_deleted = 0
         if schema_doc_ids:
@@ -703,12 +703,37 @@ class DatasourceToolAPI(Resource):
         # ===== 预取盘点相关数据 =====
         ds_uuid = uuid.UUID(ds_id)
 
+        # 关系卡片也存放在用户向量集合中，删除 SQL 行前保留其 UUID。
+        w_uuids.extend(
+            row[0] for row in db.session.query(TableRelationshipCard.w_uuid)
+            .filter(TableRelationshipCard.datasource_id == ds_uuid).all()
+        )
+        w_uuids = list(dict.fromkeys(str(value) for value in w_uuids if value))
+
         # 定向盘点任务：查询该数据源的所有 job_id（用于删除关联结果）
         inventory_job_ids = [
             str(r[0]) for r in db.session.query(TargetInventoryJob.id)
             .filter(TargetInventoryJob.datasource_id == ds_uuid)
             .all()
         ]
+
+        # 先确认向量清理完成，再删除 SQL 中的 UUID 关联，失败时保留重试依据。
+        vectors_count = len(w_uuids)
+        field_index_deleted_count = 0
+        try:
+            user_class = getattr(current_user, "weaviate_class_name", None)
+            if not user_class:
+                raise ValueError("missing vector scope")
+            if w_uuids and not batch_delete_by_uuids(w_uuids, class_name=user_class):
+                raise RuntimeError("vector cleanup incomplete")
+            field_index_deleted_count = delete_field_index_by_datasource(
+                datasource_id=ds_id, user_class=user_class)
+        except Exception:
+            db.session.rollback()
+            return format_response(
+                {"id": ds_id, "cleanup_complete": False, "weaviate_deleted": False},
+                502, "向量清理未完成，已保留数据源及关联记录，请重试或联系管理员核对残留")
+        vectors_deleted_ok = True
 
         # ======= 事务：先删数据源，再删 schema，再删卡片（数据库内原子性）=======
         try:
@@ -790,28 +815,6 @@ class DatasourceToolAPI(Resource):
             db.session.rollback()
             return format_response(None, 500, f"删除失败：{e}")
 
-        # 6) 删除向量库对象（非数据库资源，放在提交之后；失败也不影响数据库一致性）
-        vectors_deleted_ok = True
-        vectors_count = len(w_uuids)
-        try:
-            if w_uuids:
-                user_class = getattr(current_user, "weaviate_class_name", None)
-                vectors_deleted_ok = bool(batch_delete_by_uuids(w_uuids, class_name=user_class))
-        except Exception as _:
-            vectors_deleted_ok = False  # 不抛出，避免影响整体
-
-        # 7) 删除字段画像向量索引中该数据源的所有记录
-        field_index_deleted_count = 0
-        try:
-            user_class = getattr(current_user, "weaviate_class_name", None)
-            if user_class:
-                field_index_deleted_count = delete_field_index_by_datasource(
-                    datasource_id=ds_id,
-                    user_class=user_class
-                )
-        except Exception as e:
-            print(f"[数据源删除] 删除字段索引失败: {e}")
-
         # 返回结果
         data = {
             "id": ds_id,
@@ -823,6 +826,7 @@ class DatasourceToolAPI(Resource):
             "table_relationships_deleted": int(table_relationships_deleted),
             "table_relationship_cards_deleted": int(table_relationship_cards_deleted),
             "field_mappings_deleted": int(field_mappings_deleted),
+            "cleanup_complete": True,
             "weaviate_count": int(vectors_count),
             "weaviate_deleted": bool(vectors_deleted_ok),
             "field_index_deleted": int(field_index_deleted_count),
@@ -1243,6 +1247,19 @@ class DatasourceToolAPI(Resource):
                     .all()
                 ]
 
+                # 失败时停止刷新，不丢失旧 UUID，也不继续生成重复向量。
+                try:
+                    if w_uuids:
+                        user_class = getattr(current_user, "weaviate_class_name", None)
+                        if not batch_delete_by_uuids(w_uuids, class_name=user_class):
+                            raise RuntimeError("vector cleanup incomplete")
+                        weaviate_deleted = len(w_uuids)
+                except Exception:
+                    db.session.rollback()
+                    return format_response(
+                        {"id": ds_id, "cleanup_complete": False, "weaviate_deleted": 0},
+                        502, "刷新已停止：旧向量清理未完成，已保留关联记录，请重试或联系管理员")
+
                 try:
                     schemas_deleted = (
                         db.session.query(UserDatasourceSchema)
@@ -1257,14 +1274,8 @@ class DatasourceToolAPI(Resource):
                     db.session.commit()
                 except SQLAlchemyError:
                     db.session.rollback()
+                    return format_response(None, 500, "刷新已停止：旧结构记录删除失败，请重试")
 
-                try:
-                    if w_uuids:
-                        user_class = getattr(current_user, "weaviate_class_name", None)
-                        batch_delete_by_uuids(w_uuids, class_name=user_class)
-                        weaviate_deleted = len(w_uuids)
-                except Exception:
-                    weaviate_deleted = 0
 
             to_refresh_tables = added | set(changed)
 
