@@ -31,20 +31,22 @@ def get_sso_secret_key():
     - 生产/测试/本地环境：必须设置环境变量 SSO_SECRET_KEY
     - 未设置时直接抛出 RuntimeError，拒绝以弱默认值启动
     """
-    import os
-    from environs import Env
-    env = Env()
-    key = os.getenv('SSO_SECRET_KEY') or (env.str('SSO_SECRET_KEY', '') or '').strip()
-    if not key:
-        raise RuntimeError(
-            "SSO_SECRET_KEY is not configured. Set a strong value via environment "
-            "variable before starting. Example:
-"
-            "  SSO_SECRET_KEY=$(python3 -c "import secrets;print(secrets.token_urlsafe(48))")"
-        )
-    if len(key) < 32:
-        raise RuntimeError("SSO_SECRET_KEY is too short (min 32 chars). Use a cryptographically strong value.")
+    key = os.environ.get('SSO_SECRET_KEY', '')
+    if not key.strip():
+        raise RuntimeError("SSO_SECRET_KEY is not configured. Set a randomly generated secret before starting.")
+    if key.strip() == 'onticards_sso_secret_key_for_step2':
+        raise RuntimeError("SSO_SECRET_KEY must not use the publicly known legacy default.")
+    if len(key.strip()) < 32:
+        raise RuntimeError("SSO_SECRET_KEY is too short (min 32 non-padding chars). Use a randomly generated secret.")
+    # Preserve the configured signing bytes, including any intentional whitespace.
     return key
+
+
+@sso_bp.record_once
+def _validate_sso_configuration(state):
+    # Blueprint registration runs after create_app loads the environment, before
+    # requests or database initialization. Importing the module alone stays safe.
+    get_sso_secret_key()
 
 
 # ============================================================
