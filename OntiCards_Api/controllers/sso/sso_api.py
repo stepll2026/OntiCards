@@ -28,14 +28,25 @@ def get_sso_secret_key():
     """获取SSO共享密钥
 
     ⚠️ 配置说明：
-    - 生产环境：请设置环境变量 SSO_SECRET_KEY
-    - 本地开发：使用默认值 'my_jwt_secret_key_123'（仅用于测试）
+    - 生产/测试/本地环境：必须设置环境变量 SSO_SECRET_KEY
+    - 未设置时直接抛出 RuntimeError，拒绝以弱默认值启动
     """
-    import os
-    from environs import Env
-    env = Env()
-    # 生产环境务必设置此环境变量
-    return env.str('SSO_SECRET_KEY', 'onticards_sso_secret_key_for_step2')
+    key = os.environ.get('SSO_SECRET_KEY', '')
+    if not key.strip():
+        raise RuntimeError("SSO_SECRET_KEY is not configured. Set a randomly generated secret before starting.")
+    if key.strip() == 'onticards_sso_secret_key_for_step2':
+        raise RuntimeError("SSO_SECRET_KEY must not use the publicly known legacy default.")
+    if len(key.strip()) < 32:
+        raise RuntimeError("SSO_SECRET_KEY is too short (min 32 non-padding chars). Use a randomly generated secret.")
+    # Preserve the configured signing bytes, including any intentional whitespace.
+    return key
+
+
+@sso_bp.record_once
+def _validate_sso_configuration(state):
+    # Blueprint registration runs after create_app loads the environment, before
+    # requests or database initialization. Importing the module alone stays safe.
+    get_sso_secret_key()
 
 
 # ============================================================
