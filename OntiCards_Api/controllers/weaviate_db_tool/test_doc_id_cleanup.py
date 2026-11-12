@@ -32,6 +32,7 @@ class DocIdCleanupTests(unittest.TestCase):
         self.delete_failures = {}
         self.delete_results = {}
         self.attempted = []
+        self.absent = set()
 
         class Filter:
             @staticmethod
@@ -59,7 +60,7 @@ class DocIdCleanupTests(unittest.TestCase):
 
         collection = SimpleNamespace(
             query=SimpleNamespace(fetch_objects=fetch_objects),
-            data=SimpleNamespace(delete_by_id=delete_by_id))
+            data=SimpleNamespace(delete_by_id=delete_by_id, exists=lambda key: key not in self.absent))
         def get(name):
             self.collection_names.append(name)
             return collection
@@ -90,6 +91,17 @@ class DocIdCleanupTests(unittest.TestCase):
         self.assertIn("service refused deletion", output.getvalue())
         self.assertIn("success=2 failed=1", output.getvalue())
         self.assertEqual(self.closed, 1)
+
+    def test_batch_retry_accepts_confirmed_already_absent_uuid(self):
+        self.delete_results['previously-deleted'] = False
+        self.absent.add('previously-deleted')
+        self.assertIs(self.ns['batch_delete_by_uuids'](['previously-deleted', 'remaining'], 'user'), True)
+        self.assertEqual(self.attempted, ['previously-deleted', 'remaining'])
+
+    def test_batch_retry_accepts_exception_only_when_absence_confirmed(self):
+        self.delete_failures['previously-deleted'] = RuntimeError('not found')
+        self.absent.add('previously-deleted')
+        self.assertIs(self.ns['batch_delete_by_uuids'](['previously-deleted'], 'user'), True)
 
     def test_batch_false_response_is_failure(self):
         self.delete_results["missing"] = False
