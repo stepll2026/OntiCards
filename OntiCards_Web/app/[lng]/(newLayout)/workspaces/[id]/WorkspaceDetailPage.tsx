@@ -1365,6 +1365,18 @@ const WorkspaceDetailPage = () => {
   const askCancelFlagRef = useRef(false)
   const askTimeoutIdsRef = useRef<NodeJS.Timeout[]>([])
   const askProgressRef = useRef(0)
+  const askProgressMountedRef = useRef(true)
+
+  useEffect(() => {
+    askProgressMountedRef.current = true
+    return () => {
+      askProgressMountedRef.current = false
+      if (askProgressIntervalRef.current) {
+        clearInterval(askProgressIntervalRef.current)
+        askProgressIntervalRef.current = null
+      }
+    }
+  }, [])
 
   // 获取数据源列表
   const {
@@ -1685,6 +1697,8 @@ const WorkspaceDetailPage = () => {
 
   // 平滑更新进度条
   const askSmoothProgressTo = (targetPercent: number, duration: number) => {
+    if (!askProgressMountedRef.current) return Promise.resolve()
+
     if (askProgressIntervalRef.current) {
       clearInterval(askProgressIntervalRef.current)
       askProgressIntervalRef.current = null
@@ -1704,11 +1718,11 @@ const WorkspaceDetailPage = () => {
       let currentStep = 0
       const stepDuration = duration / steps
 
-      askProgressIntervalRef.current = setInterval(() => {
-        if (typeof window === 'undefined' || !askProgressIntervalRef.current) {
-          clearInterval(askProgressIntervalRef.current);
-          askProgressIntervalRef.current = null;
-          return;
+      const intervalId = setInterval(() => {
+        if (!askProgressMountedRef.current || askProgressIntervalRef.current !== intervalId) {
+          clearInterval(intervalId)
+          resolve()
+          return
         }
         if (askCancelFlagRef.current) {
           if (askProgressIntervalRef.current) {
@@ -1731,6 +1745,7 @@ const WorkspaceDetailPage = () => {
           updateAskProgress(startPercent + stepSize * currentStep)
         }
       }, stepDuration)
+      askProgressIntervalRef.current = intervalId
     })
   }
 
