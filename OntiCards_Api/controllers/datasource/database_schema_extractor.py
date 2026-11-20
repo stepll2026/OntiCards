@@ -3473,8 +3473,10 @@ class CancelExtractSchemaAPI(Resource):
                     cancel_schema_name = _resolve_schema_name(cancel_db_type, config, connect_info)
                     print(
                         f"[CANCEL] 从配置构建连接字符串成功 db_type={cancel_db_type} schema_name={cancel_schema_name}")
-                except Exception as e:
-                    print(f"[CANCEL/WARN] 构建连接字符串失败: {str(e)}")
+                except Exception:
+                    return format_response(
+                        {"request_id": request_id, "status": "cancelled", "cleanup_complete": False},
+                        400, "导入已取消，但清理配置无效，未执行清理，请检查配置后重试")
 
             if connect_info and str(connect_info).strip():
                 print(
@@ -3518,8 +3520,11 @@ class CancelExtractSchemaAPI(Resource):
                     if card.w_uuid:
                         try:
                             weaviate_uuids.append(uuid.UUID(card.w_uuid))
-                        except:
-                            pass
+                        except (ValueError, TypeError, AttributeError):
+                            db.session.rollback()
+                            return format_response(
+                                {"request_id": request_id, "status": "cancelled", "cleanup_complete": False},
+                                502, "导入已取消，但向量关联标识无效，已保留记录，请联系管理员核对")
 
                 deleted_cards = len(cards_to_delete)
                 if deleted_cards > 0:
@@ -3532,11 +3537,16 @@ class CancelExtractSchemaAPI(Resource):
                     try:
                         u = User.query.filter_by(id=user_id).first()
                         user_class = getattr(u, "weaviate_class_name", None)
-                        batch_delete_by_uuids(weaviate_uuids, class_name=user_class)
+                        if not batch_delete_by_uuids(weaviate_uuids, class_name=user_class):
+                            raise RuntimeError("vector cleanup incomplete")
                         deleted_weaviate = len(weaviate_uuids)
                         print(f"[CANCEL] 成功从 Weaviate 删除 {deleted_weaviate} 条数据")
                     except Exception as we:
-                        print(f"[CANCEL/WARN] Weaviate 删除失败（可忽略）: {str(we)}")
+                        db.session.rollback()
+                        return format_response(
+                            {"request_id": request_id, "status": "cancelled",
+                             "cleanup_complete": False, "deleted_weaviate": 0},
+                            502, "导入已取消，但向量清理未完成；已保留关联记录，请重试清理或联系管理员")
 
                 # 2.4 删除数据源信息（DatasourceInfo）
                 # 按 db_type 分支决定是否带 schema_name 过滤（避免误删同 connect_info 不同 schema 的记录）
@@ -3567,7 +3577,9 @@ class CancelExtractSchemaAPI(Resource):
                 print(
                     f"[CANCEL] 清理完成：schemas={deleted_schemas}, cards={deleted_cards}, weaviate={deleted_weaviate}, datasource={deleted_datasource}")
             else:
-                print(f"[CANCEL] 未提供 connect_info，仅标记取消状态（无需清理数据）")
+                return format_response(
+                    {"request_id": request_id, "status": "cancelled", "cleanup_complete": False},
+                    400, "导入已取消，但缺少清理配置，无法确认数据清理结果")
 
             return format_response(
                 {
@@ -3576,7 +3588,8 @@ class CancelExtractSchemaAPI(Resource):
                     "deleted_cards": deleted_cards,
                     "deleted_weaviate": deleted_weaviate,
                     "deleted_datasource": deleted_datasource,
-                    "status": "cancelled"
+                    "status": "cancelled",
+                    "cleanup_complete": True
                 },
                 200,
                 "取消成功，已清理所有相关数据"

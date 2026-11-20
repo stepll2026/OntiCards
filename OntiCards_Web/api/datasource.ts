@@ -2,6 +2,7 @@
 
 import { message } from 'antd/lib'
 import { request, urlPrefix } from './base'
+import { finishCancelledExtraction } from '@/utils/vectorCleanup'
 
 // ===== 类型定义 =====
 
@@ -566,16 +567,11 @@ export const extractSchema = async (
     if (error?.name === 'AbortError') {
       console.log('请求已被取消，通知后端清理数据')
 
-      // 异步调用后端清理接口，传递完整配置用于构建连接字符串
-      cancelExtractSchema(requestId, config).catch(err => {
-        console.error('清理请求失败:', err)
-      })
-
-      return {
-        code: 499,
-        msg: '请求已取消',
-        result: null
-      }
+      // 等待清理结果；即使弹窗已关闭，也将清理失败显示给用户。
+      return await finishCancelledExtraction(
+        () => cancelExtractSchema(requestId, config),
+        warning => { message.warning(warning, 8) },
+      )
     }
     console.error('结构提取失败:', error)
     return {

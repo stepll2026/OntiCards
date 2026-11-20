@@ -25,6 +25,7 @@ import { DataSourceItem, fullRefreshDataSource, quickRefreshDataSource, deleteDa
 import AddDataSourceModal from '@/components/business/AddDataSourceModal';
 import { useDataSources } from '@/hooks/useDataSources';
 import { urlPrefix } from '@/api/base';
+import { getCleanupError } from '@/utils/vectorCleanup';
 
 // 数据库类型图标映射
 const getDbTypeIcon = (dbType: string) => {
@@ -200,12 +201,14 @@ const WorkspacesPage = () => {
       const data = await response.json();
       loadingMessage();
 
-      if (data.code === 200) {
+      const cleanupError = getCleanupError(data, response.ok);
+      if (!cleanupError) {
         message.success('数据源删除成功');
         // 刷新数据源列表
         refreshDataSources();
       } else {
-        message.error(data.msg || '删除失败');
+        message.error(cleanupError);
+        await refreshDataSources();
       }
     } catch (error) {
       loadingMessage();
@@ -247,7 +250,8 @@ const WorkspacesPage = () => {
       // 关闭加载提示
       loadingMessage();
 
-      if (data.code === 200) {
+      const cleanupError = getCleanupError(data, response.ok);
+      if (!cleanupError) {
         // 根据返回数据生成友好的提示信息
         const { added_tables = [], removed_tables = [], changed_tables = [], unchanged_tables = [] } = data.data || {};
         const totalChanges = added_tables.length + removed_tables.length + changed_tables.length;
@@ -267,7 +271,8 @@ const WorkspacesPage = () => {
 
         await refreshDataSources();
       } else {
-        message.error(data.msg || '刷新失败');
+        message.error(cleanupError);
+        await refreshDataSources();
       }
     } catch (error) {
       // 关闭加载提示
