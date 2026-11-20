@@ -2,6 +2,7 @@
 import os
 
 import dotenv
+from sqlalchemy.engine import URL
 
 dotenv.load_dotenv()
 
@@ -170,9 +171,20 @@ class Config:
             key: get_env(key) for key in
             ['DB_USERNAME', 'DB_PASSWORD', 'DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_CHARSET']
         }
-        db_extras = f"?client_encoding={db_credentials['DB_CHARSET']}" if db_credentials['DB_CHARSET'] else ""
-
-        self.SQLALCHEMY_DATABASE_URI = f"postgresql://{db_credentials['DB_USERNAME']}:{db_credentials['DB_PASSWORD']}@{db_credentials['DB_HOST']}:{db_credentials['DB_PORT']}/{db_credentials['DB_DATABASE']}{db_extras}"
+        # Pass raw components to SQLAlchemy: string parsing does not decode
+        # database/host escapes and quote_plus changes spaces in credentials.
+        db_host = db_credentials['DB_HOST']
+        if db_host.startswith('[') and db_host.endswith(']'):
+            db_host = db_host[1:-1]  # URL objects expect IPv6 without brackets.
+        self.SQLALCHEMY_DATABASE_URI = URL.create(
+            'postgresql',
+            username=db_credentials['DB_USERNAME'],
+            password=db_credentials['DB_PASSWORD'],
+            host=db_host,
+            port=int(db_credentials['DB_PORT']) if db_credentials['DB_PORT'] else None,
+            database=db_credentials['DB_DATABASE'],
+            query={'client_encoding': db_credentials['DB_CHARSET']} if db_credentials['DB_CHARSET'] else {},
+        )
         self.SQLALCHEMY_ENGINE_OPTIONS = {
             'pool_size': int(get_env('SQLALCHEMY_POOL_SIZE')),
             'pool_recycle': int(get_env('SQLALCHEMY_POOL_RECYCLE')),
