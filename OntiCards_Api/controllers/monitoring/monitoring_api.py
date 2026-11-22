@@ -476,7 +476,6 @@ class MonitoringTrendResource(Resource):
                 days = int(request.args.get('days', 30))
             except (TypeError, ValueError):
                 days = 30
-            days = max(1, min(days, 365))
 
             if not user_id:
                 return resp(400, "user_id 不能为空", None, 400)
@@ -1263,7 +1262,6 @@ class MonitoringPerformanceResource(Resource):
                 days = int(request.args.get('days', 7))
             except (TypeError, ValueError):
                 days = 7
-            days = max(1, min(days, 365))
 
             if not user_id:
                 return resp(400, "user_id 不能为空", None, 400)
