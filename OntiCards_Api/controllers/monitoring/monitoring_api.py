@@ -472,7 +472,10 @@ class MonitoringTrendResource(Resource):
         """
         try:
             user_id = request.args.get('user_id', '')
-            days = int(request.args.get('days', 30))
+            try:
+                days = int(request.args.get('days', 30))
+            except (TypeError, ValueError):
+                days = 30
 
             if not user_id:
                 return resp(400, "user_id 不能为空", None, 400)
@@ -1255,7 +1258,10 @@ class MonitoringPerformanceResource(Resource):
         """
         try:
             user_id = request.args.get('user_id', '')
-            days = int(request.args.get('days', 7))
+            try:
+                days = int(request.args.get('days', 7))
+            except (TypeError, ValueError):
+                days = 7
 
             if not user_id:
                 return resp(400, "user_id 不能为空", None, 400)
