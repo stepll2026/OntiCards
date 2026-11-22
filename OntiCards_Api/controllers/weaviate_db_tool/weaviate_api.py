@@ -840,15 +840,22 @@ def batch_delete_by_uuids(uuids: list, class_name: str) -> bool:
         succeeded = 0
         failed = 0
         for uuid in uuids:
+            failure = "delete_by_id returned False"
             try:
                 if collection.data.delete_by_id(uuid):
                     succeeded += 1
-                else:
-                    failed += 1
-                    print(f"[Weaviate][DELETE] class={target_class} uuid={uuid} failed: delete_by_id returned False")
+                    continue
             except Exception as exc:
-                failed += 1
-                print(f"[Weaviate][DELETE] class={target_class} uuid={uuid} failed: {type(exc).__name__}: {exc}")
+                failure = f"{type(exc).__name__}: {exc}"
+            # 重试部分清理时，之前已删掉的 UUID 也算完成，但必须确认不存在。
+            try:
+                if collection.data.exists(uuid) is False:
+                    succeeded += 1
+                    continue
+            except Exception:
+                pass  # 无法确认不存在时，仍按失败处理。
+            failed += 1
+            print(f"[Weaviate][DELETE] class={target_class} uuid={uuid} failed: {failure}")
         print(f"[Weaviate][DELETE] class={target_class} success={succeeded} failed={failed}")
         return failed == 0
 
@@ -1148,55 +1155,55 @@ def delete_field_index_by_datasource(
     datasource_id: str,
     user_class: str
 ) -> int:
-    """
-    删除字段索引中指定数据源的所有记录
+    """Delete all matching field indexes, raising on incomplete cleanup.
 
-    Args:
-        datasource_id: 数据源ID
-        user_class: 用户的向量库类名
-
-    Returns:
-        删除的记录数量
+    Enumerate before deleting so offset pagination cannot skip rows as the
+    collection shrinks. Query errors (including server result limits) and
+    individual delete failures must never be reported as successful cleanup.
     """
     from weaviate.classes.query import Filter
 
+    if datasource_id is None or not str(datasource_id).strip():
+        raise ValueError("datasource_id is empty")
     idx_class = _field_index_class_name(user_class)
-    deleted_count = 0
 
-    try:
-        with weaviate_client() as client:
-            if not client.collections.exists(idx_class):
-                print(f"[FieldIndex][Delete] collection not exists: {idx_class}")
-                return 0
+    with weaviate_client() as client:
+        if not client.collections.exists(idx_class):
+            return 0
+        collection = client.collections.get(idx_class)
+        f = Filter.by_property("datasource_id").equal(str(datasource_id))
+        uuids_to_delete = []
+        seen = set()
+        offset = 0
+        while True:
+            response = collection.query.fetch_objects(filters=f, limit=1000, offset=offset)
+            if not response.objects:
+                break
+            page = [str(obj.uuid) for obj in response.objects]
+            if any(uid in seen for uid in page) or len(set(page)) != len(page):
+                raise RuntimeError("field index pagination returned duplicate UUIDs")
+            uuids_to_delete.extend(page)
+            seen.update(page)
+            offset += len(page)
 
-            collection = client.collections.get(idx_class)
+        deleted_count = 0
+        failed_count = 0
+        for uid in uuids_to_delete:
+            try:
+                if collection.data.delete_by_id(uid):
+                    deleted_count += 1
+                else:
+                    failed_count += 1
+                    print(f"[FieldIndex][Delete] uuid={uid} failed: delete_by_id returned False")
+            except Exception as exc:
+                failed_count += 1
+                print(f"[FieldIndex][Delete] uuid={uid} failed: {type(exc).__name__}: {exc}")
 
-            # 查询该数据源的所有记录
-            f = Filter.by_property("datasource_id").equal(str(datasource_id))
-
-            response = collection.query.fetch_objects(
-                filters=f,
-                limit=1000
+        if failed_count:
+            raise RuntimeError(
+                f"field index cleanup incomplete: deleted={deleted_count}, failed={failed_count}"
             )
-
-            # 收集所有 uuid
-            uuids_to_delete = [str(o.uuid) for o in response.objects]
-
-            if uuids_to_delete:
-                # 批量删除
-                for uuid in uuids_to_delete:
-                    try:
-                        collection.data.delete_by_id(uuid)
-                        deleted_count += 1
-                    except Exception as e:
-                        print(f"[FieldIndex][Delete] failed to delete uuid={uuid}: {e}")
-
-            print(f"[FieldIndex][Delete] datasource_id={datasource_id} deleted {deleted_count} records from {idx_class}")
-
-    except Exception as e:
-        print(f"[FieldIndex][Delete] error: {e}")
-
-    return deleted_count
+        return deleted_count
 
 # ========================================
 # 关系卡片向量入库
