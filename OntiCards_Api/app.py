@@ -422,7 +422,10 @@ def ensure_database_initialized(app):
 
 def ensure_default_user(app):
     """Seed a default admin user when the users table is empty."""
+    import base64
+    import secrets
     from models.users import User
+    from core.password import hash_password
 
     with app.app_context():
         existing = db.session.query(func.count(User.id)).scalar() or 0
@@ -441,8 +444,19 @@ def ensure_default_user(app):
         default_user.username = 'admin'
         default_user.nickname = '系统管理员'
         default_user.email = None
-        default_user.password = 'MmRlOTkzYWIzMDEzYTkwNWNiMzQyZmJjZTkyYmFiYzI1NDY5NmM3NjI4MWIxYTE5OWY4YzVjMjYzMzZkMzViOA=='  # admin123
-        default_user.password_salt = 'Ib/VWXbd06zU8qJ7ltCQVA=='
+
+        # 每次首次部署都生成一个随机的初始盐值，不要把固定 salt 写死在源码里
+        default_password_plain = os.environ.get('ONTO_ADMIN_INITIAL_PASSWORD', 'admin')
+        random_salt = secrets.token_bytes(16)
+        hashed = hash_password(default_password_plain, random_salt)
+        default_user.password = base64.b64encode(hashed).decode('ascii')
+        default_user.password_salt = base64.b64encode(random_salt).decode('ascii')
+        app.logger.warning(
+            "Default admin user seeded with a random salt and password=%r. "
+            "Change the password immediately after first login via /change_password.",
+            default_password_plain,
+        )
+
         default_user.avatar = None
         default_user.status = 'normal'
         default_user.role = 'admin'
