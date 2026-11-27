@@ -1,0 +1,13 @@
+# Use with docker-compose.yaml only when authorizing the first administrator.
+services:
+  onticards_api:
+    environment:
+      ONTICARDS_BOOTSTRAP_ADMIN_USERNAME: "${ONTICARDS_BOOTSTRAP_ADMIN_USERNAME:?Set an administrator username for first-time setup}"
+      ONTICARDS_BOOTSTRAP_NEW_DATABASE: "${ONTICARDS_BOOTSTRAP_NEW_DATABASE:?Confirm the exact name of a newly created database}"
+      ONTICARDS_BOOTSTRAP_ADMIN_PASSWORD_FILE: /run/secrets/onticards_admin_password
+    secrets:
+      - onticards_admin_password
+
+secrets:
+  onticards_admin_password:
+    file: ./.secrets/onticards_admin_password

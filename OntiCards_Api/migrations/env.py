@@ -96,7 +96,9 @@ def run_migrations_online():
 
     connectable = get_engine()
 
-    with connectable.connect() as connection:
+    with connectable.begin() as connection:
+        # Serialize schema initialization and Alembic version reads across replicas.
+        connection.exec_driver_sql("SELECT pg_advisory_xact_lock(410731, 1)")
         context.configure(
             connection=connection,
             target_metadata=get_metadata(),

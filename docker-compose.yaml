@@ -83,7 +83,7 @@ services:
       onticards-weaviate:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl --fail --silent --show-error http://127.0.0.1:9103/healthz >/dev/null"]
+      test: ["CMD-SHELL", "curl --fail --silent --show-error http://127.0.0.1:9103/readyz >/dev/null"]
       interval: 10s
       timeout: 5s
       retries: 12

@@ -186,6 +186,7 @@ class Config:
             query={'client_encoding': db_credentials['DB_CHARSET']} if db_credentials['DB_CHARSET'] else {},
         )
         self.SQLALCHEMY_ENGINE_OPTIONS = {
+            'hide_parameters': True,
             'pool_size': int(get_env('SQLALCHEMY_POOL_SIZE')),
             'pool_recycle': int(get_env('SQLALCHEMY_POOL_RECYCLE')),
             'pool_pre_ping': True,

@@ -11,6 +11,7 @@ from flask_login import login_required, current_user
 from flask_restful import Api, Resource, marshal_with, fields, reqparse
 
 from core.password import hash_password
+from core.admin_bootstrap import retire_bootstrap_binding
 from extensions.ext_database import db
 from models.users import UserGroup, User
 
@@ -105,7 +106,10 @@ class UserGroupAPI(Resource):
         if not user_group:
             return {'message': '用户组不存在', 'code': 404}
 
-        User.query.filter_by(user_group_id=user_group.group_id).delete()
+        deleted_users = db.session.execute(
+            User.__table__.delete().where(User.user_group_id == user_group.group_id).returning(User.id)
+        ).scalars().all()
+        retire_bootstrap_binding(db.session.connection(), deleted_users)
         db.session.delete(user_group)
         db.session.commit()
 

@@ -17,10 +17,12 @@ from sqlalchemy import func, text
 from sqlalchemy.exc import SQLAlchemyError
 
 import views
-from config import Config
+from config import Config, get_env
 from controllers import init_app
-from controllers.weaviate_db_tool.weaviate_api import ensure_user_collection_exists
 from core import log
+from core.admin_bootstrap import ensure_admin, initialize_bootstrap_state
+from core.admin_collection import ensure_account_collection
+from core.readiness import ReadinessProbe
 from core.request_logging import redact_mapping, redact_url
 from extensions import ext_database, ext_migrate, ext_login
 from extensions.ext_database import db
@@ -137,9 +139,17 @@ def create_app():
     ext_database.init_app(app)
     ext_login.init_app(app)
     # ext_weaviate.init_app(app)
-    ensure_database_initialized(app)  # 项目启动阶段：检查数据库是否为空，为空则执行 init.sql 脚本
     views.init(app)
-    ensure_default_user(app)  # 项目启动阶段：校验是否有用户信息，没有则创建默认用户（管理员角色） -> 针对部署场景
+
+    @app.cli.command("initialize-schema")
+    def initialize_schema_command():
+        """Initialize a new database before running online migrations."""
+        ensure_database_initialized(app)
+
+    from models.users import User
+    with app.app_context():
+        readiness = ReadinessProbe(db.engine.url, User.__table__, get_env("WEAVIATE_URL"))
+    app.add_url_rule("/readyz", view_func=readiness, endpoint="readiness", methods=["GET"])
 
     # 删除了旧的 cookie 相关配置（不再需要）
 
@@ -268,29 +278,16 @@ def create_app():
 
     return app
 
-def check_database_has_tables(app):
-    """检查数据库中是否存在表（PostgreSQL）"""
-    try:
-        with app.app_context():
-            # 使用 PostgreSQL 的 information_schema 查询表数量
-            result = db.session.execute(text("""
-                SELECT COUNT(*) as table_count
-                FROM information_schema.tables
-                WHERE table_schema = 'public'
-                AND table_type = 'BASE TABLE'
-            """))
-            count = result.scalar() or 0
-            app.logger.info(f"数据库表数量检查: {count} 个表")
-            return count > 0
-    except SQLAlchemyError as e:
-        app.logger.error(f"检查数据库表时出错: {e}", exc_info=True)
-        # 如果检查失败，假设有表存在，避免重复执行初始化脚本
-        return True
-    except Exception as e:
-        app.logger.error(f"检查数据库表时发生未知错误: {e}", exc_info=True)
-        return True
+def check_database_has_tables(connection):
+    return bool(connection.scalar(text("""
+        SELECT EXISTS (
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+        )
+    """)))
 
-def execute_init_sql(app):
+
+def execute_init_sql(app, connection):
     """执行 init.sql 脚本"""
     app_path = os.path.dirname(os.path.abspath(__file__))
     init_sql_path = os.path.join(app_path, 'init.sql')
@@ -375,24 +372,9 @@ def execute_init_sql(app):
         
         app.logger.info(f"准备执行 {len(filtered_statements)} 条 SQL 语句")
         
-        with app.app_context():
-            with db.engine.begin() as conn:
-                for i, statement in enumerate(filtered_statements, 1):
-                    try:
-                        # 跳过空语句
-                        if not statement.strip():
-                            continue
-                        # 执行 SQL 语句
-                        conn.execute(text(statement))
-                        app.logger.debug(f"已执行第 {i}/{len(filtered_statements)} 条 SQL 语句")
-                    except Exception as e:
-                        app.logger.error(f"执行第 {i} 条 SQL 语句时出错: {e}")
-                        # 显示问题语句的前300个字符
-                        preview = statement[:300].replace('\n', ' ')
-                        app.logger.error(f"问题语句预览: {preview}...")
-                        # 继续执行下一条语句，不中断整个初始化过程
-                        continue
-        
+        for statement in filtered_statements:
+            connection.execute(text(statement))
+
         app.logger.info("init.sql 脚本执行完成")
         return True
         
@@ -402,65 +384,35 @@ def execute_init_sql(app):
 
 
 def ensure_database_initialized(app):
-    """检查数据库是否为空，为空则执行 init.sql 脚本"""
-    with app.app_context():
-        # 检查数据库中是否存在表
-        has_tables = check_database_has_tables(app)
-        
-        if has_tables:
-            app.logger.info("数据库已存在表，跳过 init.sql 脚本执行")
+    with app.app_context(), db.engine.begin() as connection:
+        standard_schema = connection.scalar(text("""
+            SELECT current_schema() = 'public'
+               AND to_regclass('users') IS NOT DISTINCT FROM to_regclass('public.users')
+               AND to_regclass('user_groups') IS NOT DISTINCT FROM to_regclass('public.user_groups')
+        """))
+        if not standard_schema:
+            raise RuntimeError("OntiCards requires the standard PostgreSQL public schema.")
+        # Serialize the schema check and DDL across workers starting against the same database.
+        connection.execute(text("SELECT pg_advisory_xact_lock(410731, 1)"))
+        if check_database_has_tables(connection):
             return
-        
-        app.logger.info("数据库为空，开始执行 init.sql 脚本...")
-        success = execute_init_sql(app)
-        
-        if success:
-            app.logger.info("数据库初始化完成")
-        else:
-            app.logger.error("数据库初始化失败，请检查 init.sql 脚本和数据库连接")
+        if not execute_init_sql(app, connection):
+            raise RuntimeError("Database schema initialization failed.")
+        from models.users import User
+        initialize_bootstrap_state(connection, User.__table__, os.environ)
 
 
-def ensure_default_user(app):
-    """Seed a default admin user when the users table is empty."""
+def ensure_admin_initialized(app):
     from models.users import User
 
     with app.app_context():
-        existing = db.session.query(func.count(User.id)).scalar() or 0
-        if existing > 0:
-            app.logger.info(f"Skip default user seeding, found {existing} user(s).")
-            return
-
-        tz = datetime.timezone(datetime.timedelta(hours=8))
-        default_user = User()
-        # id由数据库自动生成，避免写死造成数据冲突
-        # default_user.id = uuid.UUID('9372036a-06d3-4130-9823-cf969c4cbb85')
-
-        # 暂时无用户组管理模块
-        # default_user.user_group_id = uuid.UUID('9372036a-06d3-4130-9823-cf969c4cbb84')
-
-        default_user.username = 'admin'
-        default_user.nickname = '系统管理员'
-        default_user.email = None
-        default_user.password = 'MmRlOTkzYWIzMDEzYTkwNWNiMzQyZmJjZTkyYmFiYzI1NDY5NmM3NjI4MWIxYTE5OWY4YzVjMjYzMzZkMzViOA=='  # admin123
-        default_user.password_salt = 'Ib/VWXbd06zU8qJ7ltCQVA=='
-        default_user.avatar = None
-        default_user.status = 'normal'
-        default_user.role = 'admin'
-
-        try:
-            db.session.add(default_user)
-
-            db.session.flush()  # 让 user.id 立刻生成（不提交）
-            default_user.weaviate_class_name = User.build_weaviate_class_name(default_user.id)
-
-            # 建立默认用户admin的collection
-            ensure_user_collection_exists(default_user.weaviate_class_name)
-
-            db.session.commit()
-            app.logger.info("Default admin user seeded successfully.")
-        except Exception:
-            db.session.rollback()
-            app.logger.error("Failed to seed default admin user.", exc_info=True)
+        created = ensure_admin(
+            db.engine, User.__table__, User.build_weaviate_class_name,
+            lambda namespace, owner, claim: ensure_account_collection(get_env("WEAVIATE_URL"), namespace, owner, claim),
+            os.environ,
+        )
+    if created:
+        app.logger.info("First administrator initialized.")
 
 
 def ensure_prompt_configs_initialized(app):
@@ -492,8 +444,18 @@ def ensure_prompt_configs_initialized(app):
 app = create_app()
 app.json.ensure_ascii = False
 
-# 初始化提示词配置（如果表为空则从文件同步）
-ensure_prompt_configs_initialized(app)
+def create_runtime_app():
+    """Provision the first administrator only when starting an API process."""
+    with app.app_context():
+        try:
+            ensure_admin_initialized(app)
+            ensure_prompt_configs_initialized(app)
+        finally:
+            db.session.remove()
+            db.engine.dispose()
+    if os.getenv("LOG_ROTATION_ENABLED", "1") == "1":
+        _start_log_rotation_thread()
+    return app
 
 
 # ============================================================
@@ -554,29 +516,8 @@ def _start_log_rotation_thread():
     app.logger.info("[log-rotate] 后台日志巡检线程已启动")
 
 
-if os.getenv('LOG_ROTATION_ENABLED', '1') == '1':
-    _start_log_rotation_thread()
-
-
-# ============================================================
-# 修复 Gunicorn --preload 导致的数据库连接池问题
-#
-# 问题原因：
-# Gunicorn 使用 --preload 时，create_app() 会在 master 进程执行，
-# 导致 SQLAlchemy 连接池中的 psycopg2/libpq 连接被 fork 后的多个 worker 进程继承。
-# 并发请求时，多个进程可能操作同一个 PostgreSQL TCP 连接，从而出现结果串线、
-# 游标状态错乱，导致 IndexError: tuple index out of range 等间歇性错误。
-#
-# 修复方法：
-# 在初始化完成后清空 master 进程创建的 Session 和连接池，
-# 确保每个 worker fork 后首次请求时建立自己的 PostgreSQL 连接。
-# ============================================================
-with app.app_context():
-    db.session.remove()
-    db.engine.dispose()
-
 if __name__ == '__main__':
     env = Env()
     env.read_env()
-    port = env.str('PORT') if env.str('PORT') else 9000
-    app.run(port=port, host='0.0.0.0', debug=False)
+    port = env.int('PORT', 9000)
+    create_runtime_app().run(port=port, host='0.0.0.0', debug=False)

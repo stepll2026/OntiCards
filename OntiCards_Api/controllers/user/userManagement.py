@@ -12,6 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from controllers.weaviate_db_tool.weaviate_api import ensure_user_collection_exists, batch_delete_by_uuids, \
     drop_collection_by_class_name, weaviate_client
+from core.admin_bootstrap import retire_bootstrap_binding
 from core.passport import PassportService
 from core.password import compare_password, hash_password
 from extensions.ext_database import db
@@ -797,6 +798,8 @@ class UserManagementAPI(Resource):
 
             # 2.5 最后删除 user
             db.session.delete(user)
+            db.session.flush()
+            retire_bootstrap_binding(db.session.connection(), [user.id])
 
             db.session.commit()
 

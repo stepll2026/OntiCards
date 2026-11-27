@@ -52,6 +52,7 @@ COPY --from=builder /onticards_web/.next/static ./.next/static
 
 # 复制启动脚本
 COPY docker/entrypoint.sh ./entrypoint.sh
+RUN sed -i 's/\r//' ./entrypoint.sh
 
 # 构建参数（用于记录构建信息）
 ARG COMMIT_SHA
