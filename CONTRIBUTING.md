@@ -217,8 +217,7 @@ OntiCards 仓库中存在两份 `.env.prod`，两者用途不同。
 推荐使用方式：
 
 ```bash
-cp .env.prod .env
-chmod 600 .env
+python3 scripts/init_env.py
 ```
 
 根据实际环境修改生成的：
@@ -227,7 +226,7 @@ chmod 600 .env
 .env
 ```
 
-然后启动：
+全新数据库先完成 [首次管理员引导](docs/admin-bootstrap.md)。已有部署可按常规方式启动：
 
 ```bash
 docker compose config -q
@@ -263,9 +262,10 @@ OntiCards_Api/.env.prod
 
 如果您需要部署完整的 OntiCards，请使用仓库根目录 `.env.prod`，不要同时修改两份配置。
 
-如果只需要独立运行 API，可进入：
+如果只需要独立运行 API，先在仓库根目录执行以下命令，再进入 API 目录：
 
 ```bash
+python3 scripts/init_env.py --api-only
 cd OntiCards_Api
 ```
 
@@ -275,7 +275,7 @@ cd OntiCards_Api
 .env.prod
 ```
 
-配置数据库、Weaviate、前端地址、密钥等参数。
+脚本保留已有的 OntiCards_Api/.env。全新数据库还需按 [首次管理员引导](docs/admin-bootstrap.md) 配置授权，并按 [签名配置](docs/signing-keys.md) 初始化、迁移和启动。可按需配置数据库、Weaviate、前端地址等参数。应用启动时，SSO_SECRET_KEY 去除首尾空白后须至少 32 个字符。现有 SSO 部署应与接入方协调换钥。
 
 安装后端依赖：
 

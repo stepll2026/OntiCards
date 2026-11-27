@@ -31,7 +31,11 @@ def get_sso_secret_key():
     - 生产/测试/本地环境：必须设置环境变量 SSO_SECRET_KEY
     - 未设置时直接抛出 RuntimeError，拒绝以弱默认值启动
     """
-    key = os.environ.get('SSO_SECRET_KEY', '')
+    if os.environ.get('SSO_SECRET_KEY_FILE'):
+        from core.signing_keys import signing_key_value
+        key = signing_key_value('SSO_SECRET_KEY')
+    else:
+        key = os.environ.get('SSO_SECRET_KEY', '')
     if not key.strip():
         raise RuntimeError("SSO_SECRET_KEY is not configured. Set a randomly generated secret before starting.")
     if key.strip() == 'onticards_sso_secret_key_for_step2':

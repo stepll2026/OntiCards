@@ -4,10 +4,11 @@
 
 ## Docker Compose
 
-在部署目录完成数据库和应用配置后，为新库生成仅运行 API 的用户可读的密码文件。下面使用 32 个随机字节，终端只得到命令退出状态。密码文件应归 API 运行用户所有。
+在仓库根目录运行初始化脚本，再编辑生成的 .env 并完成数据库和应用配置。为新库生成仅运行 API 的用户可读的密码文件。下面使用 32 个随机字节，终端只得到命令退出状态。密码文件应归 API 运行用户所有。
 
 ```bash
 umask 077
+python3 scripts/init_env.py
 mkdir -p .secrets
 (set -C; python3 -c 'import secrets; print(secrets.token_hex(32))' > .secrets/onticards_admin_password)
 export ONTICARDS_BOOTSTRAP_ADMIN_USERNAME=your-chosen-admin
@@ -27,7 +28,7 @@ unset ONTICARDS_BOOTSTRAP_ADMIN_USERNAME ONTICARDS_BOOTSTRAP_NEW_DATABASE
 
 ## 独立 API
 
-在 API 的配置环境中填写 PostgreSQL 与 Weaviate。首次启动时设置 `ONTICARDS_BOOTSTRAP_NEW_DATABASE`、`ONTICARDS_BOOTSTRAP_ADMIN_USERNAME` 和 `ONTICARDS_BOOTSTRAP_ADMIN_PASSWORD_FILE`。密码文件须在 `/run/secrets` 或通过 `ONTICARDS_BOOTSTRAP_SECRET_ROOT` 指定的绝对目录中。路径和密码文件不得使用符号链接。文件必须归 API 运行用户所有并使用 `0600`。
+在仓库根目录执行 `python3 scripts/init_env.py --api-only`，再填写独立 API 的 PostgreSQL 与 Weaviate 配置。首次启动时设置 `ONTICARDS_BOOTSTRAP_NEW_DATABASE`、`ONTICARDS_BOOTSTRAP_ADMIN_USERNAME` 和 `ONTICARDS_BOOTSTRAP_ADMIN_PASSWORD_FILE`。密码文件须在 `/run/secrets` 或通过 `ONTICARDS_BOOTSTRAP_SECRET_ROOT` 指定的绝对目录中。路径和密码文件不得使用符号链接。文件必须归 API 运行用户所有并使用 `0600`。
 
 ```bash
 cd OntiCards_Api

@@ -132,16 +132,16 @@ git clone https://github.com/stepll2026/OntiCards.git
 cd OntiCards
 
 # 2. 初始化环境变量
-cp .env.prod .env
-chmod 600 .env
+python3 scripts/init_env.py
 
-# 3. 校验配置并一键启动
-docker compose config -q
-docker compose up -d --build
-
-# 访问地址
-http://your-ip:9107
+# 3. 按下方首次管理員引導完成啟動
 ```
+
+啟動後開啟 `http://your-ip:9107`。
+
+首次部署的管理員授權、密碼檔案與啟動命令見 [首次管理員引導](docs/admin-bootstrap.md)。現有實例繼續使用既有帳戶。
+
+首次部署請用 Python 3 產生本機配置。應用 JWT 簽名與外部 SSO 驗簽須分別配置。請參閱[應用與 SSO 簽名配置](docs/signing-keys.md)，了解 Compose 密鑰檔、獨立 API 設定與輪換。
 
 ⚠️ **生產環境必改**：數據庫密碼、密鑰、SSO密鑰、域名白名單等核心配置
 

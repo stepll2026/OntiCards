@@ -67,6 +67,8 @@ services:
         required: false
     environment:
       # Compose injects env_file values directly; the entrypoint does not write a .env file.
+      SECRET_KEY_FILE: /run/secrets/onticards_jwt_signing_key
+      SSO_SECRET_KEY_FILE: /run/secrets/onticards_sso_verification_key
       COMPOSE_MANAGED_ENV: "1"
       PORT: "9103"
       # Docker DNS must take precedence over a developer's old local-IP configuration.
@@ -77,6 +79,9 @@ services:
       GOVERNANCE_EXPORT_PATH: /data/governance/reports
     volumes:
       - ./volumes/governance/reports:/data/governance/reports
+    secrets:
+      - onticards_jwt_signing_key
+      - onticards_sso_verification_key
     depends_on:
       onticards-db:
         condition: service_healthy
@@ -142,3 +147,10 @@ networks:
     # `name` prevents Compose from adding a project-name prefix and creates it when absent.
     name: onticards
     driver: bridge
+
+# Signing files are generated outside the image build contexts.
+secrets:
+  onticards_jwt_signing_key:
+    file: ${ONTICARDS_JWT_KEY_PATH:-./.secrets/onticards_jwt_signing_key}
+  onticards_sso_verification_key:
+    file: ${ONTICARDS_SSO_KEY_PATH:-./.secrets/onticards_sso_verification_key}
