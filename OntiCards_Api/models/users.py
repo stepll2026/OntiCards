@@ -2,7 +2,11 @@ import flask_login
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import UUID
 
+from core.admin_bootstrap import bootstrap_state
 from extensions.ext_database import db
+
+
+bootstrap_state.to_metadata(db.metadata)
 
 
 class User(db.Model, flask_login.UserMixin):

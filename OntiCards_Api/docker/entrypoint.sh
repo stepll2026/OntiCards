@@ -41,6 +41,7 @@ fi
 #   应改用「首个副本执行、其余等待」的 initContainer 或单独的 Job 来跑迁移。
 # ============================================================
 if [ "${RUN_DB_MIGRATION:-true}" = "true" ]; then
+  flask initialize-schema
   echo "[entrypoint] 检查数据库迁移状态..."
   flask db current || true
   echo "[entrypoint] 执行 flask db upgrade..."
@@ -82,4 +83,4 @@ gunicorn \
   --max-requests-jitter ${GUNICORN_MAX_REQUESTS_JITTER:-100} \
   --log-level ${GUNICORN_LOG_LEVEL:-warning} \
   --preload \
-  app:app
+  'app:create_runtime_app()'

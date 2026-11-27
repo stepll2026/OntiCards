@@ -49,3 +49,5 @@ logs/
 # AI / Local development tools
 # ==============================
 .claude/
+
+.secrets/
