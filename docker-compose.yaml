@@ -62,7 +62,7 @@ services:
     env_file:
       - path: ./.env.prod
         required: true
-      # This file is deliberately optional so a clean clone can start immediately.
+      # init_env.py creates local overrides. API startup validates the effective secrets.
       - path: ./.env
         required: false
     environment:
