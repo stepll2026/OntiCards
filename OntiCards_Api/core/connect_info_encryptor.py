@@ -12,11 +12,11 @@
 import base64
 import os
 import secrets
-import hashlib
-import binascii
 from typing import Optional
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+from connect_info_key import connect_info_key
 
 
 class ConnectInfoEncryptor:
@@ -53,72 +53,9 @@ class ConnectInfoEncryptor:
         if self._initialized:
             return
 
-        self._initialized = True
-        self._key: Optional[bytes] = None
-        self._aesgcm: Optional[AESGCM] = None
-
-        # 从环境变量获取密钥
-        key_from_env = os.environ.get('CONNECT_INFO_MASTER_KEY')
-
-        if not key_from_env:
-            # 首次部署时自动生成密钥（仅提示，不自动保存）
-            self._generate_and_warn()
-        else:
-            self._key = self._normalize_key(key_from_env)
-            self._aesgcm = AESGCM(self._key)
-
-    def _normalize_key(self, key: str) -> bytes:
-        """
-        将用户提供的密钥转换为32字节的密钥
-
-        处理逻辑：
-        - 如果密钥是 base64 编码的32字节随机数（推荐方式），直接解码
-        - 如果密钥是普通字符串，使用 SHA-256 哈希来生成固定长度的密钥
-        """
-        try:
-            # 尝试作为 base64 编码的密钥解码
-            decoded = base64.b64decode(key)
-            if len(decoded) == self.KEY_LENGTH:
-                return decoded
-            # 如果解码后长度不对，使用前32字节
-            return decoded[:self.KEY_LENGTH]
-        except Exception:
-            # 不是有效的 base64 字符串，使用 SHA-256 哈希生成固定长度密钥
-            return hashlib.sha256(key.encode()).digest()
-
-    def _generate_and_warn(self):
-        """生成新密钥并打印警告信息"""
-        # 生成32字节随机密钥
-        raw_key = secrets.token_bytes(self.KEY_LENGTH)
-        self._key = raw_key
+        self._key = connect_info_key(os.environ.get("CONNECT_INFO_MASTER_KEY"))
         self._aesgcm = AESGCM(self._key)
-
-        # 将密钥转为 base64 便于复制
-        key_b64 = base64.b64encode(raw_key).decode()
-
-        warning_msg = """
-╔══════════════════════════════════════════════════════════════════════════════╗
-║                         ⚠️  安全配置警告  ⚠️                                  ║
-╠══════════════════════════════════════════════════════════════════════════════╣
-║                                                                              ║
-║  检测到 CONNECT_INFO_MASTER_KEY 未配置，系统已自动生成了一个临时密钥！           ║
-║                                                                              ║
-║  ⚠️  重要提醒：                                                              ║
-║  1. 这个密钥仅保存在内存中，重启后会丢失！                                       ║
-║  2. 重启后所有加密数据将无法解密！                                             ║
-║  3. 请立即将以下密钥添加到你的 .env 文件中：                                    ║
-║                                                                              ║
-║  ══════════════════════════════════════════════════════════════════════════ ║
-║  CONNECT_INFO_MASTER_KEY={key}
-║  ══════════════════════════════════════════════════════════════════════════ ║
-║                                                                              ║
-║  📝 生成新密钥的方法：                                                         ║
-║     python -c "import secrets,base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"
-║                                                                              ║
-╚══════════════════════════════════════════════════════════════════════════════╝
-""".format(key=key_b64)
-
-        print(warning_msg)
+        self._initialized = True
 
     def encrypt(self, plaintext: str) -> str:
         """
@@ -254,8 +191,7 @@ def generate_new_key() -> str:
         key = generate_new_key()
         # 返回: k3H7xL9...（base64编码的32字节随机数）
 
-        print(f"请将此密钥添加到 .env 文件：")
-        print(f"CONNECT_INFO_MASTER_KEY={key}")
+        # 将 key 写入受控的持久配置，不在终端输出。
     """
     raw_key = secrets.token_bytes(ConnectInfoEncryptor.KEY_LENGTH)
     return base64.b64encode(raw_key).decode()

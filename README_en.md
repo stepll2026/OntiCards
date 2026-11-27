@@ -132,16 +132,16 @@ git clone https://github.com/stepll2026/OntiCards.git
 cd OntiCards
 
 # 2. Initialize environment variables
-cp .env.prod .env
-chmod 600 .env
+python3 scripts/init_env.py
 
-# 3. Validate the configuration and start everything with one command
-docker compose config -q
-docker compose up -d --build
-
-# Access URL
-http://your-ip:9107
+# 3. Follow the initial administrator setup below to start services
 ```
+
+After startup, open `http://your-ip:9107`.
+
+For a fresh deployment, follow [initial administrator setup](docs/admin-bootstrap.md) to authorize the first administrator. Existing deployments retain their current accounts.
+
+Initialize a fresh deployment with Python 3 and retain existing configuration by default. Configure the application JWT signer and the external SSO verifier separately. See [application and SSO signing keys](docs/signing-keys.md) for mounted Compose secrets, standalone API configuration, and rotation.
 
 ⚠️ **Must change for production**: database passwords, secret keys, SSO secret, domain allowlist, and other core configuration
 

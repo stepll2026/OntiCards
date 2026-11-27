@@ -4,6 +4,9 @@ import os
 import dotenv
 from sqlalchemy.engine import URL
 
+from core.connect_info_encryptor import get_encryptor
+from core.signing_keys import application_signing_key, signing_key_value
+
 dotenv.load_dotenv()
 
 DEFAULTS = {
@@ -96,6 +99,8 @@ DEFAULTS = {
 
 
 def get_env(key):
+    if key in {"SECRET_KEY", "SSO_SECRET_KEY"}:
+        return signing_key_value(key)
     return os.environ.get(key, DEFAULTS.get(key))
 
 
@@ -156,7 +161,8 @@ class Config:
         self.APP_URL = get_env('APP_URL')
 
         # Your App secret key will be used for securely signing the session cookie
-        self.SECRET_KEY = get_env('SECRET_KEY')
+        self.SECRET_KEY = application_signing_key()
+        get_encryptor()
 
         # cors settings
         self.CONSOLE_CORS_ALLOW_ORIGINS = get_cors_allow_origins(
@@ -196,6 +202,7 @@ class Config:
             }
         }
 
+        # Use Boolean echo only. SQLAlchemy's "debug" mode also emits returned rows.
         self.SQLALCHEMY_ECHO = get_bool_env('SQLALCHEMY_ECHO')
 
         # ------------------------
